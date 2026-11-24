@@ -12,7 +12,7 @@ dev = [
 ]
 
 [tool.uv.workspace]
-members = ["api", "engine/python"]
+members = ["api", "engine/python", "contracts/python"]
 
 [tool.uv]
 package = false

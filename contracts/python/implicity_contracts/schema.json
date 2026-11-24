@@ -1,0 +1,6595 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://implicity.local/contracts/",
+  "$defs": {
+    "Action_SessionStarted": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "mode",
+        "text_scale",
+        "local_hour_bucket"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "session_started"
+        },
+        "mode": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "text_scale": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "local_hour_bucket": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 23
+        }
+      }
+    },
+    "Action_SessionEnded": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "mode",
+        "text_scale",
+        "local_hour_bucket"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "session_ended"
+        },
+        "mode": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "text_scale": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "local_hour_bucket": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 23
+        }
+      }
+    },
+    "Action_ConversationStarted": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "conversation_started"
+        }
+      }
+    },
+    "Action_ConversationEnded": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "conversation_ended"
+        }
+      }
+    },
+    "Action_MessageSent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "length_bucket",
+        "attachment_count"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "message_sent"
+        },
+        "length_bucket": {
+          "enum": [
+            "short",
+            "medium",
+            "long"
+          ]
+        },
+        "attachment_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "shortcut": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/ShortcutId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "Action_AnswerShown": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "length_bucket",
+        "has_code",
+        "has_table",
+        "has_reasoning"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "answer_shown"
+        },
+        "length_bucket": {
+          "enum": [
+            "short",
+            "medium",
+            "long"
+          ]
+        },
+        "has_code": {
+          "type": "boolean"
+        },
+        "has_table": {
+          "type": "boolean"
+        },
+        "has_reasoning": {
+          "type": "boolean"
+        }
+      }
+    },
+    "Action_ComponentShown": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "default_state"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "component_shown"
+        },
+        "default_state": {
+          "enum": [
+            "empty",
+            "loading",
+            "long_content",
+            "error",
+            "folded",
+            "open",
+            "closed"
+          ]
+        }
+      }
+    },
+    "Action_ComponentSeen": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "seconds_visible"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "component_seen"
+        },
+        "seconds_visible": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "Action_SectionExpanded": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "section_type"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "section_expanded"
+        },
+        "section_type": {
+          "enum": [
+            "reasoning",
+            "long_answer",
+            "details",
+            "run_activity"
+          ]
+        }
+      }
+    },
+    "Action_SectionCollapsed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "section_type"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "section_collapsed"
+        },
+        "section_type": {
+          "enum": [
+            "reasoning",
+            "long_answer",
+            "details",
+            "run_activity"
+          ]
+        }
+      }
+    },
+    "Action_RepresentationSwitched": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "from",
+        "to"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "representation_switched"
+        },
+        "from": {
+          "enum": [
+            "prose",
+            "list",
+            "table",
+            "chart",
+            "code"
+          ]
+        },
+        "to": {
+          "enum": [
+            "prose",
+            "list",
+            "table",
+            "chart",
+            "code"
+          ]
+        }
+      }
+    },
+    "Action_PanelOpened": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "panel"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "panel_opened"
+        },
+        "panel": {
+          "enum": [
+            "sources",
+            "project"
+          ]
+        }
+      }
+    },
+    "Action_PanelClosed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "panel"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "panel_closed"
+        },
+        "panel": {
+          "enum": [
+            "sources",
+            "project"
+          ]
+        }
+      }
+    },
+    "Action_PanelDocked": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "panel"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "panel_docked"
+        },
+        "panel": {
+          "enum": [
+            "sources",
+            "project"
+          ]
+        }
+      }
+    },
+    "Action_PanelUndocked": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "panel"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "panel_undocked"
+        },
+        "panel": {
+          "enum": [
+            "sources",
+            "project"
+          ]
+        }
+      }
+    },
+    "Action_AnswerCopied": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "share_bucket"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "answer_copied"
+        },
+        "share_bucket": {
+          "enum": [
+            "small",
+            "half",
+            "large"
+          ]
+        }
+      }
+    },
+    "Action_CodeCopied": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "share_bucket"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "code_copied"
+        },
+        "share_bucket": {
+          "enum": [
+            "small",
+            "half",
+            "large"
+          ]
+        }
+      }
+    },
+    "Action_AnswerRegenerated": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "seconds_since_answer"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "answer_regenerated"
+        },
+        "seconds_since_answer": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "Action_GenerationStopped": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "seconds_since_answer"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "generation_stopped"
+        },
+        "seconds_since_answer": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "Action_MessageEdited": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "seconds_since_answer"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "message_edited"
+        },
+        "seconds_since_answer": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "Action_ShortcutUsed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "shortcut_name"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "shortcut_used"
+        },
+        "shortcut_name": {
+          "$ref": "#/$defs/ShortcutId"
+        }
+      }
+    },
+    "Action_SearchUsed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "search_used"
+        }
+      }
+    },
+    "Action_AttachmentAdded": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "type"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "attachment_added"
+        },
+        "type": {
+          "enum": [
+            "file",
+            "photo"
+          ]
+        }
+      }
+    },
+    "Action_DraftDeleted": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "length_bucket"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "draft_deleted"
+        },
+        "length_bucket": {
+          "enum": [
+            "short",
+            "medium",
+            "long"
+          ]
+        }
+      }
+    },
+    "Action_ChangeShown": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "decision_id"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "change_shown"
+        },
+        "decision_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        }
+      }
+    },
+    "Action_ChangeKept": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "decision_id"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "change_kept"
+        },
+        "decision_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        }
+      }
+    },
+    "Action_ChangeUndone": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "decision_id"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "change_undone"
+        },
+        "decision_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        }
+      }
+    },
+    "Action_ProposalShown": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "proposal_id",
+        "proposal_type"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "proposal_shown"
+        },
+        "proposal_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "proposal_type": {
+          "enum": [
+            "look",
+            "widget",
+            "workflow",
+            "kind"
+          ]
+        }
+      }
+    },
+    "Action_ProposalKept": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "proposal_id",
+        "proposal_type"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "proposal_kept"
+        },
+        "proposal_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "proposal_type": {
+          "enum": [
+            "look",
+            "widget",
+            "workflow",
+            "kind"
+          ]
+        }
+      }
+    },
+    "Action_ProposalDismissed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "proposal_id",
+        "proposal_type"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "proposal_dismissed"
+        },
+        "proposal_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "proposal_type": {
+          "enum": [
+            "look",
+            "widget",
+            "workflow",
+            "kind"
+          ]
+        }
+      }
+    },
+    "Action_WidgetSeen": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "widget_id"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "widget_seen"
+        },
+        "widget_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        }
+      }
+    },
+    "Action_WidgetUsed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "widget_id"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "widget_used"
+        },
+        "widget_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        }
+      }
+    },
+    "Action_WidgetPinned": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "widget_id"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "widget_pinned"
+        },
+        "widget_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        }
+      }
+    },
+    "Action_WidgetDismissed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "widget_id"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "widget_dismissed"
+        },
+        "widget_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        }
+      }
+    },
+    "Action_MediaPlayed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "position_bucket"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "media_played"
+        },
+        "position_bucket": {
+          "enum": [
+            "start",
+            "quarter",
+            "middle",
+            "three_quarters",
+            "end"
+          ]
+        }
+      }
+    },
+    "Action_MediaPaused": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "position_bucket"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "media_paused"
+        },
+        "position_bucket": {
+          "enum": [
+            "start",
+            "quarter",
+            "middle",
+            "three_quarters",
+            "end"
+          ]
+        }
+      }
+    },
+    "Action_MediaSeeked": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "position_bucket"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "media_seeked"
+        },
+        "position_bucket": {
+          "enum": [
+            "start",
+            "quarter",
+            "middle",
+            "three_quarters",
+            "end"
+          ]
+        }
+      }
+    },
+    "Action_MediaReplayed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "position_bucket"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "media_replayed"
+        },
+        "position_bucket": {
+          "enum": [
+            "start",
+            "quarter",
+            "middle",
+            "three_quarters",
+            "end"
+          ]
+        }
+      }
+    },
+    "SettingChanged_Reasoning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "dimension",
+        "value"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "setting_changed"
+        },
+        "dimension": {
+          "const": "reasoning"
+        },
+        "value": {
+          "enum": [
+            "folded",
+            "expanded"
+          ]
+        }
+      }
+    },
+    "SettingChanged_LongAnswers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "dimension",
+        "value"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "setting_changed"
+        },
+        "dimension": {
+          "const": "long_answers"
+        },
+        "value": {
+          "enum": [
+            "folded",
+            "open"
+          ]
+        }
+      }
+    },
+    "SettingChanged_DataForm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "dimension",
+        "value"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "setting_changed"
+        },
+        "dimension": {
+          "const": "data_form"
+        },
+        "value": {
+          "enum": [
+            "table",
+            "chart"
+          ]
+        }
+      }
+    },
+    "SettingChanged_SourcesPanel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "dimension",
+        "value"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "setting_changed"
+        },
+        "dimension": {
+          "const": "sources_panel"
+        },
+        "value": {
+          "enum": [
+            "closed",
+            "docked"
+          ]
+        }
+      }
+    },
+    "SettingChanged_ProjectPanel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "dimension",
+        "value"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "setting_changed"
+        },
+        "dimension": {
+          "const": "project_panel"
+        },
+        "value": {
+          "enum": [
+            "closed",
+            "docked"
+          ]
+        }
+      }
+    },
+    "SettingChanged_ShortcutChips": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "dimension",
+        "value"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "setting_changed"
+        },
+        "dimension": {
+          "const": "shortcut_chips"
+        },
+        "value": {
+          "enum": [
+            true,
+            false
+          ]
+        }
+      }
+    },
+    "SettingChanged_Density": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "dimension",
+        "value"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "setting_changed"
+        },
+        "dimension": {
+          "const": "density"
+        },
+        "value": {
+          "enum": [
+            "compact",
+            "comfortable",
+            "spacious"
+          ]
+        }
+      }
+    },
+    "SettingChanged_AnswerLength": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "dimension",
+        "value"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "setting_changed"
+        },
+        "dimension": {
+          "const": "answer_length"
+        },
+        "value": {
+          "enum": [
+            "short",
+            "medium",
+            "long"
+          ]
+        }
+      }
+    },
+    "SettingChanged_AnswerOrder": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "dimension",
+        "value"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "setting_changed"
+        },
+        "dimension": {
+          "const": "answer_order"
+        },
+        "value": {
+          "enum": [
+            "answer first",
+            "explanation first"
+          ]
+        }
+      }
+    },
+    "SettingChanged_AnswerForm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "dimension",
+        "value"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "setting_changed"
+        },
+        "dimension": {
+          "const": "answer_form"
+        },
+        "value": {
+          "enum": [
+            "prose",
+            "list",
+            "table"
+          ]
+        }
+      }
+    },
+    "SettingChanged_AnswerTone": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "dimension",
+        "value"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "setting_changed"
+        },
+        "dimension": {
+          "const": "answer_tone"
+        },
+        "value": {
+          "enum": [
+            "normal",
+            "warm",
+            "terse"
+          ]
+        }
+      }
+    },
+    "TurnSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "typing",
+        "reading",
+        "pointer"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "turn_summary"
+        },
+        "typing": {
+          "$ref": "#/$defs/Typing"
+        },
+        "reading": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "time_on_answer",
+            "furthest_point",
+            "scroll_backs",
+            "time_before_next_action"
+          ],
+          "properties": {
+            "time_on_answer": {
+              "type": "number",
+              "minimum": 0
+            },
+            "furthest_point": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "scroll_backs": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "time_before_next_action": {
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        },
+        "pointer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "distance_travelled",
+            "hesitations",
+            "misses_on_small_targets"
+          ],
+          "properties": {
+            "distance_travelled": {
+              "type": "number",
+              "minimum": 0
+            },
+            "hesitations": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "misses_on_small_targets": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "SessionSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "session_flag",
+        "duration",
+        "active_time",
+        "turns",
+        "kinds",
+        "local_hour_bucket",
+        "day_type",
+        "typing"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "conversation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slot": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "name": {
+          "const": "session_summary"
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 0
+        },
+        "active_time": {
+          "type": "number",
+          "minimum": 0
+        },
+        "turns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "kinds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          }
+        },
+        "local_hour_bucket": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 23
+        },
+        "day_type": {
+          "enum": [
+            "weekday",
+            "weekend"
+          ]
+        },
+        "typing": {
+          "$ref": "#/$defs/Typing"
+        }
+      }
+    },
+    "Proposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "source",
+        "dimension",
+        "kind",
+        "to",
+        "mode",
+        "reason",
+        "evidence",
+        "payload"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "source": {
+          "enum": [
+            "rule",
+            "hermes",
+            "person"
+          ]
+        },
+        "dimension": {
+          "type": "string"
+        },
+        "kind": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "to": {},
+        "mode": {
+          "enum": [
+            "automatic",
+            "proposed"
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "features": {
+              "type": "array"
+            },
+            "occasions": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "conversations": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "days": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "payload": {
+          "type": "object"
+        }
+      }
+    },
+    "Decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "proposal_id",
+        "dimension",
+        "kind",
+        "from",
+        "to",
+        "reason",
+        "evidence",
+        "dimension_version",
+        "status",
+        "created_at",
+        "shown_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "proposal_id": {
+          "type": "string"
+        },
+        "dimension": {
+          "type": "string"
+        },
+        "kind": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "from": {},
+        "to": {},
+        "reason": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "object"
+        },
+        "dimension_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "shown",
+            "kept",
+            "undone",
+            "reverted"
+          ]
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "shown_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        }
+      }
+    },
+    "Spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "registry_version",
+        "root",
+        "elements"
+      ],
+      "properties": {
+        "registry_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "root": {
+          "type": "string"
+        },
+        "elements": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/SpecElement"
+          }
+        }
+      }
+    },
+    "SpecElement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "props"
+      ],
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "props": {
+          "type": "object"
+        },
+        "slots": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "SettingChanged": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/SettingChanged_Reasoning"
+        },
+        {
+          "$ref": "#/$defs/SettingChanged_LongAnswers"
+        },
+        {
+          "$ref": "#/$defs/SettingChanged_DataForm"
+        },
+        {
+          "$ref": "#/$defs/SettingChanged_SourcesPanel"
+        },
+        {
+          "$ref": "#/$defs/SettingChanged_ProjectPanel"
+        },
+        {
+          "$ref": "#/$defs/SettingChanged_ShortcutChips"
+        },
+        {
+          "$ref": "#/$defs/SettingChanged_Density"
+        },
+        {
+          "$ref": "#/$defs/SettingChanged_AnswerLength"
+        },
+        {
+          "$ref": "#/$defs/SettingChanged_AnswerOrder"
+        },
+        {
+          "$ref": "#/$defs/SettingChanged_AnswerForm"
+        },
+        {
+          "$ref": "#/$defs/SettingChanged_AnswerTone"
+        }
+      ]
+    },
+    "Event": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Action_SessionStarted"
+        },
+        {
+          "$ref": "#/$defs/Action_SessionEnded"
+        },
+        {
+          "$ref": "#/$defs/Action_ConversationStarted"
+        },
+        {
+          "$ref": "#/$defs/Action_ConversationEnded"
+        },
+        {
+          "$ref": "#/$defs/Action_MessageSent"
+        },
+        {
+          "$ref": "#/$defs/Action_AnswerShown"
+        },
+        {
+          "$ref": "#/$defs/Action_ComponentShown"
+        },
+        {
+          "$ref": "#/$defs/Action_ComponentSeen"
+        },
+        {
+          "$ref": "#/$defs/Action_SectionExpanded"
+        },
+        {
+          "$ref": "#/$defs/Action_SectionCollapsed"
+        },
+        {
+          "$ref": "#/$defs/Action_RepresentationSwitched"
+        },
+        {
+          "$ref": "#/$defs/Action_PanelOpened"
+        },
+        {
+          "$ref": "#/$defs/Action_PanelClosed"
+        },
+        {
+          "$ref": "#/$defs/Action_PanelDocked"
+        },
+        {
+          "$ref": "#/$defs/Action_PanelUndocked"
+        },
+        {
+          "$ref": "#/$defs/Action_AnswerCopied"
+        },
+        {
+          "$ref": "#/$defs/Action_CodeCopied"
+        },
+        {
+          "$ref": "#/$defs/Action_AnswerRegenerated"
+        },
+        {
+          "$ref": "#/$defs/Action_GenerationStopped"
+        },
+        {
+          "$ref": "#/$defs/Action_MessageEdited"
+        },
+        {
+          "$ref": "#/$defs/Action_ShortcutUsed"
+        },
+        {
+          "$ref": "#/$defs/Action_SearchUsed"
+        },
+        {
+          "$ref": "#/$defs/Action_AttachmentAdded"
+        },
+        {
+          "$ref": "#/$defs/Action_DraftDeleted"
+        },
+        {
+          "$ref": "#/$defs/Action_ChangeShown"
+        },
+        {
+          "$ref": "#/$defs/Action_ChangeKept"
+        },
+        {
+          "$ref": "#/$defs/Action_ChangeUndone"
+        },
+        {
+          "$ref": "#/$defs/Action_ProposalShown"
+        },
+        {
+          "$ref": "#/$defs/Action_ProposalKept"
+        },
+        {
+          "$ref": "#/$defs/Action_ProposalDismissed"
+        },
+        {
+          "$ref": "#/$defs/Action_WidgetSeen"
+        },
+        {
+          "$ref": "#/$defs/Action_WidgetUsed"
+        },
+        {
+          "$ref": "#/$defs/Action_WidgetPinned"
+        },
+        {
+          "$ref": "#/$defs/Action_WidgetDismissed"
+        },
+        {
+          "$ref": "#/$defs/Action_MediaPlayed"
+        },
+        {
+          "$ref": "#/$defs/Action_MediaPaused"
+        },
+        {
+          "$ref": "#/$defs/Action_MediaSeeked"
+        },
+        {
+          "$ref": "#/$defs/Action_MediaReplayed"
+        },
+        {
+          "$ref": "#/$defs/SettingChanged_Reasoning"
+        },
+        {
+          "$ref": "#/$defs/SettingChanged_LongAnswers"
+        },
+        {
+          "$ref": "#/$defs/SettingChanged_DataForm"
+        },
+        {
+          "$ref": "#/$defs/SettingChanged_SourcesPanel"
+        },
+        {
+          "$ref": "#/$defs/SettingChanged_ProjectPanel"
+        },
+        {
+          "$ref": "#/$defs/SettingChanged_ShortcutChips"
+        },
+        {
+          "$ref": "#/$defs/SettingChanged_Density"
+        },
+        {
+          "$ref": "#/$defs/SettingChanged_AnswerLength"
+        },
+        {
+          "$ref": "#/$defs/SettingChanged_AnswerOrder"
+        },
+        {
+          "$ref": "#/$defs/SettingChanged_AnswerForm"
+        },
+        {
+          "$ref": "#/$defs/SettingChanged_AnswerTone"
+        },
+        {
+          "$ref": "#/$defs/TurnSummary"
+        },
+        {
+          "$ref": "#/$defs/SessionSummary"
+        }
+      ]
+    },
+    "Typing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "composing_time",
+        "mean_key_gap",
+        "key_gap_spread",
+        "burst_count",
+        "pause_count",
+        "backspace_rate"
+      ],
+      "properties": {
+        "composing_time": {
+          "type": "number",
+          "minimum": 0
+        },
+        "mean_key_gap": {
+          "type": "number",
+          "minimum": 0
+        },
+        "key_gap_spread": {
+          "type": "number",
+          "minimum": 0
+        },
+        "burst_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pause_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "backspace_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "ShortcutId": {
+      "type": "string",
+      "enum": [
+        "copy_answer",
+        "copy_code",
+        "regenerate_answer",
+        "stop_generation",
+        "search"
+      ]
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/Event"
+    },
+    {
+      "$ref": "#/$defs/Proposal"
+    },
+    {
+      "$ref": "#/$defs/Decision"
+    },
+    {
+      "$ref": "#/$defs/Spec"
+    }
+  ]
+}
