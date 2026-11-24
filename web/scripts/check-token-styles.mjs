@@ -4,149 +4,162 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import postcss from "postcss";
+import { tokenNames, tokenUtilities } from "../src/registry/token-values.mjs";
 
-const colorProps = /^(?:color|background|backgroundColor|border|borderColor|outline|outlineColor|fill|stroke)$/i;
-const fontProps = /^(?:font|fontFamily|fontSize|fontWeight|fontStyle|lineHeight|letterSpacing|wordSpacing|textIndent)$/i;
-const sizeProps = /^(?:width|height|minWidth|maxWidth|minHeight|maxHeight|padding(?:Block|Inline)?(?:Start|End|Top|Right|Bottom|Left)?|margin(?:Block|Inline)?(?:Start|End|Top|Right|Bottom|Left)?|gap|rowGap|columnGap|borderRadius|borderWidth)$/i;
 const safeKeywords = new Set(["inherit", "initial", "unset", "currentcolor", "transparent", "normal", "auto", "none"]);
-const tokenReference = /^var\(\s*--[\w-]+\s*\)$/i;
-const utilityPattern = /^(?:(?:text|bg|border|outline)-(?:\[[^\]]+\]|[a-z]+-\d{2,3})|text-(?:xs|sm|base|lg|[2-9]?xl)|(?:w|h|min-w|max-w|min-h|max-h|p|px|py|pt|pr|pb|pl|m|mx|my|mt|mr|mb|ml|gap|gap-x|gap-y|tracking|leading|rounded|shadow)-(?:\[[^\]]+\]|\d+|tight|tighter|wide|wider|widest|none|sm|md|lg|xl|2xl|full)|font-(?:serif|mono|sans|thin|extralight|light|normal|medium|semibold|bold|extrabold|black|\[[^\]]+\]))$/i;
-
-function propertyName(node) {
-  return ts.isIdentifier(node) || ts.isStringLiteral(node) ? node.text : "";
-}
+const tokenReference = /^var\(\s*(--[\w-]+)\s*\)$/i;
+const layoutUtility = /^(?:block|inline|inline-block|flex|inline-flex|grid|inline-grid|hidden|contents|flow-root|flex-(?:row|row-reverse|col|col-reverse|wrap|wrap-reverse|nowrap|1|auto|initial|none|grow|shrink)|grid-flow-(?:row|col|dense)|items-(?:start|end|center|baseline|stretch)|justify-(?:normal|start|end|center|between|around|evenly|stretch)|self-(?:auto|start|end|center|stretch|baseline)|content-(?:normal|center|start|end|between|around|evenly|baseline|stretch)|place-(?:content|items|self)-(?:start|end|center|stretch|between|around|evenly|baseline)|col-span-(?:full|\d+)|row-span-(?:full|\d+)|order-(?:first|last|none|\d+)|relative|absolute|fixed|sticky|static|overflow-(?:auto|hidden|clip|visible|scroll)|z-(?:auto|\d+))$/;
+const tokenImport = /(?:^|\/)token(?:\.ts)?$/;
 
 function unwrap(node) {
   while (ts.isParenthesizedExpression(node) || ts.isAsExpression(node) || ts.isSatisfiesExpression(node) || ts.isTypeAssertionExpression(node) || ts.isNonNullExpression(node)) node = node.expression;
   return node;
 }
 
-function declarationFor(node, declarations, seen) {
+function declarations(sourceFile) {
+  const found = new Map();
+  const visit = (node) => {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)) found.set(node.name.text, [...(found.get(node.name.text) ?? []), node]);
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return found;
+}
+
+function variable(node, vars, seen) {
   if (!ts.isIdentifier(node) || seen.has(node.text)) return undefined;
-  const matches = declarations.get(node.text) ?? [];
-  if (matches.length !== 1) return undefined;
-  const declaration = matches[0];
-  if (!declaration.initializer || !ts.isVariableDeclarationList(declaration.parent) || !(declaration.parent.flags & ts.NodeFlags.Const)) return undefined;
-  seen.add(node.text);
-  const value = unwrap(declaration.initializer);
-  return { value, seen: new Set(seen) };
+  const list = vars.get(node.text) ?? [];
+  if (list.length !== 1) return undefined;
+  const item = list[0];
+  if (!item.initializer || !ts.isVariableDeclarationList(item.parent) || !(item.parent.flags & ts.NodeFlags.Const)) return undefined;
+  const nextSeen = new Set(seen).add(node.text);
+  return { value: unwrap(item.initializer), seen: nextSeen };
 }
 
-function inspectStyleValue(node, name, declarations, seen = new Set()) {
-  node = unwrap(node);
-  if (ts.isIdentifier(node)) {
-    const resolved = declarationFor(node, declarations, seen);
-    return resolved ? inspectStyleValue(resolved.value, name, declarations, resolved.seen) : [`unsupported style value for ${name}`];
-  }
-  if (ts.isConditionalExpression(node)) return [
-    ...inspectStyleValue(node.whenTrue, name, declarations, new Set(seen)),
-    ...inspectStyleValue(node.whenFalse, name, declarations, new Set(seen)),
-  ];
-  const value = ts.isStringLiteralLike(node) ? node.text : ts.isNumericLiteral(node) ? node.text : undefined;
-  if (value === undefined) return [`unsupported style value for ${name}`];
-  return !tokenReference.test(value) && !safeKeywords.has(value.toLowerCase()) ? [`${name}: ${value}`] : [];
+function importedToken(sourceFile, filename) {
+  return sourceFile.statements.some((statement) => ts.isImportDeclaration(statement)
+    && ts.isStringLiteral(statement.moduleSpecifier)
+    && tokenImport.test(resolve(dirname(filename), statement.moduleSpecifier.text))
+    && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings)
+    && statement.importClause.namedBindings.elements.some(({ name, propertyName }) => name.text === "token" || propertyName?.text === "token"));
 }
 
-function objectStyleViolations(node, declarations, seen = new Set()) {
+function tokenCall(node, hasTokenImport) {
+  node = unwrap(node);
+  if (!hasTokenImport || !ts.isCallExpression(node) || !ts.isIdentifier(node.expression) || node.expression.text !== "token" || node.arguments.length !== 1) return undefined;
+  const [argument] = node.arguments;
+  if (!ts.isStringLiteralLike(argument) || !tokenNames.has(argument.text)) return undefined;
+  return argument.text.startsWith("--") ? `var(${argument.text})` : argument.text;
+}
+
+function styleValue(node, vars, seen, hasTokenImport, property) {
+  node = unwrap(node);
+  if (ts.isCallExpression(node)) {
+    const token = tokenCall(node, hasTokenImport);
+    return token?.startsWith("var(") ? [] : [`unsupported dynamic style value for ${property}`];
+  }
+  if (ts.isIdentifier(node)) {
+    const alias = variable(node, vars, seen);
+    return alias ? styleValue(alias.value, vars, alias.seen, hasTokenImport, property) : [`unsupported dynamic style value for ${property}`];
+  }
+  const value = ts.isStringLiteralLike(node) ? node.text : undefined;
+  if (value === undefined) return [`unsupported style value for ${property}`];
+  const match = value.match(tokenReference);
+  return match && tokenNames.has(match[1]) || safeKeywords.has(value.toLowerCase()) ? [] : [`${property}: ${value}`];
+}
+
+function classValue(node, hasTokenImport) {
+  node = unwrap(node);
+  if (ts.isStringLiteralLike(node)) return node.text;
+  return tokenCall(node, hasTokenImport);
+}
+
+function classViolations(node, hasTokenImport) {
+  const value = classValue(node, hasTokenImport);
+  if (value === undefined) return ["unsupported dynamic className; use token() with a token name"];
+  return value.split(/\s+/).filter(Boolean).flatMap((fullName) => {
+    const base = fullName.split(":").at(-1);
+    if (layoutUtility.test(base) || tokenUtilities.has(base)) return [];
+    return [`unknown or non-token style utility: ${fullName}`];
+  });
+}
+
+function styleObject(node, vars, seen, hasTokenImport) {
   node = unwrap(node);
   if (ts.isIdentifier(node)) {
-    const resolved = declarationFor(node, declarations, seen);
-    return resolved ? objectStyleViolations(resolved.value, declarations, resolved.seen) : ["unsupported style expression"];
+    const alias = variable(node, vars, seen);
+    return alias ? styleObject(alias.value, vars, alias.seen, hasTokenImport) : ["unsupported dynamic style object"];
   }
-  if (ts.isConditionalExpression(node)) return [
-    ...objectStyleViolations(node.whenTrue, declarations, new Set(seen)),
-    ...objectStyleViolations(node.whenFalse, declarations, new Set(seen)),
-  ];
+  if (!ts.isObjectLiteralExpression(node)) return ["unsupported dynamic style object"];
   const violations = [];
-  if (!ts.isObjectLiteralExpression(node)) return ["unsupported style expression"];
   for (const property of node.properties) {
     if (ts.isSpreadAssignment(property)) {
-      violations.push(...objectStyleViolations(property.expression, declarations, new Set(seen)));
+      violations.push(...styleObject(property.expression, vars, new Set(seen), hasTokenImport));
       continue;
     }
-    if (ts.isShorthandPropertyAssignment(property)) {
-      const name = property.name.text;
-      if (colorProps.test(name) || fontProps.test(name) || sizeProps.test(name)) violations.push(...inspectStyleValue(property.name, name, declarations, new Set(seen)));
-      continue;
-    }
-    if (!ts.isPropertyAssignment(property)) {
+    if (!ts.isPropertyAssignment(property) && !ts.isShorthandPropertyAssignment(property)) {
       violations.push("unsupported style object member");
       continue;
     }
-    const name = propertyName(property.name);
-    if (colorProps.test(name) || fontProps.test(name) || sizeProps.test(name)) {
-      violations.push(...inspectStyleValue(property.initializer, name, declarations, new Set(seen)));
-    } else if (!name || (property.name && ts.isComputedPropertyName(property.name))) {
-      violations.push("unsupported style property");
-    }
-    if (ts.isObjectLiteralExpression(unwrap(property.initializer)) || ts.isIdentifier(unwrap(property.initializer)) || ts.isConditionalExpression(unwrap(property.initializer))) {
-      violations.push(...objectStyleViolations(property.initializer, declarations, new Set(seen)));
-    }
+    const name = property.name.getText();
+    const value = ts.isPropertyAssignment(property) ? property.initializer : property.name;
+    if (name === "className") violations.push(...classViolations(value, hasTokenImport));
+    else violations.push(...styleValue(value, vars, new Set(seen), hasTokenImport, name));
   }
   return violations;
 }
 
-function classValues(node, declarations, seen = new Set()) {
+function spreadViolations(node, vars, seen, hasTokenImport) {
   node = unwrap(node);
-  if (ts.isStringLiteralLike(node)) return [node.text];
   if (ts.isIdentifier(node)) {
-    const resolved = declarationFor(node, declarations, seen);
-    return resolved ? classValues(resolved.value, declarations, resolved.seen) : undefined;
+    const alias = variable(node, vars, seen);
+    return alias ? spreadViolations(alias.value, vars, alias.seen, hasTokenImport) : ["unsupported dynamic JSX spread"];
   }
-  if (ts.isConditionalExpression(node) || ts.isBinaryExpression(node)) {
-    const children = ts.isConditionalExpression(node) ? [node.whenTrue, node.whenFalse] : [node.left, node.right];
-    const values = children.map((child) => classValues(child, declarations, new Set(seen)));
-    return values.every(Boolean) ? values.flat() : undefined;
+  if (!ts.isObjectLiteralExpression(node)) return ["unsupported dynamic JSX spread"];
+  const violations = [];
+  for (const property of node.properties) {
+    if (ts.isSpreadAssignment(property)) {
+      violations.push(...spreadViolations(property.expression, vars, new Set(seen), hasTokenImport));
+      continue;
+    }
+    if (!ts.isPropertyAssignment(property) && !ts.isShorthandPropertyAssignment(property)) {
+      violations.push("unsupported JSX spread member");
+      continue;
+    }
+    const name = property.name.getText();
+    const value = ts.isPropertyAssignment(property) ? property.initializer : property.name;
+    if (name === "style") violations.push(...styleObject(value, vars, new Set(seen), hasTokenImport));
+    if (name === "className") violations.push(...classViolations(value, hasTokenImport));
   }
-  if (ts.isArrayLiteralExpression(node)) {
-    const values = node.elements.map((element) => classValues(element, declarations, new Set(seen)));
-    return values.every(Boolean) ? values.flat() : undefined;
-  }
-  return undefined;
-}
-
-function classViolations(node, declarations) {
-  const values = classValues(node, declarations);
-  if (!values) return ["unsupported className expression"];
-  return values.flatMap((value) => value.split(/\s+/).filter((name) => utilityPattern.test(name) && !name.includes("var(--")));
+  return violations;
 }
 
 /** @param {string} source @param {string} [filename] @returns {string[]} */
-export function tokenStyleViolations(source, filename = "component.tsx") {
+export function tokenStyleViolations(source, filename = resolve("web/src/registry/Component/Component.tsx")) {
   if (filename.endsWith(".css")) {
     const violations = [];
     postcss.parse(source).walkDecls((declaration) => {
-      const name = declaration.prop.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
-      if (!colorProps.test(name) && !fontProps.test(name) && !sizeProps.test(name)) return;
       const value = declaration.value.trim();
-      if (!tokenReference.test(value) && !safeKeywords.has(value.toLowerCase())) violations.push(`${declaration.prop}: ${value}`);
+      const match = value.match(tokenReference);
+      if (!(match && tokenNames.has(match[1])) && !safeKeywords.has(value.toLowerCase())) violations.push(`${declaration.prop}: ${value}`);
     });
     return violations;
   }
   const sourceFile = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true, filename.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+  const vars = declarations(sourceFile);
+  const hasTokenImport = importedToken(sourceFile, filename);
   const violations = [];
-  const declarations = new Map();
-  const collect = (node) => {
-    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)) {
-      declarations.set(node.name.text, [...(declarations.get(node.name.text) ?? []), node]);
-    }
-    ts.forEachChild(node, collect);
-  };
-  collect(sourceFile);
   const visit = (node) => {
-    if (ts.isJsxAttribute(node)) {
+    if (ts.isJsxAttribute(node) && node.initializer) {
       const name = node.name.getText(sourceFile);
-      if (name === "style" && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression) {
-        violations.push(...objectStyleViolations(node.initializer.expression, declarations));
-      }
-      if (name === "className" && node.initializer) {
-        const expression = ts.isJsxExpression(node.initializer) ? node.initializer.expression : node.initializer;
-        if (expression) violations.push(...classViolations(expression, declarations));
+      if (name === "style" && ts.isJsxExpression(node.initializer) && node.initializer.expression) {
+        violations.push(...styleObject(node.initializer.expression, vars, new Set(), hasTokenImport));
+      } else if (name === "className") {
+        const value = ts.isJsxExpression(node.initializer) ? node.initializer.expression : node.initializer;
+        if (value) violations.push(...classViolations(value, hasTokenImport));
       }
     }
-    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && /^styles?$/i.test(node.name.text) && node.initializer) {
-      violations.push(...objectStyleViolations(node.initializer, declarations));
-    }
+    if (ts.isJsxSpreadAttribute(node)) violations.push(...spreadViolations(node.expression, vars, new Set(), hasTokenImport));
     ts.forEachChild(node, visit);
   };
   visit(sourceFile);
@@ -155,10 +168,10 @@ export function tokenStyleViolations(source, filename = "component.tsx") {
 
 async function sourceFiles(path) {
   const files = [];
-  for (const name of await readdir(path, { withFileTypes: true })) {
-    const fullPath = resolve(path, name.name);
-    if (name.isDirectory()) files.push(...await sourceFiles(fullPath));
-    else if (/\.(?:tsx?|css)$/.test(name.name) && !name.name.endsWith(".test.tsx")) files.push(fullPath);
+  for (const item of await readdir(path, { withFileTypes: true })) {
+    const fullPath = resolve(path, item.name);
+    if (item.isDirectory()) files.push(...await sourceFiles(fullPath));
+    else if (/\.(?:tsx?|css)$/.test(item.name) && !item.name.endsWith(".test.tsx")) files.push(fullPath);
   }
   return files;
 }

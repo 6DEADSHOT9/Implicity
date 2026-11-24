@@ -2,9 +2,11 @@ import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import ts from "typescript";
 import { registryVersion } from "../src/registry/version.ts";
 import { validateRegistryDefinitions } from "../src/registry/validate.ts";
-import { checkGeneratedFileSet, checkRegistryVersion, checkRegistryVersionSnapshot } from "../src/registry/snapshot.ts";
+import { checkGeneratedFileSet, checkRegistrySnapshots } from "../src/registry/snapshot.ts";
+import { defineSkeletonDefinition } from "../src/registry/define-skeleton.ts";
 
 const check = process.argv.includes("--check");
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -15,61 +17,55 @@ const folderNames = (await readdir(sourceDirectory, { withFileTypes: true }))
   .map((item) => item.name)
   .sort();
 const entries = [];
+function exportsNamed(source, name, filename) {
+  const parsed = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  return parsed.statements.some((statement) => {
+    if (ts.isFunctionDeclaration(statement) && statement.name?.text === name && statement.modifiers?.some(({ kind }) => kind === ts.SyntaxKind.ExportKeyword)) return true;
+    if (ts.isVariableStatement(statement) && statement.modifiers?.some(({ kind }) => kind === ts.SyntaxKind.ExportKeyword)
+      && statement.declarationList.declarations.some((declaration) => ts.isIdentifier(declaration.name) && declaration.name.text === name)) return true;
+    return false;
+  });
+}
 for (const id of folderNames) {
   const folder = resolve(sourceDirectory, id);
   const expected = [`${id}.tsx`, `${id}.test.tsx`, "schema.ts", "events.ts", "meta.ts"];
   const files = await readdir(folder);
   const missing = expected.filter((file) => !files.includes(file));
   if (missing.length) throw new Error(`${id} registry entry is missing: ${missing.join(", ")}`);
-  const { definition } = await import(join(folder, "schema.ts"));
-  if (definition.id !== id) throw new Error(`${id} schema declaration has a different id`);
-  entries.push(definition);
+  const [componentSource, schema, eventModule, metaModule] = await Promise.all([
+    readFile(join(folder, `${id}.tsx`), "utf8"),
+    import(join(folder, "schema.ts")),
+    import(join(folder, "events.ts")),
+    import(join(folder, "meta.ts")),
+  ]);
+  if (!exportsNamed(componentSource, id, join(folder, `${id}.tsx`))) throw new Error(`${id} registry entry is missing named component export ${id}`);
+  if (!schema.propsSchema || !schema.slotsSchema) throw new Error(`${id} registry entry schema.ts must export propsSchema and slotsSchema`);
+  if (!eventModule.events) throw new Error(`${id} registry entry events.ts must export events`);
+  if (!metaModule.meta) throw new Error(`${id} registry entry meta.ts must export meta`);
+  entries.push(defineSkeletonDefinition({ id, props: schema.propsSchema, slots: schema.slotsSchema, events: eventModule.events, meta: metaModule.meta }));
 }
 const snapshot = { registry_version: registryVersion, components: entries.map(({ id }) => id).sort() };
 validateRegistryDefinitions(entries);
 
-const { execFileSync } = await import("node:child_process");
-const validRefs = new Map();
-const hasRef = (ref) => {
-  if (!validRefs.has(ref)) {
-    try {
-      execFileSync("git", ["rev-parse", "--verify", `${ref}^{commit}`], { cwd: root, stdio: "ignore" });
-      validRefs.set(ref, true);
-    } catch {
-      validRefs.set(ref, false);
-    }
-  }
-  return validRefs.get(ref);
-};
-const gitFile = (ref, path) => {
-  if (!hasRef(ref)) return undefined;
-  const found = execFileSync("git", ["ls-tree", "-r", "--name-only", ref, path], { cwd: root, encoding: "utf8" }).trim();
-  return found ? JSON.parse(execFileSync("git", ["show", `${ref}:${path}`], { cwd: root, encoding: "utf8" })) : undefined;
-};
-const previous = gitFile("HEAD", "contracts/generated/components/registry.json");
-const baseRef = `origin/${process.env.GITHUB_BASE_REF || "main"}`;
-const baseSnapshot = gitFile(baseRef, "contracts/generated/components/registry.json")
-  ?? { registry_version: 2, components: [] };
-checkRegistryVersion(baseSnapshot, snapshot);
-checkRegistryVersion(previous, snapshot);
-const historyFiles = execFileSync("git", ["ls-tree", "-r", "--name-only", "HEAD", "contracts/generated/components"], { cwd: root, encoding: "utf8" })
-  .trim().split("\n").filter((path) => /\/registry-v\d+\.json$/.test(path));
-const currentVersionPath = `contracts/generated/components/registry-v${registryVersion}.json`;
-const firstVersionCommit = execFileSync("git", ["log", "--diff-filter=A", "--format=%H", "--reverse", "HEAD", "--", currentVersionPath], { cwd: root, encoding: "utf8" }).trim().split("\n")[0];
-const committedVersionSnapshot = firstVersionCommit ? gitFile(firstVersionCommit, currentVersionPath) : undefined;
-if (committedVersionSnapshot) checkRegistryVersionSnapshot(committedVersionSnapshot, snapshot);
+const historyFiles = (await readdir(directory).catch((error) => error.code === "ENOENT" ? [] : Promise.reject(error)))
+  .filter((name) => /^registry-v\d+\.json$/.test(name));
+let snapshots = await Promise.all(historyFiles.map(async (name) => {
+  const value = JSON.parse(await readFile(resolve(directory, name), "utf8"));
+  const version = Number(name.match(/^registry-v(\d+)\.json$/)[1]);
+  if (value.registry_version !== version) throw new Error(`${name} has an invalid registry version`);
+  return value;
+}));
+const highestVersion = Math.max(0, ...snapshots.map(({ registry_version }) => registry_version));
+if (!check && registryVersion === highestVersion + 1) {
+  const path = resolve(directory, `registry-v${registryVersion}.json`);
+  await mkdir(directory, { recursive: true });
+  await writeFile(path, `${JSON.stringify(snapshot, null, 2)}\n`);
+  snapshots = [...snapshots, snapshot];
+}
+checkRegistrySnapshots(snapshots, snapshot);
 const artifacts = new Map(entries.map((entry) => [`${entry.id}.schema.json`, `${JSON.stringify(entry.schema.toJSONSchema(), null, 2)}\n`]));
-for (const path of historyFiles) {
-  const historical = gitFile("HEAD", path);
-  const version = Number(path.match(/registry-v(\d+)\.json$/)?.[1]);
-  if (historical.registry_version !== version) throw new Error(`${path} has an invalid registry version`);
-  if (version === registryVersion) checkRegistryVersionSnapshot(historical, snapshot);
-  artifacts.set(path.slice(path.lastIndexOf("/") + 1), `${JSON.stringify(historical, null, 2)}\n`);
-}
+for (const historical of snapshots) artifacts.set(`registry-v${historical.registry_version}.json`, `${JSON.stringify(historical, null, 2)}\n`);
 artifacts.set("registry.json", `${JSON.stringify(snapshot, null, 2)}\n`);
-if (!historyFiles.some((path) => path.endsWith(`/registry-v${registryVersion}.json`))) {
-  artifacts.set(`registry-v${registryVersion}.json`, `${JSON.stringify(snapshot, null, 2)}\n`);
-}
 const actualFiles = await readdir(directory).catch((error) => error.code === "ENOENT" ? [] : Promise.reject(error));
 const generatedFiles = actualFiles.filter((name) => name === "registry.json" || /^registry-v\d+\.json$/.test(name) || name.endsWith(".schema.json"));
 
