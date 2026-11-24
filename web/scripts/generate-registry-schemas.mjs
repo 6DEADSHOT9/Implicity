@@ -48,15 +48,16 @@ const gitFile = (ref, path) => {
 };
 const previous = gitFile("HEAD", "contracts/generated/components/registry.json");
 const baseRef = `origin/${process.env.GITHUB_BASE_REF || "main"}`;
-const committedVersionSnapshot = gitFile("HEAD", `contracts/generated/components/registry-v${registryVersion}.json`);
 const baseSnapshot = gitFile(baseRef, "contracts/generated/components/registry.json")
-  ?? committedVersionSnapshot
-  ?? previous
-  ?? { registry_version: snapshot.registry_version, components: [] };
+  ?? { registry_version: 2, components: [] };
 checkRegistryVersion(baseSnapshot, snapshot);
 checkRegistryVersion(previous, snapshot);
 const historyFiles = execFileSync("git", ["ls-tree", "-r", "--name-only", "HEAD", "contracts/generated/components"], { cwd: root, encoding: "utf8" })
   .trim().split("\n").filter((path) => /\/registry-v\d+\.json$/.test(path));
+const currentVersionPath = `contracts/generated/components/registry-v${registryVersion}.json`;
+const firstVersionCommit = execFileSync("git", ["log", "--diff-filter=A", "--format=%H", "--reverse", "HEAD", "--", currentVersionPath], { cwd: root, encoding: "utf8" }).trim().split("\n")[0];
+const committedVersionSnapshot = firstVersionCommit ? gitFile(firstVersionCommit, currentVersionPath) : undefined;
+if (committedVersionSnapshot) checkRegistryVersionSnapshot(committedVersionSnapshot, snapshot);
 const artifacts = new Map(entries.map((entry) => [`${entry.id}.schema.json`, `${JSON.stringify(entry.schema.toJSONSchema(), null, 2)}\n`]));
 for (const path of historyFiles) {
   const historical = gitFile("HEAD", path);
