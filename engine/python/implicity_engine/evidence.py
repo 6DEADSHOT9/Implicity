@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from math import isfinite
 from pathlib import Path
-from typing import Protocol, Sequence
+from typing import Collection, Protocol, Sequence
 from zoneinfo import ZoneInfo
 
 import yaml
@@ -68,11 +68,13 @@ class FakeEventSource:
         self.local_timezone = ZoneInfo(local_timezone)
         self.features = features or {}
         self.daily_count_calls = 0
+        self.daily_count_windows: list[tuple[str, date, date, tuple[str, ...]]] = []
 
     def daily_counts(
         self, feature: str, start: date, end: date, exclude_sessions: Sequence[str] = ()
     ) -> list[DailyCount]:
         self.daily_count_calls += 1
+        self.daily_count_windows.append((feature, start, end, tuple(exclude_sessions)))
         grouped: dict[tuple[date, str], DailyCount] = {}
         for row, session_id in self.counts.get(feature, []):
             if not start <= row.day <= end or session_id in exclude_sessions:
@@ -108,12 +110,29 @@ class FakeEventSource:
 
 def _load(path: str | Path) -> dict:
     try:
-        data = yaml.safe_load(Path(path).read_text())
+        data = yaml.load(Path(path).read_text(), Loader=_UniqueKeySafeLoader)
     except (OSError, yaml.YAMLError) as exc:
-        raise ValueError(f"could not load YAML: {path}") from exc
+        raise ValueError(f"could not load YAML: {path}: {exc}") from exc
     if not isinstance(data, dict):
         raise ValueError(f"expected a YAML mapping: {path}")
     return data
+
+
+class _UniqueKeySafeLoader(yaml.SafeLoader):
+    def construct_mapping(self, node, deep=False):
+        self.flatten_mapping(node)
+        result = {}
+        for key_node, value_node in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            if key in result:
+                raise yaml.constructor.ConstructorError(
+                    "while constructing a mapping",
+                    node.start_mark,
+                    f"duplicate key {key!r}",
+                    key_node.start_mark,
+                )
+            result[key] = self.construct_object(value_node, deep=deep)
+        return result
 
 
 def load_feature(path: str | Path) -> Feature:
@@ -382,24 +401,28 @@ def select_value(
     values: Sequence[str],
     for_rates: dict[str, float | None],
     scale: bool = False,
-) -> str:
+    undone_values: Collection[str] = (),
+) -> str | None:
     candidates = [
         (for_rates[value], value)
         for value in values
-        if value in for_rates and for_rates[value] is not None
+        if value not in undone_values
+        and value in for_rates
+        and for_rates[value] is not None
     ]
     if not candidates:
-        return current
+        return None if current in undone_values else current
     best_rate = max(rate_value for rate_value, _ in candidates)
-    if for_rates.get(current) == best_rate:
+    if current not in undone_values and for_rates.get(current) == best_rate:
         return current
     winners = [value for rate_value, value in candidates if rate_value == best_rate]
-    if current in winners or len(winners) != 1:
-        return current
+    if len(winners) != 1:
+        return None if current in undone_values else current
     winner = winners[0]
     if scale:
         step = 1 if values.index(winner) > values.index(current) else -1
-        return values[values.index(current) + step]
+        applied = values[values.index(current) + step]
+        return None if applied in undone_values else applied
     return winner
 
 
@@ -411,8 +434,16 @@ def evaluate_belief(
     evaluation_day: date,
     exclude_sessions: Sequence[str] = (),
     freshness_cutoff: date | None = None,
+    undone_values: Collection[str] = (),
 ) -> Belief:
     start = date.fromordinal(evaluation_day.toordinal() - dimension.window_days + 1)
+    if freshness_cutoff is None:
+        query_start = start
+    elif freshness_cutoff >= evaluation_day:
+        query_start = evaluation_day
+    else:
+        query_start = max(start, freshness_cutoff + timedelta(days=1))
+    blocked = frozenset(undone_values)
     feature_ids = {dimension.occasion}
     feature_ids.update(
         pair[side]
@@ -420,7 +451,14 @@ def evaluate_belief(
         for side in ("for", "against")
     )
     counts = {
-        feature: source.daily_counts(feature, start, evaluation_day, exclude_sessions)
+        feature: [
+            row
+            for row in source.daily_counts(
+                feature, query_start, evaluation_day, exclude_sessions
+            )
+            if query_start <= row.day <= evaluation_day
+            and (freshness_cutoff is None or row.day > freshness_cutoff)
+        ]
         for feature in sorted(feature_ids)
     }
     gates = {
@@ -435,14 +473,22 @@ def evaluate_belief(
             dimension.evidence[value],
         )
         for value in dimension.values
-        if value in dimension.evidence
+        if value in dimension.evidence and value not in blocked
     }
     qualifying = {
         value: result.for_rate for value, result in gates.items() if result.met
     }
-    judged = select_value(current, dimension.values, qualifying)
-    applied = select_value(
-        current, dimension.values, {judged: qualifying.get(judged)}, dimension.scale
+    judged = select_value(current, dimension.values, qualifying, undone_values=blocked)
+    applied = (
+        select_value(
+            current,
+            dimension.values,
+            {judged: qualifying.get(judged)},
+            dimension.scale,
+            blocked,
+        )
+        if judged is not None
+        else None
     )
     evidence = Evidence(judged, counts, freshness_cutoff, evaluation_day)
     return Belief(judged, applied, gates, evidence)
@@ -468,7 +514,7 @@ def lookup_value(
 
 @dataclass(frozen=True)
 class Evidence:
-    judged_value: str
+    judged_value: str | None
     features: dict[str, list[DailyCount]]
     freshness_cutoff: date | None
     evaluation_day: date
@@ -524,7 +570,7 @@ class Evidence:
 
 @dataclass(frozen=True)
 class Belief:
-    judged_value: str
-    applied_value: str
+    judged_value: str | None
+    applied_value: str | None
     gates: dict[str, GateResult]
     evidence: Evidence
