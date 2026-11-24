@@ -1,0 +1,20 @@
+event: response.created
+data: {"type": "response.created", "response": {"id": "resp_54b550749b2c4837b2e418ea9a9a", "object": "response", "status": "in_progress", "created_at": 1795519726, "model": "hermes-agent", "output": []}, "sequence_number": 0}
+event: response.output_item.added
+data: {"type": "response.output_item.added", "output_index": 0, "item": {"id": "fc_3c9cb09ad7de566f2d3f92fa", "type": "function_call", "status": "in_progress", "name": "terminal", "call_id": "call_u7hWmdnBVfgdot0AhFu7GVqx", "arguments": "{\"command\": \"pwd\"}"}, "sequence_number": 1}
+event: response.output_item.done
+data: {"type": "response.output_item.done", "output_index": 0, "item": {"id": "fc_3c9cb09ad7de566f2d3f92fa", "type": "function_call", "status": "completed", "name": "terminal", "call_id": "call_u7hWmdnBVfgdot0AhFu7GVqx", "arguments": "{\"command\": \"pwd\"}"}, "sequence_number": 2}
+event: response.output_item.added
+data: {"type": "response.output_item.added", "output_index": 1, "item": {"id": "fco_a4eaa9f42936962a1f7899d9", "type": "function_call_output", "call_id": "call_u7hWmdnBVfgdot0AhFu7GVqx", "output": [{"type": "input_text", "text": "{\"output\": \"/Users/<user>\", \"exit_code\": 0, \"error\": null}"}], "status": "completed"}, "sequence_number": 3}
+event: response.output_item.done
+data: {"type": "response.output_item.done", "output_index": 1, "item": {"id": "fco_a4eaa9f42936962a1f7899d9", "type": "function_call_output", "call_id": "call_u7hWmdnBVfgdot0AhFu7GVqx", "output": [{"type": "input_text", "text": "{\"output\": \"/Users/<user>\", \"exit_code\": 0, \"error\": null}"}], "status": "completed"}, "sequence_number": 4}
+event: response.output_item.added
+data: {"type": "response.output_item.added", "output_index": 2, "item": {"id": "msg_8ff70aa24f4cdff8f1efd63c", "type": "message", "status": "in_progress", "role": "assistant", "content": []}, "sequence_number": 5}
+event: response.output_text.delta
+data: {"type": "response.output_text.delta", "item_id": "msg_8ff70aa24f4cdff8f1efd63c", "output_index": 2, "content_index": 0, "delta": "\n\n/Users/<user>", "logprobs": [], "sequence_number": 6}
+event: response.output_text.done
+data: {"type": "response.output_text.done", "item_id": "msg_8ff70aa24f4cdff8f1efd63c", "output_index": 2, "content_index": 0, "text": "\n\n/Users/<user>", "logprobs": [], "sequence_number": 7}
+event: response.output_item.done
+data: {"type": "response.output_item.done", "output_index": 2, "item": {"id": "msg_8ff70aa24f4cdff8f1efd63c", "type": "message", "status": "completed", "role": "assistant", "content": [{"type": "output_text", "text": "\n\n/Users/<user>"}]}, "sequence_number": 8}
+event: response.completed
+data: {"type": "response.completed", "response": {"id": "resp_54b550749b2c4837b2e418ea9a9a", "object": "response", "status": "completed", "created_at": 1795519726, "model": "hermes-agent", "output": [{"type": "function_call", "name": "terminal", "arguments": "{\"command\": \"pwd\"}", "call_id": "call_u7hWmdnBVfgdot0AhFu7GVqx"}, {"type": "function_call_output", "call_id": "call_u7hWmdnBVfgdot0AhFu7GVqx", "output": [{"type": "input_text", "text": "{\"output\": \"/Users/<user>\", \"exit_code\": 0, \"error\": null}"}]}, {"type": "message", "role": "assistant", "content": [{"type": "output_text", "text": "\n\n/Users/<user>"}]}], "usage": {"input_tokens": 33313, "output_tokens": 28, "total_tokens": 33341}}, "sequence_number": 9}

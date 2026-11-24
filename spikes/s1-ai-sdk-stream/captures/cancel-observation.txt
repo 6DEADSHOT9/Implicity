@@ -1,0 +1,7 @@
+Browser cancel observation (2026-11-24, local time):
+- The React page received partial story text; clicking Cancel removed the active status and closed the browser request.
+- Hermes continued its agent turn for about 50 seconds after the request began, completed a 12,222-character answer, and only then logged "SSE client disconnected; interrupted agent task".
+- Before disconnect handling, Hermes logged repeated ClientConnectionResetError: "Cannot write to closing transport" while flushing stream deltas.
+- GET /health/detailed later reported active_api_runs=0, after the generation had completed.
+
+Conclusion: closing this /v1/responses SSE connection does not promptly stop the Hermes turn. The Runs API has an explicit /v1/runs/{run_id}/stop endpoint, but its documented event stream omits private reasoning; switching to it would not satisfy this spike's reasoning case.
