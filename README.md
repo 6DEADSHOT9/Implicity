@@ -24,3 +24,9 @@ Stage 1, foundation. Three spikes run before any other work: see `docs/spikes`.
 ## Requirements
 
 16 GB of RAM minimum, 32 GB comfortable. Docker.
+
+## Development
+
+Install the pinned workspaces with `make install`; run `make lint` and `make test`.
+The TypeScript workspace uses the Node.js version in `.node-version` and npm;
+the Python workspace uses uv 0.11.25 with the version in `.python-version`.
