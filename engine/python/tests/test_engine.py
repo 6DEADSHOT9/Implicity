@@ -96,7 +96,14 @@ def test_recomputes_belief_from_fake_source_and_retains_judged_scale_value(
         "misses": [fake_count(count(TODAY, 1, 10, "c1"))],
     }
     source = FakeEventSource(
-        rows, [], local_timezone="UTC", occasion_features=frozenset({"session"})
+        rows,
+        [],
+        local_timezone="UTC",
+        features={
+            "session": Feature(
+                "session", None, {"event": "session_summary"}, ("day", "kind")
+            )
+        },
     )
     first = evaluate_belief(dimension, source, "compact", "coding", TODAY)
     second = evaluate_belief(dimension, source, "compact", "coding", TODAY)
@@ -159,19 +166,27 @@ def test_fake_uses_shared_session_summary_and_honours_local_day_and_exclusions()
     None
 ):
     row = count(TODAY, 0, 3, "c1")
+    other_row = count(TODAY, 0, 2, "c2")
     session_id = "22222222-2222-4222-8222-222222222222"
     summary = contract_summary(
         datetime(2026, 11, 26, 1, tzinfo=timezone.utc), session_id
     )
     source = FakeEventSource(
-        {"seen": [fake_count(row, session_id)]},
+        {"seen": [fake_count(row, session_id), fake_count(other_row, "s2")]},
         [summary],
         local_timezone="America/Los_Angeles",
     )
+    assert source.daily_counts("seen", TODAY, TODAY, exclude_sessions=[session_id]) == [
+        other_row
+    ]
     assert (
-        source.daily_counts("seen", TODAY, TODAY, exclude_sessions=[session_id]) == []
+        source.daily_counts("seen", TODAY, TODAY, exclude_sessions=[session_id, "s2"])
+        == []
     )
-    assert source.daily_counts("seen", TODAY, TODAY)[0] == row
+    assert source.daily_counts("seen", TODAY, TODAY, exclude_sessions=["s2"]) == [row]
+    assert source.daily_counts("seen", TODAY, TODAY)[0] == count(
+        TODAY, 0, 5, "c1", "c2"
+    )
     assert source.session_summaries(TODAY, TODAY) == [summary]
     assert source.session_summaries(TODAY, TODAY, [session_id]) == []
 
@@ -241,7 +256,9 @@ def test_occasions_use_only_designated_feature_and_weighted_leads_have_own_denom
             "collapsed": [fake_count(count(TODAY, 1, 20))],
         },
         [],
-        occasion_features=frozenset({"seen"}),
+        features={
+            "seen": Feature("seen", None, {"event": "component_seen"}, ("day", "kind"))
+        },
     )
     result = evaluate_belief(dimension, source, "folded", "coding", TODAY)
     assert all(row.happened == 0 for row in result.evidence.features["seen"])
@@ -282,6 +299,21 @@ def test_day_weights_and_window_boundary(tmp_path: Path) -> None:
     assert result.gates["open"].occasions == 1
     assert result.gates["open"].days == 1
     assert result.gates["open"].for_rate == pytest.approx(1 / 3)
+    wide_rows = {
+        feature: source.daily_counts(feature, TODAY - timedelta(days=60), TODAY)
+        for feature in ("seen", "expanded", "collapsed")
+    }
+    wide_result = dimension.gate.check(
+        "open",
+        "coding",
+        TODAY,
+        60,
+        14,
+        "seen",
+        wide_rows,
+        dimension.evidence["open"],
+    )
+    assert wide_result.occasions == 1
 
 
 def test_selects_highest_qualifying_rate_ties_keep_current_and_scales_step_once() -> (

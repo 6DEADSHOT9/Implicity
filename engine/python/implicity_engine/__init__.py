@@ -1,4 +1,5 @@
 from .evidence import (
+    Belief,
     DailyCount,
     Dimension,
     EventSource,
@@ -6,7 +7,7 @@ from .evidence import (
     FakeEventSource,
     Feature,
     Gate,
-    SessionSummary,
+    evaluate_belief,
     load_dimension,
     load_feature,
     lookup_value,
@@ -16,6 +17,7 @@ from .evidence import (
 )
 
 __all__ = [
+    "Belief",
     "DailyCount",
     "Dimension",
     "Evidence",
@@ -23,7 +25,7 @@ __all__ = [
     "FakeEventSource",
     "Feature",
     "Gate",
-    "SessionSummary",
+    "evaluate_belief",
     "load_dimension",
     "load_feature",
     "lookup_value",
