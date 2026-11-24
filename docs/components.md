@@ -128,7 +128,7 @@ A look is a named set of token values, and every component reads only tokens.
 
 | Token group | Values |
 | --- | --- |
-| shadcn/ui theming variables | Background, foreground, primary, secondary, muted, accent, destructive, border, ring, chart colours, sidebar colours, radius |
+| shadcn/ui theming variables | Background, foreground, primary, secondary, muted, accent, destructive, border, ring, chart colours, sidebar colours |
 | Typeface | Sans, mono, serif, and one informal face. Bundled and served locally, with no remote loading |
 | Text size | Five steps, from 87.5% to 125% |
 | Density | Compact, comfortable, spacious |
@@ -142,9 +142,9 @@ A look is a named set of token values, and every component reads only tokens.
 - Judgment principles such as visual hierarchy, grouping and restraint are guidance inside Hermes's "propose a look" skill.
 - Settings on a scale move one step per change.
 
-The complete shared token names are listed in `contracts/looks/tokens.json`; each mode defines every one. The contract includes shadcn/ui colour roles (including charts and sidebar), spacing and text scales, typeface and weight tokens, radius, density, target size, texture, and motion. Each hand-written look is in `contracts/looks` and is checked in both modes for WCAG AA text contrast.
+Each mode defines every shadcn/ui colour role, including charts and the canonical `sidebar` surface. `contracts/looks/tokens.json` defines the shared derived CSS values for radius, density and text size, plus layout, media, heading and code palette tokens. Each hand-written look is in `contracts/looks` and is checked in both modes for WCAG AA text contrast and minimum input boundary contrast.
 
-The bundled typefaces are Inter (sans), IBM Plex Mono (mono), Source Serif 4 (serif), and Caveat (informal). Their licensed files are served from `web/public/fonts`; no font CDN is used. Default uses comfortable density and medium radius, focused uses compact density and square corners, and notebook uses spacious density, a softer radius and paper grain.
+The bundled typefaces are Inter (sans), IBM Plex Mono (mono), Source Serif 4 (serif), and Caveat (informal). Their licensed files are served from `web/public/fonts`; no font CDN is used. Default uses comfortable density and medium radius, focused uses compact density and square corners, and notebook uses spacious density, a softer radius and paper grain. Text size is a five-step setting on the look root; spacing, heading, control, sidebar, panel and media CSS values derive centrally from the shared token definition.
 
 ## Adding components later
 

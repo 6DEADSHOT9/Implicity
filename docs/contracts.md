@@ -318,7 +318,7 @@ web/src/registry/DataTable/
 }
 ```
 
-The colour keys are shadcn/ui's theming variables. A look is valid only if both variants pass every automatic check: contrast, minimum sizes, spacing scale, palette size, line length, heading steps and colour harmony. The checks run in the backend before a look is ever offered.
+The light and dark objects contain only shadcn/ui colour keys. Their required roles are fixed by the look contract, including `sidebar` for the sidebar surface. The derived CSS values for the root radius, density and text-size choices are defined in `contracts/looks/tokens.json`; color, spacing and dimension tokens are shared by all looks. A look is valid only if both variants pass every automatic check: contrast, minimum sizes, spacing scale, palette size, line length, heading steps and colour harmony. The checks run in the backend before a look is ever offered.
 
 ## Hermes: the agent interface and tools
 
