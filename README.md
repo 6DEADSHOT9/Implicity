@@ -64,3 +64,20 @@ and
 `ghcr.io/posthog/posthog-node@sha256:fb496e55708308c9e4cd324e301d0f665c8a4b2403131481c55f2f31b897afc6`.
 The closest matching image pair found on or after the S2/S3 spike revision
 `be0a6f2a4cb4f9614a7954e01032ca3223bfdbaf` (2026-11-17) was this revision.
+
+Backend commands run from the repository root and use `data/implicity.db` by
+default:
+
+```sh
+uv run --locked alembic -c api/alembic.ini upgrade head
+uv run --locked uvicorn implicity_api.app:app --app-dir api/src
+uv run --locked implicity-backup
+```
+
+The API saves today's dated backup at startup when it is missing, then once each
+day. It retains the seven newest dated copies in `data/backups/implicity.db/`.
+Set an absolute `DATABASE_URL` before migration, API startup and backup commands
+to use another file; its dated copies live in `backups/<database-filename>/` beside it.
+To restore, stop the API and replace `data/implicity.db` with the selected
+backup before starting it again. Databases and backup snapshots created before
+this pre-release must be rebuilt; they cannot be upgraded.
