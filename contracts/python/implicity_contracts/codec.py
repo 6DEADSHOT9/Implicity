@@ -50,7 +50,7 @@ def _preserve_model_datetimes(model: BaseModel, payload: dict) -> None:
         if key not in payload or name in {"props", "payload", "evidence"}:
             continue
         value = getattr(model, name)
-        if isinstance(value, datetime):
+        if isinstance(value, datetime) and name == "timestamp":
             payload[key] = _format_datetime(value)
         elif isinstance(value, BaseModel):
             _preserve_model_datetimes(value, payload[key])
@@ -71,7 +71,7 @@ def _preserve_model_datetimes(model: BaseModel, payload: dict) -> None:
 
 
 def _wire_value(value: BaseModel) -> dict:
-    if isinstance(value, RootModel):
+    while isinstance(value, RootModel):
         value = value.root
     payload = value.model_dump(mode="json", by_alias=True, exclude_unset=True)
     _preserve_model_datetimes(value, payload)

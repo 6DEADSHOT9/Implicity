@@ -597,6 +597,33 @@ def test_wire_datetime_precision_and_opaque_timestamp_properties_round_trip():
     decoded_request = decode_proposal_request(json.dumps(request))
     assert json.loads(encode_contract(decoded_request)) == request
 
+    decision = {
+        "id": "dec_550e8400-e29b-41d4-a716-446655440003",
+        "proposal_id": "prop_550e8400-e29b-41d4-a716-446655440002",
+        "dimension": "long_answers",
+        "kind": None,
+        "from": "folded",
+        "to": "open",
+        "reason": "evidence",
+        "evidence": {},
+        "dimension_version": 1,
+        "status": "pending",
+        "created_at": "2026-11-24T00:00:00.123456Z",
+        "shown_at": "2026-11-24T00:00:00.123789Z",
+    }
+    assert (
+        json.loads(encode_contract(decode_contract(json.dumps(decision)))) == decision
+    )
+
+
+@pytest.mark.parametrize(
+    "timestamp", ["2026-11-24T00:00:00.000Z", "2026-11-24T00:00:00.123Z"]
+)
+def test_encoder_unwraps_generated_root_models(timestamp):
+    event = action("search_used", timestamp=timestamp)
+    model = generated.Contracts.model_validate_json(json.dumps(event))
+    assert json.loads(encode_contract(model)) == event
+
 
 def test_representation_variants_reject_other_dimension_values_and_extra_fields():
     definition = SCHEMA["$defs"]["Action_RepresentationSwitched_DataForm"]
