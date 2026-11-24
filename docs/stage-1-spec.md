@@ -92,8 +92,8 @@ Stage 1 is 24 tickets after the spikes. Each becomes one GitHub issue with its b
 
 | # | Ticket | Delivers | Blocked by |
 | --- | --- | --- | --- |
-| T20a | Engine evidence and beliefs | YAML dimension and feature loader, event source interface with `conversation_ids` and a fake, weighting, belief computation, the gate, lookup through parent kinds | T3 |
-| T20b | Engine arbiter and state | Arbiter, proposals and offers, decisions, the atomic store, pace with session context, Undo, explicit settings, locks, freeze, exclusion, freshness cutoffs | T20a |
+| T20a | Engine evidence and beliefs | YAML dimension and feature loader with the occasion feature, event source interface with `conversation_ids` and a fake, weighting, belief computation, the gate, value lookup (Engine rules 1–6, 15) | T3 |
+| T20b | Engine arbiter and state | Arbiter with its two Stage 1 paths, automatic decisions and ChangeNotices, Keep, Undo, explicit settings, return to automatic, locks, freeze, pace with session context, freshness cutoffs, the conditional atomic store (Engine rules 7–14) | T20a |
 | T21 | PostHog event source | The saved-endpoint implementation or the query fallback, per S3. Feature registration from `contracts` | T20a, T4 |
 | T22 | Engine React package and demo | Change notice with Keep and Undo, and a demo app with no chat that adapts one toy dimension from canned counts | T20b, T13 |
 
@@ -104,7 +104,7 @@ Stage 1 is 24 tickets after the spikes. Each becomes one GitHub issue with its b
 | T23 | Onboarding and access | Intro, the consent screen with three switches, temporary chat that sends no events, passcode from other devices | T16, T18 |
 | T24 | Stage 1 acceptance | The five checks run from a fresh clone, and a README with requirements and setup | All |
 
-**What can run in parallel.** After T1, three tracks are independent: interface (T5 to T13), backend and chat (T14 to T17), and engine (T20a, T20b, T22). T20 was split in two after its review rounds (ADR 0022); the engine follows the Engine rules in `contracts.md`, and judging and self-reverting changes is Stage 2. The six skeleton tickets can all run at once after T7.
+**What can run in parallel.** After T1, three tracks are independent: interface (T5 to T13), backend and chat (T14 to T17), and engine (T20a, T20b, T22). T20 was split in two after its review rounds (ADR 0022); the engine follows the Stage 1 Engine rules in `contracts.md`. Session exclusion, offers on ProposalCards, custom kinds, layout validation, preferences said in chat, and judging changes are later-stage rules, finished by the tickets that build them. The six skeleton tickets can all run at once after T7.
 
 ## Working standards
 

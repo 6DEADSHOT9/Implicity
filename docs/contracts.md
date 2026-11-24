@@ -212,112 +212,106 @@ class EventSource(Protocol):
 
 Three implementations exist: PostHog through saved endpoints, PostHog through the query API as a fallback, and a fake that returns canned numbers for tests.
 
-**Engine.**
+**Engine.** The Stage 1 interface:
 
 ```python
 class Engine:
-    def __init__(
-        self, dimensions, source: EventSource, store: Store, clock: Clock,
-        parent_kind: Callable[[str], str | None],       # host: a custom kind's predefined parent
-        validate_state: Callable[[str, object], bool],  # host: is this value valid, e.g. a layout spec against the registry
-    ): ...
+    def __init__(self, dimensions, source: EventSource, store: Store, clock: Clock): ...
 
     def evaluate(self, session: SessionContext) -> list[Proposal]:
         """Recompute beliefs and return proposals from the rules."""
     def submit(self, proposal: Proposal, session: SessionContext) -> Verdict:
         """Arbiter: admit, defer or reject, with a reason."""
-    def end_session(self, session_id: str) -> None:
-        """Expire the session's unanswered offers and release its proposal slot."""
-    # SessionContext: session_id, at_boundary. Only the host knows where a session is and when it ends.
+    # SessionContext: session_id, at_boundary. Only the host knows where a session is.
 
     def state(self, kind: str | None = None) -> State: ...
-    def pending_notices(self, session_id: str) -> list[Decision | Proposal]: ...
-    def acknowledge(self, item_id: str, session: SessionContext) -> None: ...
-    def keep(self, item_id: str, session: SessionContext) -> Verdict: ...
-    def dismiss(self, proposal_id: str, session: SessionContext) -> Verdict: ...
+    def pending_notices(self) -> list[Decision]: ...
+    def acknowledge(self, decision_id: str) -> None: ...
+    def keep(self, decision_id: str) -> Verdict: ...
     def undo(self, decision_id: str) -> Verdict: ...
     def set_explicit(self, dimension: str, value, kind: str | None = None) -> Verdict: ...
     def return_to_automatic(self, dimension: str, kind: str | None = None) -> Verdict: ...
     def set_lock(self, area: str, locked: bool) -> None: ...
     def freeze(self, frozen: bool) -> None: ...
-    def exclude_session(self, session_id: str) -> list[Decision]:
-        """Re-judge without it and return any changes reverted."""
 ```
+
+Later stages add session exclusion, offers on ProposalCards with Dismiss, custom kinds and host validation of layouts; see "Later stages" below.
 
 **The arbiter's checks.**
 
-1. The resulting value is valid for the dimension, through the host's `validate_state` (a layout spec validates against the registry).
+1. The value is one of the dimension's values.
 2. Nothing is frozen, and the area is not locked.
 3. The dimension is not explicit, and the change was not undone before.
 4. The gate is met.
 5. The pace budget has room, and it is a session boundary.
 
-Every change goes through the arbiter, on one of four paths, each running only its own checks:
+Every change goes through the arbiter. In Stage 1 there are two paths:
 
 | Path | Comes from | Checks |
 | --- | --- | --- |
-| Rule proposal | `evaluate`, then `submit` | 1, 2, 3, 4, 5 |
-| Hermes or person proposal | `submit`, then Keep | 1, 2, 3, 5 |
-| The person's control | `set_explicit`, `return_to_automatic`, `undo`, and a preference said in chat | 1, 2 |
-| Exclusion revert | `exclude_session` | 1, 2 |
+| Automatic rule decision | `evaluate`, then `submit` | 1, 2, 3, 4, 5 |
+| The person's control | `set_explicit`, `return_to_automatic`, `undo` | 1, 2 |
 
-For a path that checks pace, a missing session boundary defers before any other check runs. The first failing check gives the verdict.
+On the automatic path a missing session boundary defers before any other check runs. Otherwise the first failing check gives the verdict.
 
-**Store.** The host supplies the store. Each transition is written by one atomic operation, all or nothing: the value, its decision, the pace reservation and the freshness cutoff (ADR 0022). Tests use an in-memory store.
+**Store.** The host supplies the store. Each transition is written by one atomic operation, all or nothing: the value, its decision, the pace reservation and the freshness cutoff. The write is conditional: it fails, and the arbiter defers, if the pace slot or the value changed since the arbiter read them, so two admissions can never take the same slot (ADR 0022). Tests use an in-memory store.
 
 ## Engine rules
 
-These rules fix what the engine does in every case the prose above leaves open. Each has a worked example; the engine's tests mirror them (ADR 0022). "Day" always means the person's local day, from the host's time zone-aware clock.
+These rules fix what the Stage 1 engine does in every case the prose above leaves open. Each has a worked example; the engine's tests mirror them (ADR 0022). "Day" always means the person's local day, from the host's time zone-aware clock.
 
 **Counting evidence.**
 
-1. **Conversations.** Each `DailyCount` carries the `conversation_ids` that had at least one occasion that day. The gate counts distinct ids across the window. For a dimension whose occasion is a session, a session's conversations are its ids. *Example: one conversation with occasions on three days counts once, and the gate's 3 is not met; three conversations, one a day, meet it.*
-2. **Occasions.** A dimension names one `occasion` feature, and its occasions are that feature's `could_have`. The loader rejects a dimension without one. *Example: `long_answers` uses `long_answer_seen`; 20 long answers seen folded and 20 seen open on a day are 40 occasions, counted once. For `density`, the occasion feature counts sessions, so two signals over the same 6 sessions are 6 occasions, not 12.*
-3. **Lead.** *For* is the weighted rate (happened ÷ could_have) of the evidence feature toward the value, at least `gate.lead.for`. *Against* is the weighted rate of the evidence feature away from it, at most `gate.lead.against`. Each uses its own denominator. A feature with no sample (0 ÷ 0) does not meet the lead. *Example: 18 expansions of 20 folded (0.90) and 1 collapse of 20 open (0.05) is a clear lead toward open. 18 of 20 folded with no open long answers at all (0 ÷ 0 against) is not.*
+1. **Conversations.** Each `DailyCount` carries the `conversation_ids` that had at least one occasion that day. The gate counts distinct ids across the window. *Example: one conversation with occasions on three days counts once, and the gate's 3 is not met; three conversations, one a day, meet it.*
+2. **Occasions.** A dimension names one `occasion` feature, and its occasions are that feature's `could_have`. The loader rejects a dimension without one. *Example: `long_answers` uses `long_answer_seen`; 20 long answers seen folded and 20 seen open on a day are 40 occasions, counted once.*
+3. **Lead.** *For* is the weighted rate (happened ÷ could_have) of the evidence feature toward the value, at least `gate.lead.for`. *Against* is the weighted rate of the evidence feature away from it, at most `gate.lead.against`. Each uses its own denominator. A feature with no sample (could_have of 0) does not meet the lead, and a rate above 1 is invalid input and rejected. Counting each happened at most once per occasion belongs to the feature's capture ticket. *Example: 18 expansions of 20 folded (0.90) and 1 collapse of 20 open (0.05) is a clear lead toward open. 18 of 20 folded with no open long answers at all is not. 2 of 1 is rejected.*
 4. **Weight and window.** A day's counts weigh `0.5 ^ (age_in_days / half_life_days)`, where age is measured from the evaluation day. The window is the evaluation day and the `window_days − 1` days before it. A day counts toward the gate's days only if it had at least one occasion. *Example: with a 60-day window and 14-day half-life, today weighs 1, 14 days ago weighs 0.5, and 60 days ago is outside the window.*
-5. **Choosing a value.** Among the values whose gate is met, the one with the highest *for* rate wins; a tie keeps the current value. On a scale, a change only moves to the adjacent value. *Example: `answer_length` currently medium, with short at 0.80 and long at 0.80, stays medium. `density` at compact with evidence for spacious moves to comfortable.*
+5. **Choosing a value.** Among the values whose gate is met, the one with the highest *for* rate wins; a tie keeps the current value. On a scale, an automatic change only moves to the adjacent value. *Example: `answer_length` currently medium, with short at 0.80 and long at 0.80, stays medium. `density` at compact with evidence for spacious moves to comfortable.*
 
 **Values per kind.**
 
-6. **Lookup order.** A kind's value is its own explicit setting, then its own learned value, then its parent's learned value (never the parent's explicit setting, through the host's `parent_kind`), then the global value, then the dimension's default. *Example: after coding learns open, a custom kind with parent coding shows open. If coding is open only because the person set it by hand, the custom kind shows the global value or the default. Once the custom kind learns folded, it shows folded whatever coding has.*
+6. **Lookup order.** A kind's value is its own explicit setting, then its own learned value, then the global value, then the dimension's default. *Example: with coding learned as open and no global value, writing shows the default folded.*
 
 **Who decides.**
 
-7. **Paths.** Each change uses its path's checks in the table above. *Example: the person changes an explicit density from compact to spacious: accepted, since the explicit check does not apply to their own control. The same change while look and layout are frozen: rejected. "Keep answers short from now on" in chat sets `answer_length` to short as an explicit setting, with an Undo chip, without a proposal.*
-8. **Change policy.** The dimension's `change_policy` decides. A rule proposal whose own `change_policy` disagrees is rejected. Hermes and person proposals always need Keep. *Example: a rule proposal marked proposed for `long_answers` (automatic) is rejected, and so is one marked automatic for a proposed dimension. A Hermes proposal for `long_answers` waits for Keep.*
-9. **Before admission.** Before admission there is a proposal, shown on a ProposalCard; only the arbiter creates a decision, and only a decision has change events. The arbiter's checks run before a proposal becomes visible and again at Keep, except pace: Keep confirms the reservation the offer already holds (rule 15). *Example: a rule offer for layout while layout is locked is never shown.*
-10. **Keep.** Keep is accepted only for an item displayed in the same session, at a boundary. Off the boundary it is deferred and retried at that session's next boundary. After `end_session`, Keep on that session's offer is rejected. A decision's Keep also requires it to have been shown. *Example: keep(P, S) mid-task is deferred and admitted at S's next boundary; keep(P, S) after S ended is rejected; Keep on a decision still pending is rejected.*
-11. **Dismiss.** Dismissing a gated offer blocks that exact offer (dimension, kind, target value) until the gate passes again on evidence after the dismissal. A gate-free offer (Hermes or person) may return only with a changed payload, or after 7 days. *Example: a gated offer dismissed Monday needs a fresh 20 occasions, 3 conversations and 2 days from Tuesday on. A Hermes look dismissed Monday may return the next Monday, or sooner as a different look.*
-12. **An offer nobody answers** expires at `end_session`, counting as neither Keep nor Dismiss. It may be offered again in a later session, within that session's budget, if a gated offer's gate still passes. *Example: an offer shown in S and ignored is gone after end_session(S), and may be shown in S2.*
-13. **An automatic change nobody answers** stays in effect, with its decision `shown`. Keep only records that the person agreed. *Example: a ChangeNotice ignored for a week leaves the change in place and Undo available while it is the active decision.*
+7. **Paths.** Each change uses its path's checks in the table above. The person's control is not bound by the one-step rule for scales. *Example: the person changes an explicit density from compact to spacious: accepted. The same change while everything is frozen: rejected.*
+8. **Automatic changes.** A dimension with `change_policy: automatic` admits a rule decision directly and shows it as a ChangeNotice. Stage 1 has no proposed dimensions. *Example: a qualifying `long_answers` evaluation admits folded to open, and `pending_notices` returns its ChangeNotice.*
+9. **Keep.** Keep on a decision is accepted only after it was acknowledged as shown. Keep records that the person agreed and changes nothing else. *Example: Keep on a decision still pending is rejected; after `acknowledge`, it is accepted.*
+10. **A change nobody answers** stays in effect, with its decision `shown`, and Undo stays available while it is the active decision. *Example: a ChangeNotice ignored for a week leaves the change in place.*
 
 **Pace.**
 
-14. **One automatic change a day.** Admission reserves the day's slot in the same atomic write as the value. Each engine call reads the clock once, so the date and the timestamp agree. *Example: an admission at 23:59:59 is charged to that day, and a second admission at 00:00:01 is charged to the next.*
-15. **One proposal per session.** Showing an offer reserves its session's slot in the same atomic write that makes it visible; Keep confirms the reservation; `end_session` releases it. *Example: two fetches of pending notices before any acknowledgment show only one offer.*
-16. **Session boundary.** On a path that checks pace, a missing boundary defers before any other check. *Example: a rule proposal submitted mid-task while layout is locked is deferred, not rejected.*
+11. **One automatic change a day.** Admission reserves the day's slot in the same conditional write as the value. Each engine call reads the clock once, so the date and the timestamp agree. *Example: an admission at 23:59:59 is charged to that day, and a second admission at 00:00:01 is charged to the next. Two admissions racing for the same day's slot: one is admitted, the other deferred.*
+12. **Session boundary.** On the automatic path, a missing boundary defers before any other check. *Example: an evaluation mid-task while layout is locked is deferred, not rejected.*
 
 **Scales.**
 
-17. **Freshness.** Any change to a scale's own value for a kind (an automatic admission, Keep, an explicit setting, return to automatic, a revert or an Undo) sets a freshness cutoff; only counts from later days count toward the next step. A change inherited from a parent kind or the global value does not. *Example: set compact to comfortable by hand, then return to automatic: the older evidence for spacious no longer counts.*
+13. **Freshness.** When the effective value of a scale for a kind changes (an automatic admission, an explicit setting, return to automatic, or an Undo), a freshness cutoff is set; only counts from later days count toward the next automatic step. If the effective value does not change, the cutoff stays. *Example: set compact to comfortable by hand, then return to automatic: the older evidence for spacious no longer counts. Return to automatic while the learned value equals the explicit one leaves the cutoff where it was.*
 
-**Undo and exclusion.**
+**Undo.**
 
-18. **Undo** works only on the decision currently in effect for that dimension and kind; an older, superseded decision is rejected. Undo restores its `from` value as an explicit setting and blocks its `to` value for good (ADR 0017). *Example: after open, folded, open, undoing the first decision is rejected and undoing the third sets folded as explicit.*
-19. **Exclusion replays.** Excluding a session replays each automatic decision's gate with the inputs it stored (rule 21), minus that session. Only the active decision for a dimension and kind can be reverted, to its `from` value. *Example: after automatic steps compact to comfortable, then comfortable to spacious, excluding a session that only supported the first step changes nothing, because the active spacious decision still passes. Excluding a session that contributed nothing to a decision changes nothing.*
-20. **Exclusion never touches** explicit settings, kept proposals or kept changes. While an area is locked or everything is frozen, a revert waits; on unlock it is checked again and dropped if the person has since set a value. Every revert is shown as a ChangeNotice. *Example: an excluded session invalidates density while look and layout are frozen; after unfreezing, the revert applies unless the person set density by hand meanwhile.*
+14. **Undo** works only on the decision currently in effect for that dimension and kind; an older, superseded decision is rejected. Undo restores its `from` value as an explicit setting and blocks its `to` value for good (ADR 0017). *Example: after open, folded, open, undoing the first decision is rejected and undoing the third sets folded as explicit.*
 
 **Records.**
 
-21. **Evidence.** An automatic decision stores every input needed to replay its gate: each feature's per-day rows with their `conversation_ids`, the freshness cutoff, the exclusion set and the evaluation day. Keeping a gate-free offer stores the evidence that was offered, unchanged. T20a defines the evidence entry shape and T20b uses it in both records. *Example: replaying a decision a month later with the same stored rows gives the same gate result.*
+15. **Evidence.** A decision stores the gate's inputs: each feature's per-day rows with their `conversation_ids`, the freshness cutoff and the evaluation day. T20a defines the evidence entry shape and T20b stores it. *Example: re-running the gate on a decision's stored rows gives the same result.*
 
-**Not in Stage 1.** Judging a change by whether the person works against it, and reverting a fought change with a notice, arrive with Stage 2's real adaptations. The Stage 1 engine reverts on its own only through exclusion (ADR 0022).
+**Determinism.** Given all of its inputs (the dimensions, the counts, the store's contents, the proposal, the session context and the clock), `evaluate` and `submit` always give the same result.
 
-**Determinism.** Given all of its inputs (the dimensions, the counts, the store's contents, the proposal, the session context, the host callbacks and the clock), `evaluate` and `submit` always give the same result.
-
-**When it runs.** The host calls `evaluate` when a session ends or goes idle, and again at the next session start, and calls `end_session` when a session ends.
+**When it runs.** The host calls `evaluate` when a session ends or goes idle, and again at the next session start.
 
 **File format.** Dimension and feature files are YAML, loaded with a safe YAML parser.
+
+### Later stages
+
+These rules are the current design for features no Stage 1 ticket builds. Each is finished, with its own worked examples, by the ticket that builds the feature, where its edge cases are concrete. Open questions from the PR #38 review are listed with them.
+
+- **Session exclusion** (Stage 3, guest detection). Excluding a session re-judges automatic decisions without it; only the active decision can revert, to its `from` value; explicit settings and kept changes are never touched; a revert under a lock waits and is re-checked on unlock; reverts are ChangeNotices. *Open:* stored daily totals cannot subtract one session, so the event source or the stored evidence must keep per-session counts; which target a replayed scale step is judged against; the State a revert falls back to.
+- **Offers on ProposalCards** (Stage 2 looks and proposed dimensions; Stage 3 Hermes). Hermes and person proposals always need Keep; the dimension's `change_policy` wins and a mismatch is rejected; checks run before an offer is shown and again at Keep; showing an offer reserves its session's single proposal slot and Keep confirms it; Keep and Dismiss take the session context, Keep defers off the boundary, and the host's `end_session` expires unanswered offers; a dismissed gated offer needs a fresh gate, and a gate-free one a changed payload or 7 days. *Open:* who owns a reservation at publication and how an offer is withdrawn.
+- **Custom kinds** (Stage 3). A custom kind inherits its parent's learned value only, through a host `parent_kind`, between its own learned value and the global value; an inherited change does not reset the child's freshness. *Open:* whether return to automatic on a child that only changes the stored choice resets freshness.
+- **Host validation of layouts** (Stage 2). The host validates a whole proposed State, not one value, through a callback. *Open:* the callback receives the full proposed State.
+- **Preferences said in chat** (Stage 3, answer style). Set as explicit through the arbiter, with an Undo chip. *Open:* the record that chip's Undo acts on.
+- **Judging and self-reverting a fought change** (Stage 2).
 
 ## Proposals, decisions and the state API
 
