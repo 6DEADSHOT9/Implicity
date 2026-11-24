@@ -1,5 +1,7 @@
-import { readFileSync, readdirSync, realpathSync, statSync } from "node:fs";
-import { isAbsolute, relative, resolve } from "node:path";
+import { readFileSync, readdirSync, realpathSync, statSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { isAbsolute, join, relative, resolve } from "node:path";
+import { tmpdir } from "node:os";
+import postcss from "postcss";
 import { describe, expect, it } from "vitest";
 
 const root = resolve(import.meta.dirname, "../..");
@@ -16,6 +18,12 @@ const shadcnColorKeys = [
   "sidebar", "sidebar-foreground", "sidebar-primary", "sidebar-primary-foreground",
   "sidebar-accent", "sidebar-accent-foreground", "sidebar-border", "sidebar-ring",
 ];
+const sharedColorKeys = [
+  "code-background", "code-foreground", "code-comment", "code-keyword", "code-string",
+  "code-number", "code-function", "code-type", "code-operator", "terminal-background",
+  "terminal-foreground", "terminal-success", "terminal-warning", "terminal-error",
+  "terminal-info", "terminal-prompt",
+];
 const requiredTextPairs = [
   ["foreground", "background"], ["card-foreground", "card"], ["popover-foreground", "popover"],
   ["primary-foreground", "primary"], ["secondary-foreground", "secondary"],
@@ -27,6 +35,8 @@ const requiredTextPairs = [
   ...["terminal-foreground", "terminal-success", "terminal-warning", "terminal-error", "terminal-info", "terminal-prompt"]
     .map((foreground) => [foreground, "terminal-background"]),
 ];
+const lookTextPairs = requiredTextPairs.slice(0, 11);
+const sharedTextPairs = requiredTextPairs.slice(11);
 const rootKeys = ["id", "name", "typeface", "radius", "density", "text_size", "texture", "motion", "light", "dark"];
 const lookIds = ["default", "focused", "notebook"];
 const typefaceRoles = ["body", "heading"];
@@ -43,8 +53,23 @@ function contrast(foreground, background) {
   return (values[0] + 0.05) / (values[1] + 0.05);
 }
 
-function cssDeclarations(block) {
-  return Object.fromEntries([...block.matchAll(/([\w-]+)\s*:\s*([^;]+);/g)].map((match) => [match[1], match[2].trim()]));
+function cssLength(value, units = ["rem", "px"]) {
+  const match = /^(\d+(?:\.\d+)?)(rem|px|ch|vw)$/.exec(value);
+  if (!match || !units.includes(match[2])) throw new Error(`Invalid CSS length: ${value}`);
+  return { value: Number(match[1]), unit: match[2], pixels: Number(match[1]) * (match[2] === "rem" ? 16 : 1) };
+}
+
+function assertFontFile(path) {
+  const bytes = readFileSync(path);
+  expect(bytes.length).toBeGreaterThanOrEqual(12);
+  expect(["\u0000\u0001\u0000\u0000", "OTTO", "true", "typ1"]).toContain(bytes.toString("binary", 0, 4));
+  const tableCount = bytes.readUInt16BE(4);
+  expect(tableCount).toBeGreaterThan(0);
+  expect(bytes.length).toBeGreaterThanOrEqual(12 + tableCount * 16);
+  for (let index = 0; index < tableCount; index += 1) {
+    const entry = 12 + index * 16;
+    expect(bytes.readUInt32BE(entry + 8) + bytes.readUInt32BE(entry + 12)).toBeLessThanOrEqual(bytes.length);
+  }
 }
 
 function resolveFontUrl(url) {
@@ -55,13 +80,56 @@ function resolveFontUrl(url) {
   expect(fromFonts.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`)).toBe(false);
   expect(isAbsolute(fromFonts)).toBe(false);
   expect(statSync(path).isFile()).toBe(true);
+  assertFontFile(path);
   return path;
 }
 
+function sourceUrls(value) {
+  const urls = [...value.matchAll(/url\(\s*(?:"([^"]*)"|'([^']*)'|([^)]*?))\s*\)/gi)]
+    .map((match) => match[1] ?? match[2] ?? match[3].trim());
+  expect(urls.length).toBeGreaterThan(0);
+  const remainder = value
+    .replace(/url\(\s*(?:"[^"]*"|'[^']*'|[^)]*?)\s*\)/gi, "")
+    .replace(/(?:format|tech)\(\s*(?:"[^"]*"|'[^']*'|[\w-]+)\s*\)/gi, "")
+    .replace(/[\s,]/g, "");
+  expect(remainder).toBe("");
+  for (const url of urls) resolveFontUrl(url);
+  return urls;
+}
+
+function parseFontStylesheet(css) {
+  const stylesheet = postcss.parse(css, { from: "tokens.css" });
+  const imports = [];
+  const faces = [];
+  stylesheet.walkAtRules((rule) => {
+    if (rule.name.toLowerCase() === "import") imports.push(rule);
+    if (rule.name.toLowerCase() !== "font-face") return;
+    const declarations = rule.nodes.filter((node) => node.type === "decl");
+    const family = declarations.find((declaration) => declaration.prop.toLowerCase() === "font-family")?.value
+      .replace(/^(["'])(.*)\1$/, "$2");
+    const sources = declarations.filter((declaration) => declaration.prop.toLowerCase() === "src");
+    expect(family).toBeTruthy();
+    expect(sources.length).toBeGreaterThan(0);
+    for (const source of sources) sourceUrls(source.value);
+    faces.push({ family, declarations, urls: sources.flatMap((source) => sourceUrls(source.value)) });
+  });
+  expect(imports).toHaveLength(0);
+  return faces;
+}
+
 describe("look contracts", () => {
-  it("matches the documented shape and defines the full shadcn palette in each mode", () => {
+  it("matches the documented shape and exact shadcn color allowlist", () => {
     expect(looks.map((look) => look.id).sort()).toEqual(lookIds);
-    expect(tokenSet.colorKeys).toEqual(expect.arrayContaining(shadcnColorKeys));
+    expect(tokenSet.colorKeys).toEqual(shadcnColorKeys);
+    expect(Object.keys(tokenSet.sharedPalette).sort()).toEqual(["dark", "light"]);
+    for (const mode of ["light", "dark"]) {
+      const shared = tokenSet.sharedPalette[mode];
+      expect(Object.keys(shared).sort()).toEqual([...sharedColorKeys].sort());
+      for (const color of Object.values(shared)) expect(color).toMatch(/^#[\da-f]{6}$/i);
+      for (const [foreground, background] of sharedTextPairs) {
+        expect(contrast(shared[foreground], shared[background])).toBeGreaterThanOrEqual(4.5);
+      }
+    }
     for (const look of looks) {
       expect(Object.keys(look).sort()).toEqual([...rootKeys].sort());
       expect(Object.keys(look.typeface).sort()).toEqual(typefaceRoles);
@@ -77,14 +145,15 @@ describe("look contracts", () => {
       expect(tokenSet.derivedTokens.density[look.density]).toBeDefined();
       expect(tokenSet.derivedTokens.textSize[String(look.text_size)]).toBeDefined();
       for (const mode of ["light", "dark"]) {
-        expect(Object.keys(look[mode]).sort()).toEqual([...tokenSet.colorKeys].sort());
-        for (const [foreground, background] of requiredTextPairs) {
+        expect(Object.keys(look[mode]).sort()).toEqual([...shadcnColorKeys].sort());
+        for (const [foreground, background] of lookTextPairs) {
           expect(contrast(look[mode][foreground], look[mode][background])).toBeGreaterThanOrEqual(4.5);
         }
         expect(contrast(look[mode].input, look[mode].background)).toBeGreaterThanOrEqual(3);
         expect(contrast(look[mode].input, look[mode].card)).toBeGreaterThanOrEqual(3);
         for (const color of Object.values(look[mode])) expect(color).toMatch(/^#[\da-f]{6}$/i);
-        expect(new Set(Object.values(look[mode])).size).toBeLessThanOrEqual(tokenSet.quality.maximumPaletteColors);
+        const palette = [...Object.values(look[mode]), ...Object.values(tokenSet.sharedPalette[mode])];
+        expect(new Set(palette).size).toBeLessThanOrEqual(tokenSet.quality.maximumPaletteColors);
       }
     }
   });
@@ -98,8 +167,13 @@ describe("look contracts", () => {
     expect(() => contrast("rgb(0 0 0)", "#ffffff")).toThrow();
   });
 
-  it("defines valid token scales, minimum targets and component dimensions", () => {
+  it("defines complete CSS scales, valid units and safe dimensions", () => {
     expect(Object.keys(tokenSet.derivedTokens.radius).sort()).toEqual(["medium", "round", "small", "square"]);
+    const radiusKeys = ["--radius", "--radius-full", "--radius-lg", "--radius-md", "--radius-sm"].sort();
+    for (const radius of Object.values(tokenSet.derivedTokens.radius)) {
+      expect(Object.keys(radius).sort()).toEqual(radiusKeys);
+      for (const key of radiusKeys) cssLength(radius[key], [key === "--radius-full" ? "px" : "rem"]);
+    }
     expect(Object.keys(tokenSet.derivedTokens.density).sort()).toEqual(["comfortable", "compact", "spacious"]);
     expect(Object.keys(tokenSet.derivedTokens.textSize).sort()).toEqual(["1", "2", "3", "4", "5"]);
     expect(Object.values(tokenSet.derivedTokens.textSize).map((scale) => scale["--text-scale"]))
@@ -107,84 +181,95 @@ describe("look contracts", () => {
     expect(tokenSet.quality.textContrast).toBe(4.5);
     expect(tokenSet.quality.nonTextContrast).toBe(3);
     expect(tokenSet.quality.minimumTarget).toBe("2.75rem");
+    expect(tokenSet.quality.minimumText).toBe("0.875rem");
     expect(tokenSet.quality.maximumLineLength).toBe("80ch");
-    expect(tokenSet.quality.maximumPaletteColors).toBeGreaterThanOrEqual(8);
+    expect(tokenSet.quality.maximumPaletteColors).toBe(34);
+    expect(tokenSet.quality.spacingUnit).toBe("0.125rem");
     expect(tokenSet.requiredTextPairs).toEqual(requiredTextPairs);
-    expect(Object.keys(tokenSet.derivedTokens.radius.medium).sort()).toEqual([
-      "--radius", "--radius-full", "--radius-lg", "--radius-md", "--radius-sm",
-    ]);
-    expect(tokenSet.derivedTokens.fontWeights["--font-weight-normal"]).toBe("400");
-    expect(tokenSet.derivedTokens.fontWeights["--font-weight-medium"]).toBe("500");
-    expect(tokenSet.derivedTokens.fontWeights["--font-weight-semibold"]).toBe("600");
-    expect(tokenSet.derivedTokens.fontWeights["--font-weight-bold"]).toBe("700");
-    expect(tokenSet.derivedTokens.lineHeights["--line-height-body"]).toBe("1.5");
-    expect(tokenSet.derivedTokens.lineHeights["--line-height-heading"]).toBe("1.2");
-    expect(tokenSet.derivedTokens.lineHeights["--line-height-code"]).toBe("1.5");
+    expect(Object.keys(tokenSet.derivedTokens.radius.medium).sort()).toEqual(radiusKeys);
+    for (const key of ["--font-weight-normal", "--font-weight-medium", "--font-weight-semibold", "--font-weight-bold"]) {
+      expect(tokenSet.derivedTokens.fontWeights[key]).toBeTruthy();
+    }
+    for (const key of ["--line-height-body", "--line-height-heading", "--line-height-code"]) {
+      expect(tokenSet.derivedTokens.lineHeights[key]).toBeTruthy();
+    }
+    const minimumTarget = cssLength(tokenSet.quality.minimumTarget).pixels;
+    expect(minimumTarget).toBeGreaterThanOrEqual(44);
+    const densityKeys = ["--control-height", "--row-gap", "--section-gap", "--target-min-size", ...Array.from({ length: 6 }, (_, index) => `--space-${index + 1}`)].sort();
     for (const density of Object.values(tokenSet.derivedTokens.density)) {
-      expect(parseFloat(density["--target-min-size"])).toBeGreaterThanOrEqual(2.75);
-      expect(parseFloat(density["--control-height"])).toBeGreaterThanOrEqual(2.75);
-      const spacing = Object.keys(density).filter((key) => key.startsWith("--space-"));
-      expect(spacing).toHaveLength(6);
-      const spacingValues = spacing.map((key) => parseFloat(density[key]));
-      expect(spacingValues).toEqual([...spacingValues].sort((a, b) => a - b));
-      expect(spacingValues.every((value) => Number.isInteger(value / 0.125))).toBe(true);
+      expect(Object.keys(density).sort()).toEqual(densityKeys);
+      const target = cssLength(density["--target-min-size"], ["rem", "px"]).pixels;
+      const control = cssLength(density["--control-height"], ["rem", "px"]).pixels;
+      expect(target).toBeGreaterThanOrEqual(minimumTarget);
+      expect(control).toBeGreaterThanOrEqual(minimumTarget);
+      const spacing = Array.from({ length: 6 }, (_, index) => cssLength(density[`--space-${index + 1}`], ["rem"]).pixels);
+      expect(spacing.every((value, index) => index === 0 || value > spacing[index - 1])).toBe(true);
+      const unit = cssLength(tokenSet.quality.spacingUnit, ["rem"]).pixels;
+      expect(spacing.every((value) => Number.isInteger(value / unit))).toBe(true);
+      cssLength(density["--row-gap"], ["rem"]);
+      cssLength(density["--section-gap"], ["rem"]);
     }
-    for (const dimension of ["--sidebar-width", "--sidebar-width-mobile", "--panel-width", "--panel-min-width", "--panel-max-width", "--sheet-width", "--media-control-size", "--media-control-gap", "--media-track-height", "--content-max-width"]) {
-      expect(tokenSet.derivedTokens.dimensions[dimension]).toBeTruthy();
-    }
+    const dimensionKeys = ["--sidebar-width", "--sidebar-width-mobile", "--panel-width", "--panel-min-width", "--panel-max-width", "--sheet-width", "--media-control-size", "--media-control-gap", "--media-track-height", "--content-max-width"].sort();
     const dimensions = tokenSet.derivedTokens.dimensions;
-    expect(parseFloat(dimensions["--panel-min-width"]))
-      .toBeLessThanOrEqual(parseFloat(dimensions["--panel-width"]));
-    expect(parseFloat(dimensions["--panel-width"]))
-      .toBeLessThanOrEqual(parseFloat(dimensions["--panel-max-width"]));
-    expect(parseFloat(dimensions["--media-control-size"]))
-      .toBeGreaterThanOrEqual(parseFloat(tokenSet.quality.minimumTarget));
-    expect(dimensions["--content-max-width"]).toMatch(/^\d+ch$/);
-    const headings = Object.values(tokenSet.derivedTokens.textSize["3"].headings);
-    expect(headings).toHaveLength(6);
-    const headingSizes = headings.map((value) => parseFloat(value));
-    expect(headingSizes).toEqual([...headingSizes].sort((a, b) => b - a));
-    expect(new Set(headingSizes).size).toBe(headingSizes.length);
-    expect(parseFloat(tokenSet.derivedTokens.dimensions["--content-max-width"]))
-      .toBeLessThanOrEqual(parseFloat(tokenSet.quality.maximumLineLength));
+    expect(Object.keys(dimensions).sort()).toEqual(dimensionKeys);
+    for (const key of dimensionKeys) {
+      cssLength(dimensions[key], [key === "--sheet-width" ? "vw" : key === "--content-max-width" ? "ch" : "rem"]);
+    }
+    expect(cssLength(dimensions["--panel-min-width"]).pixels)
+      .toBeLessThanOrEqual(cssLength(dimensions["--panel-width"]).pixels);
+    expect(cssLength(dimensions["--panel-width"]).pixels)
+      .toBeLessThanOrEqual(cssLength(dimensions["--panel-max-width"]).pixels);
+    expect(cssLength(dimensions["--media-control-size"]).pixels).toBeGreaterThanOrEqual(minimumTarget);
+    expect(cssLength(dimensions["--content-max-width"], ["ch"]).value)
+      .toBeLessThanOrEqual(cssLength(tokenSet.quality.maximumLineLength, ["ch"]).value);
+    const textKeys = ["--text-base", "--text-lg", "--text-sm", "--text-xl", "--text-xs"].sort();
+    const headingKeys = Array.from({ length: 6 }, (_, index) => `--heading-${index + 1}`).sort();
     for (const scale of Object.values(tokenSet.derivedTokens.textSize)) {
-      expect(Math.min(...Object.values(scale.sizes).map((value) => parseFloat(value))))
-        .toBeGreaterThanOrEqual(parseFloat(tokenSet.quality.minimumText));
+      expect(Object.keys(scale).sort()).toEqual(["--text-scale", "headings", "sizes"].sort());
+      expect(Object.keys(scale.sizes).sort()).toEqual(textKeys);
+      expect(Object.keys(scale.headings).sort()).toEqual(headingKeys);
+      const sizes = Object.values(scale.sizes).map((value) => cssLength(value, ["rem"]).pixels);
+      expect(Math.min(...sizes)).toBeGreaterThanOrEqual(cssLength(tokenSet.quality.minimumText).pixels);
+      const headings = headingKeys.map((key) => cssLength(scale.headings[key], ["rem"]).pixels);
+      expect(headings.every((value, index) => index === 0 || value < headings[index - 1])).toBe(true);
+      expect(Math.min(...headings)).toBeGreaterThanOrEqual(cssLength(tokenSet.quality.minimumText).pixels);
     }
   });
 
-  it("resolves selected and declared font sources to bundled files only", () => {
+  it("parses every font source, resolves selected families and rejects invalid font assets", () => {
     expect(Object.keys(tokenSet.typefaces).sort()).toEqual(["informal", "mono", "sans", "serif"]);
     const css = readFileSync(resolve(root, "web/src/tokens.css"), "utf8");
-    expect(css).not.toMatch(/@import/i);
-    const faces = [...css.matchAll(/@font-face\s*\{([^}]+)\}/gi)].map((match) => cssDeclarations(match[1]));
+    const faces = parseFontStylesheet(css);
     expect(faces).toHaveLength(4);
     const expectedWeights = { Inter: "100 900", "IBM Plex Mono": "400", "Source Serif 4": "200 900", Caveat: "400 700" };
     const faceByFamily = new Map();
     for (const face of faces) {
-      expect(face["font-family"]).toBeTruthy();
-      expect(face.src).toBeTruthy();
-      const family = face["font-family"].replaceAll(/["']/g, "");
-      expect(face["font-weight"]).toBe(expectedWeights[family]);
-      const urls = [...face.src.matchAll(/url\(["']?([^"')]+)["']?\)/gi)].map((match) => match[1]);
-      expect(urls.length).toBeGreaterThan(0);
-      for (const url of urls) resolveFontUrl(url);
-      expect(face.src).not.toMatch(/https?:|\/\//i);
-      faceByFamily.set(family, { ...face, urls });
+      const weight = face.declarations.find((declaration) => declaration.prop.toLowerCase() === "font-weight")?.value;
+      expect(weight).toBe(expectedWeights[face.family]);
+      faceByFamily.set(face.family, face);
     }
+    expect([...faceByFamily.keys()].sort()).toEqual(Object.values(tokenSet.typefaces).map((face) => face.family).sort());
     for (const [key, face] of Object.entries(tokenSet.typefaces)) {
-      expect(faceByFamily.has(face.family)).toBe(true);
       const declaration = faceByFamily.get(face.family);
       expect(declaration.urls).toContain(face.url);
       const asset = resolveFontUrl(face.url);
-      const mappedFile = realpathSync(resolve(fontsDirectory, face.file));
-      expect(mappedFile).toBe(asset);
-      expect(relative(fontsDirectory, mappedFile).startsWith("..")).toBe(false);
+      expect(realpathSync(resolve(fontsDirectory, face.file))).toBe(asset);
       for (const look of looks) {
         for (const role of typefaceRoles) {
-          if (look.typeface[role] === key) expect(declaration["font-family"].replaceAll(/["']/g, "")).toBe(face.family);
+          if (look.typeface[role] === key) expect(declaration.family).toBe(face.family);
         }
       }
+    }
+    const remoteFinalSource = css.replace('  font-display: swap;\n}', '  src: url("https://fonts.invalid/review-fixture.woff2") format("woff2")\n}');
+    expect(() => parseFontStylesheet(remoteFinalSource)).toThrow();
+    expect(() => parseFontStylesheet(`@import url("https://fonts.invalid/fonts.css");\n${css}`)).toThrow();
+    const tempDirectory = mkdtempSync(join(tmpdir(), "implicity-empty-font-"));
+    try {
+      const emptyFont = join(tempDirectory, "empty.ttf");
+      writeFileSync(emptyFont, Buffer.alloc(0));
+      expect(() => assertFontFile(emptyFont)).toThrow();
+    } finally {
+      rmSync(tempDirectory, { recursive: true, force: true });
     }
   });
 });

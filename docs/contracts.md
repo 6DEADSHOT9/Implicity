@@ -318,7 +318,7 @@ web/src/registry/DataTable/
 }
 ```
 
-The light and dark objects contain only shadcn/ui colour keys. Their required roles are fixed by the look contract, including `sidebar` for the sidebar surface. The derived CSS values for the root radius, density and text-size choices are defined in `contracts/looks/tokens.json`; color, spacing and dimension tokens are shared by all looks. A look is valid only if both variants pass every automatic check: contrast, minimum sizes, spacing scale, palette size, line length, heading steps and colour harmony. The checks run in the backend before a look is ever offered.
+The light and dark objects contain only shadcn/ui colour keys, including `sidebar` for the sidebar surface; those colour values belong to each look. The shared code and terminal palette is defined once per mode in `contracts/looks/tokens.json`, along with derived CSS values for the root radius, density and text-size choices, spacing and dimensions. Preset tests check the fixed key sets, CSS units and scale completeness, contrast, target and input sizes, palette budget and local fonts. The later backend proposal gate must apply those checks to proposed looks and also assess colour harmony before offering them.
 
 ## Hermes: the agent interface and tools
 

@@ -42,23 +42,7 @@
     "sidebar-accent-foreground": "#302f2b",
     "sidebar-border": "#deddd7",
     "sidebar-ring": "#315c83",
-    "sidebar": "#f2f0eb",
-    "code-background": "#f3f2ee",
-    "code-foreground": "#292824",
-    "code-comment": "#57534d",
-    "code-keyword": "#713f8f",
-    "code-string": "#386f25",
-    "code-number": "#755018",
-    "code-function": "#205d91",
-    "code-type": "#744a8d",
-    "code-operator": "#46515c",
-    "terminal-background": "#282c34",
-    "terminal-foreground": "#ffffff",
-    "terminal-success": "#9fddb0",
-    "terminal-warning": "#ffd166",
-    "terminal-error": "#ff9b91",
-    "terminal-info": "#91cfff",
-    "terminal-prompt": "#ffffff"
+    "sidebar": "#f2f0eb"
   },
   "dark": {
     "background": "#17191c",
@@ -92,22 +76,6 @@
     "sidebar-accent-foreground": "#f2f3f5",
     "sidebar-border": "#3b4047",
     "sidebar-ring": "#91c5f4",
-    "sidebar": "#202327",
-    "code-background": "#111315",
-    "code-foreground": "#e8eaed",
-    "code-comment": "#b7bdc4",
-    "code-keyword": "#e5b4f5",
-    "code-string": "#a8dc88",
-    "code-number": "#f2c078",
-    "code-function": "#94ceff",
-    "code-type": "#c9b0ff",
-    "code-operator": "#d1d5da",
-    "terminal-background": "#101418",
-    "terminal-foreground": "#f5f6f7",
-    "terminal-success": "#9fddb0",
-    "terminal-warning": "#ffd166",
-    "terminal-error": "#ff9b91",
-    "terminal-info": "#91cfff",
-    "terminal-prompt": "#ffffff"
+    "sidebar": "#202327"
   }
 }

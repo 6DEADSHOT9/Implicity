@@ -138,11 +138,11 @@ A look is a named set of token values, and every component reads only tokens.
 
 - Every look has a light and a dark variant. The mode follows the system unless the person chooses one.
 - A few presets ship with the product. Hermes can generate a look from a request or a rule's suggestion, always as a proposal with a preview.
-- A look is offered only if it passes every automatic check: text contrast, minimum text and target sizes, a consistent spacing scale, a limited palette, comfortable line length, clear heading steps, and colour harmony.
+- The later backend proposal gate must validate text contrast, minimum text and target sizes, a consistent spacing scale, a limited palette, comfortable line length and clear heading steps; it must also assess colour harmony before a proposed look is offered.
 - Judgment principles such as visual hierarchy, grouping and restraint are guidance inside Hermes's "propose a look" skill.
 - Settings on a scale move one step per change.
 
-Each mode defines every shadcn/ui colour role, including charts and the canonical `sidebar` surface. `contracts/looks/tokens.json` defines the shared derived CSS values for radius, density and text size, plus layout, media, heading and code palette tokens. Each hand-written look is in `contracts/looks` and is checked in both modes for WCAG AA text contrast and minimum input boundary contrast.
+Each mode defines the per-look value for every shadcn/ui colour role, including charts and the canonical `sidebar` surface. The shared code and terminal palette is defined once per mode in `contracts/looks/tokens.json`, alongside derived CSS values for radius, density, text size, layout, media and headings. Preset tests check these roles and options, CSS units and scale completeness, spacing and heading order, local font assets, the 34-colour budget, WCAG AA text contrast and input boundary contrast. The future backend proposal gate must apply these checks to proposed looks and assess colour harmony; this ticket does not implement that gate.
 
 The bundled typefaces are Inter (sans), IBM Plex Mono (mono), Source Serif 4 (serif), and Caveat (informal). Their licensed files are served from `web/public/fonts`; no font CDN is used. Default uses comfortable density and medium radius, focused uses compact density and square corners, and notebook uses spacious density, a softer radius and paper grain. Text size is a five-step setting on the look root; spacing, heading, control, sidebar, panel and media CSS values derive centrally from the shared token definition.
 
