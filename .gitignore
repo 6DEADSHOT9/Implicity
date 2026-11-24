@@ -7,3 +7,4 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 dist/
+/contracts/python/implicity_contracts.egg-info/

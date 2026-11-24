@@ -2,7 +2,10 @@
 name = "implicity-engine"
 version = "0.1.0"
 requires-python = ">=3.14,<3.15"
-dependencies = []
+dependencies = ["implicity-contracts"]
+
+[tool.uv.sources]
+implicity-contracts = { workspace = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

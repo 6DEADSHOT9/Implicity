@@ -8,5 +8,8 @@
   "scripts": {
     "lint": "pnpm --filter @implicity/web lint",
     "test": "pnpm --filter @implicity/web test"
+  },
+  "devDependencies": {
+    "json-schema-to-typescript": "15.0.4"
   }
 }
