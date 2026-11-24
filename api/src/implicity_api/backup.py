@@ -31,13 +31,17 @@ def database_path(url: str | None = None) -> Path:
     return path.resolve()
 
 
+def snapshot_directory(database: Path, root: Path | None = None) -> Path:
+    return (root or database.parent / "backups") / database.name
+
+
 def backup_database(
     database: Path, directory: Path | None = None, day: date | None = None
 ) -> Path:
     database = database.resolve()
     if not database.is_file():
         raise FileNotFoundError(database)
-    directory = directory or database.parent / "backups"
+    directory = snapshot_directory(database, directory)
     directory.mkdir(parents=True, exist_ok=True)
     destination = directory / f"{(day or date.today()).isoformat()}.db"
     descriptor, temp_name = tempfile.mkstemp(
@@ -68,17 +72,21 @@ def backup_database(
     return destination
 
 
+def ensure_daily_backup(database: Path, day: date) -> Path:
+    if not database.is_file():
+        raise FileNotFoundError(database)
+    destination = snapshot_directory(database) / f"{day.isoformat()}.db"
+    if not destination.exists():
+        return backup_database(database, day=day)
+    return destination
+
+
 async def daily_backups(now=datetime.now, sleep=asyncio.sleep) -> None:
     while True:
         current = now()
         try:
             database = database_path()
-            directory = database.parent / "backups"
-            expected = directory / f"{current.date().isoformat()}.db"
-            if not expected.exists():
-                await asyncio.to_thread(
-                    backup_database, database, directory, current.date()
-                )
+            await asyncio.to_thread(ensure_daily_backup, database, current.date())
         except Exception:
             logger.exception("Daily SQLite backup failed")
         tomorrow = datetime.combine(current.date() + timedelta(days=1), time.min)

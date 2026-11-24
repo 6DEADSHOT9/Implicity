@@ -8,11 +8,13 @@ import sys
 import threading
 import tomllib
 from datetime import date, datetime, timedelta
+from importlib.util import resolve_name
 from pathlib import Path
 
 import pytest
 from alembic import command
 from alembic.config import Config
+from implicity_api import backup
 from implicity_api.backup import backup_database, database_path
 from implicity_api.db import PROJECT_ROOT, database_url
 from implicity_api.models import METADATA
@@ -20,7 +22,7 @@ from implicity_api.models.agent import AgentSession
 from implicity_api.models.app import Conversation, Message, MessageSpec
 from implicity_api.models.engine import Decision
 from implicity_api.persistence import create_store
-from sqlalchemy import create_engine, inspect, select, text
+from sqlalchemy import create_engine, inspect, literal_column, select, text
 from sqlalchemy.engine import make_url
 
 API_ROOT = Path(__file__).parents[1]
@@ -77,7 +79,10 @@ SPEC = {
 
 def check_module_boundaries(root: Path = SOURCE_ROOT / "modules") -> None:
     for path in root.rglob("*.py"):
-        owner = path.relative_to(root).parts[0]
+        relative = path.relative_to(root)
+        owner = relative.parts[0]
+        package_parts = ["implicity_api", "modules", *relative.parts[:-1]]
+        package = ".".join(package_parts)
         for node in ast.walk(ast.parse(path.read_text(), filename=str(path))):
             if isinstance(node, ast.Attribute):
                 assert node.attr not in {
@@ -92,7 +97,11 @@ def check_module_boundaries(root: Path = SOURCE_ROOT / "modules") -> None:
             if isinstance(node, ast.Import):
                 names = [alias.name for alias in node.names]
             elif isinstance(node, ast.ImportFrom):
-                module = node.module or ""
+                module = (
+                    resolve_name("." * node.level + (node.module or ""), package)
+                    if node.level
+                    else (node.module or "")
+                )
                 names = [module]
                 if module.startswith("implicity_api.models."):
                     model_owner = module.rsplit(".", 1)[-1]
@@ -273,6 +282,20 @@ def test_owner_bound_stores_block_cross_owner_reads_writes_and_raw_sql(tmp_path)
         )
     with pytest.raises(PermissionError):
         engine_store.select(text("SELECT * FROM conversations"))
+    with pytest.raises(PermissionError):
+        engine_store.select(
+            select(
+                Decision.id,
+                text("(SELECT data FROM conversations WHERE id='fixture')"),
+            )
+        )
+    with pytest.raises(PermissionError):
+        engine_store.select(
+            select(
+                Decision.id,
+                literal_column("(SELECT data FROM conversations WHERE id='fixture')"),
+            )
+        )
     with pytest.raises(PermissionError, match="app.conversations"):
         engine_store.insert(Conversation(id="cross-write", session_id=None, data={}))
     assert not hasattr(engine_store, "connection")
@@ -315,6 +338,8 @@ def test_contract_payloads_round_trip_and_reject_invalid_decisions_and_specs(tmp
     with pytest.raises(ValueError, match="row id"):
         engine_store.insert(Decision(id="different", session_id=None, data=DECISION))
     with pytest.raises(ValueError):
+        engine_store.insert(Decision(id=DECISION["id"], session_id=None, data=[]))
+    with pytest.raises(ValueError):
         app_store.insert(MessageSpec(id="bad", session_id=None, data=SPEC))
     with pytest.raises(ValueError):
         app_store.insert(
@@ -346,16 +371,26 @@ def test_module_source_violations_are_rejected(tmp_path):
     )
     with pytest.raises(AssertionError, match="bypasses its owner-bound store"):
         check_module_boundaries(root)
+    (engine / "private_session.py").unlink()
+    (engine / "relative_import.py").write_text(
+        "from ...models.app import Conversation\n"
+        "from ..app import store\n"
+    )
+    with pytest.raises(AssertionError, match="imports app"):
+        check_module_boundaries(root)
+    (engine / "relative_import.py").write_text("from ..app import store\n")
+    with pytest.raises(AssertionError, match="imports app module"):
+        check_module_boundaries(root)
 
 
 def test_backup_requires_existing_file_and_accepts_sqlite_driver_urls(tmp_path):
     missing = tmp_path / "missing.db"
-    backups = tmp_path / "backups"
-    backups.mkdir()
+    backups = tmp_path / "backups" / missing.name
+    backups.mkdir(parents=True)
     previous = backups / "2026-11-20.db"
     previous.touch()
     with pytest.raises(FileNotFoundError):
-        backup_database(missing, backups)
+        backup_database(missing, tmp_path / "backups")
     assert list(backups.iterdir()) == [previous]
     assert (
         database_path(f"sqlite+pysqlite:///{tmp_path / 'example.db'}")
@@ -365,8 +400,8 @@ def test_backup_requires_existing_file_and_accepts_sqlite_driver_urls(tmp_path):
 
 def test_backup_cli_fails_without_touching_missing_source_or_recovery_points(tmp_path):
     missing = tmp_path / "missing.db"
-    backups = tmp_path / "backups"
-    backups.mkdir()
+    backups = tmp_path / "backups" / missing.name
+    backups.mkdir(parents=True)
     recovery = backups / "2026-11-20.db"
     recovery.touch()
     env = {**os.environ, "DATABASE_URL": f"sqlite:///{missing}"}
@@ -389,8 +424,9 @@ def test_backup_keeps_only_seven_valid_dated_snapshots_and_restore_replaces_data
     with create_engine(f"sqlite:///{source}").begin() as connection:
         connection.exec_driver_sql("CREATE TABLE saved (value TEXT)")
         connection.exec_driver_sql("INSERT INTO saved VALUES ('before')")
-    backups = tmp_path / "backups"
-    backups.mkdir()
+    backup_root = tmp_path / "backups"
+    backups = backup_root / source.name
+    backups.mkdir(parents=True)
     for day in range(1, 10):
         (backups / f"2026-10-{day:02}.db").touch()
     unrelated = backups / "2000-unrelated.db"
@@ -398,7 +434,7 @@ def test_backup_keeps_only_seven_valid_dated_snapshots_and_restore_replaces_data
     malformed = backups / "2026-13-44.db"
     malformed.touch()
 
-    result = backup_database(source, backups, date(2026, 11, 24))
+    result = backup_database(source, backup_root, date(2026, 11, 24))
     names = {path.name for path in backups.iterdir()}
     assert names == {
         "2026-10-04.db",
@@ -419,6 +455,47 @@ def test_backup_keeps_only_seven_valid_dated_snapshots_and_restore_replaces_data
         assert restored.execute("SELECT value FROM saved").fetchall() == [("before",)]
 
 
+def test_two_co_located_databases_get_distinct_explicit_and_startup_snapshots(
+    tmp_path,
+):
+    first, second = tmp_path / "records.db", tmp_path / "records.sqlite"
+    for database, value in ((first, "first"), (second, "second")):
+        with create_engine(f"sqlite:///{database}").begin() as connection:
+            connection.exec_driver_sql("CREATE TABLE saved (value TEXT)")
+            connection.exec_driver_sql("INSERT INTO saved VALUES (?)", (value,))
+    day = date(2026, 11, 25)
+
+    first_explicit = backup_database(first, day=day)
+    second_explicit = backup_database(second, day=day)
+    assert first_explicit != second_explicit
+    assert first_explicit.parent != second_explicit.parent
+
+    first_startup = backup.ensure_daily_backup(first, day)
+    second_startup = backup.ensure_daily_backup(second, day)
+    assert first_startup == first_explicit
+    assert second_startup == second_explicit
+    for snapshot, value in ((first_startup, "first"), (second_startup, "second")):
+        with sqlite3.connect(snapshot) as connection:
+            assert connection.execute("SELECT value FROM saved").fetchone() == (value,)
+
+
+def test_startup_catchup_for_second_database_is_not_suppressed_by_first(tmp_path):
+    first, second = tmp_path / "records.db", tmp_path / "records.sqlite"
+    for database, value in ((first, "one"), (second, "two")):
+        with create_engine(f"sqlite:///{database}").begin() as connection:
+            connection.exec_driver_sql("CREATE TABLE saved (value TEXT)")
+            connection.exec_driver_sql("INSERT INTO saved VALUES (?)", (value,))
+    day = date(2026, 11, 25)
+    first_snapshot = backup_database(first, day=day)
+
+    assert backup.ensure_daily_backup(first, day) == first_snapshot
+    second_snapshot = backup.ensure_daily_backup(second, day)
+
+    assert second_snapshot != first_snapshot
+    with sqlite3.connect(second_snapshot) as connection:
+        assert connection.execute("SELECT value FROM saved").fetchone() == ("two",)
+
+
 def test_lifespan_catches_up_after_midnight_was_missed(tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
     from implicity_api import app as app_module
@@ -428,7 +505,7 @@ def test_lifespan_catches_up_after_midnight_was_missed(tmp_path, monkeypatch):
     with create_engine(f"sqlite:///{live_db}").begin() as connection:
         connection.exec_driver_sql("CREATE TABLE saved (value TEXT)")
         connection.exec_driver_sql("INSERT INTO saved VALUES ('today')")
-    backup_dir = tmp_path / "backups"
+    backup_dir = tmp_path / "backups" / live_db.name
     current = [datetime(2026, 11, 24, 12)]
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{live_db}")
     copied = threading.Event()

@@ -9,7 +9,7 @@ from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.sql import visitors
-from sqlalchemy.sql.elements import TextClause
+from sqlalchemy.sql.elements import ColumnClause, TextClause
 from sqlalchemy.sql.schema import Table
 
 from implicity_api.db import engine as default_engine
@@ -68,7 +68,12 @@ def _check_model(model: type, owner: str) -> None:
 def _check_tables(statement: Any, owner: str) -> None:
     if isinstance(statement, (str, TextClause)):
         raise PermissionError("Raw SQL bypasses module table ownership")
-    for table in visitors.iterate(statement):
+    for element in visitors.iterate(statement):
+        if isinstance(element, TextClause) or (
+            isinstance(element, ColumnClause) and element.is_literal
+        ):
+            raise PermissionError("Textual SQL bypasses module table ownership")
+        table = element
         if isinstance(table, Table):
             actual_owner = TABLE_OWNERS.get(table.name)
             if actual_owner is not None and actual_owner != owner:
@@ -103,19 +108,19 @@ class ModuleStore:
             raise ValueError(f"{model.__tablename__} requires session_id")
         contract = CONTRACT_PAYLOADS.get(model)
         if contract:
-            if model is Decision and row.id != row.data.get("id"):
-                raise ValueError("Decision row id must match its contract id")
             try:
                 value = decode_contract(json.dumps(row.data, allow_nan=False))
                 if not isinstance(value, contract):
                     raise ValueError(
                         f"{model.__tablename__} payload has the wrong contract"
                     )
-                row.data = json.loads(encode_contract(value))
             except (JSONSchemaValidationError, TypeError, ValueError) as error:
                 raise ValueError(
                     f"Invalid {model.__tablename__} contract payload"
                 ) from error
+            if isinstance(value, ContractDecision) and row.id != row.data.get("id"):
+                raise ValueError("Decision row id must match its contract id")
+            row.data = json.loads(encode_contract(value))
         with self._session() as session, session.begin():
             session.add(row)
             session.flush()
