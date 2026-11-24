@@ -99,6 +99,11 @@ describe("look contracts", () => {
   });
 
   it("defines valid token scales, minimum targets and component dimensions", () => {
+    expect(Object.keys(tokenSet.derivedTokens.radius).sort()).toEqual(["medium", "round", "small", "square"]);
+    expect(Object.keys(tokenSet.derivedTokens.density).sort()).toEqual(["comfortable", "compact", "spacious"]);
+    expect(Object.keys(tokenSet.derivedTokens.textSize).sort()).toEqual(["1", "2", "3", "4", "5"]);
+    expect(Object.values(tokenSet.derivedTokens.textSize).map((scale) => scale["--text-scale"]))
+      .toEqual(["0.875", "0.9375", "1", "1.125", "1.25"]);
     expect(tokenSet.quality.textContrast).toBe(4.5);
     expect(tokenSet.quality.nonTextContrast).toBe(3);
     expect(tokenSet.quality.minimumTarget).toBe("2.75rem");
