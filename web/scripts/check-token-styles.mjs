@@ -16,6 +16,11 @@ function unwrap(node) {
   return node;
 }
 
+function propertyName(node) {
+  if (ts.isIdentifier(node) || ts.isStringLiteral(node)) return node.text;
+  return undefined;
+}
+
 function declarations(sourceFile) {
   const found = new Map();
   const visit = (node) => {
@@ -97,11 +102,15 @@ function styleObject(node, vars, seen, hasTokenImport) {
       violations.push(...styleObject(property.expression, vars, new Set(seen), hasTokenImport));
       continue;
     }
-    if (!ts.isPropertyAssignment(property) && !ts.isShorthandPropertyAssignment(property)) {
+    if ((!ts.isPropertyAssignment(property) && !ts.isShorthandPropertyAssignment(property)) || ts.isComputedPropertyName(property.name)) {
       violations.push("unsupported style object member");
       continue;
     }
-    const name = property.name.getText();
+    const name = propertyName(property.name);
+    if (!name) {
+      violations.push("unsupported style object key");
+      continue;
+    }
     const value = ts.isPropertyAssignment(property) ? property.initializer : property.name;
     if (name === "className") violations.push(...classViolations(value, hasTokenImport));
     else violations.push(...styleValue(value, vars, new Set(seen), hasTokenImport, name));
@@ -122,11 +131,15 @@ function spreadViolations(node, vars, seen, hasTokenImport) {
       violations.push(...spreadViolations(property.expression, vars, new Set(seen), hasTokenImport));
       continue;
     }
-    if (!ts.isPropertyAssignment(property) && !ts.isShorthandPropertyAssignment(property)) {
+    if ((!ts.isPropertyAssignment(property) && !ts.isShorthandPropertyAssignment(property)) || ts.isComputedPropertyName(property.name)) {
       violations.push("unsupported JSX spread member");
       continue;
     }
-    const name = property.name.getText();
+    const name = propertyName(property.name);
+    if (!name) {
+      violations.push("unsupported JSX spread key");
+      continue;
+    }
     const value = ts.isPropertyAssignment(property) ? property.initializer : property.name;
     if (name === "style") violations.push(...styleObject(value, vars, new Set(seen), hasTokenImport));
     if (name === "className") violations.push(...classViolations(value, hasTokenImport));

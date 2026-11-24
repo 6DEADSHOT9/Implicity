@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { checkGeneratedFileSet, checkRegistrySnapshots } from "../src/registry/snapshot";
+import { discoverRegistryFolders } from "../src/registry/discovery";
+import { events } from "./fixtures/ReviewPanel/events";
+import { meta } from "./fixtures/ReviewPanel/meta";
+import { propsSchema, slotsSchema } from "./fixtures/ReviewPanel/schema";
 
 describe("registry generation guards", () => {
   it("requires the current roster snapshot and highest snapshot version", () => {
@@ -14,4 +18,17 @@ describe("registry generation guards", () => {
     expect(() => checkGeneratedFileSet(["registry.json"], ["registry.json", "TextBlock.schema.json"])).toThrow(/do not match the registry/);
   });
 
+  it("shares folder and named-export validation for generation and loading", () => {
+    const folder = {
+      id: "ReviewPanel",
+      files: ["ReviewPanel.tsx", "ReviewPanel.test.tsx", "schema.ts", "events.ts", "meta.ts"],
+      componentExports: ["ReviewPanel"],
+      schema: { propsSchema, slotsSchema },
+      events: { events },
+      metadata: { meta },
+    };
+    expect(discoverRegistryFolders([folder])).toHaveLength(1);
+    expect(() => discoverRegistryFolders([{ ...folder, componentExports: ["default"] }])).toThrow(/ReviewPanel.*named component export/);
+    expect(() => discoverRegistryFolders([{ ...folder, files: ["ReviewPanel.tsx"] }])).toThrow(/ReviewPanel.*missing/);
+  });
 });

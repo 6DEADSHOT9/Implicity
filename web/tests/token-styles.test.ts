@@ -18,6 +18,8 @@ describe("token-only style guard", () => {
     ['const color = "rebeccapurple"; const appearance = { color }; const View = () => <div style={appearance} />;', "rebeccapurple"],
     ['const base = { color: "rebeccapurple" }; const appearance = { ...base }; const View = () => <div style={appearance} />;', "rebeccapurple"],
     ['const appearance = { className: "text-red-500", style: { color: "rebeccapurple" } }; const View = () => <div {...appearance} />;', "text-red-500"],
+    ['const appearance = { "className": "text-red-500", "style": { color: "rebeccapurple" } }; const View = () => <div {...appearance} />;', "text-red-500"],
+    ['const appearance = { ["style"]: { color: "rebeccapurple" } }; const View = () => <div {...appearance} />;', "unsupported JSX spread member"],
     ['const appearance = { color: "rebeccapurple" }; const View = () => <div style={appearance} />;', "rebeccapurple"],
     ['import { appearance } from "./appearance"; const View = () => <div style={appearance} />;', "unsupported dynamic style object"],
     ['import { appearance } from "./appearance"; const View = () => <div {...appearance} />;', "unsupported dynamic JSX spread"],

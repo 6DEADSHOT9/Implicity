@@ -6,44 +6,45 @@ import ts from "typescript";
 import { registryVersion } from "../src/registry/version.ts";
 import { validateRegistryDefinitions } from "../src/registry/validate.ts";
 import { checkGeneratedFileSet, checkRegistrySnapshots } from "../src/registry/snapshot.ts";
-import { defineSkeletonDefinition } from "../src/registry/define-skeleton.ts";
+import { discoverRegistryFolders } from "../src/registry/discovery.ts";
 
 const check = process.argv.includes("--check");
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const directory = resolve(root, "contracts/generated/components");
 const sourceDirectory = resolve(root, "web/src/registry");
-const folderNames = (await readdir(sourceDirectory, { withFileTypes: true }))
+const folderNames = await Promise.all((await readdir(sourceDirectory, { withFileTypes: true }))
   .filter((item) => item.isDirectory())
-  .map((item) => item.name)
-  .sort();
+  .map(async ({ name }) => ({ name, files: await readdir(resolve(sourceDirectory, name)) })));
+const foldersToDiscover = folderNames.filter(({ files }) => files.some((file) => file.endsWith(".tsx") || ["schema.ts", "events.ts", "meta.ts"].includes(file)));
 const entries = [];
-function exportsNamed(source, name, filename) {
+function namedValueExports(source, filename) {
   const parsed = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-  return parsed.statements.some((statement) => {
-    if (ts.isFunctionDeclaration(statement) && statement.name?.text === name && statement.modifiers?.some(({ kind }) => kind === ts.SyntaxKind.ExportKeyword)) return true;
-    if (ts.isVariableStatement(statement) && statement.modifiers?.some(({ kind }) => kind === ts.SyntaxKind.ExportKeyword)
-      && statement.declarationList.declarations.some((declaration) => ts.isIdentifier(declaration.name) && declaration.name.text === name)) return true;
-    return false;
-  });
+  const names = new Set();
+  for (const statement of parsed.statements) {
+    const modifiers = ts.canHaveModifiers(statement) ? ts.getModifiers(statement) ?? [] : [];
+    if (modifiers.some(({ kind }) => kind === ts.SyntaxKind.ExportKeyword) && !modifiers.some(({ kind }) => kind === ts.SyntaxKind.DefaultKeyword || kind === ts.SyntaxKind.DeclareKeyword)) {
+      if ((ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement) || ts.isEnumDeclaration(statement)) && statement.name) names.add(statement.name.text);
+      if (ts.isVariableStatement(statement)) for (const declaration of statement.declarationList.declarations) if (ts.isIdentifier(declaration.name)) names.add(declaration.name.text);
+    }
+    if (ts.isExportDeclaration(statement) && !statement.isTypeOnly && statement.exportClause && ts.isNamedExports(statement.exportClause)) {
+      for (const element of statement.exportClause.elements) if (!element.isTypeOnly) names.add(element.name.text);
+    }
+  }
+  return [...names];
 }
-for (const id of folderNames) {
+const folders = await Promise.all(foldersToDiscover.map(async ({ name: id }) => {
   const folder = resolve(sourceDirectory, id);
-  const expected = [`${id}.tsx`, `${id}.test.tsx`, "schema.ts", "events.ts", "meta.ts"];
   const files = await readdir(folder);
-  const missing = expected.filter((file) => !files.includes(file));
-  if (missing.length) throw new Error(`${id} registry entry is missing: ${missing.join(", ")}`);
-  const [componentSource, schema, eventModule, metaModule] = await Promise.all([
+  if (![`${id}.tsx`, "schema.ts", "events.ts", "meta.ts"].every((file) => files.includes(file))) return { id, files, componentExports: [] };
+  const [componentSource, schema, events, metadata] = await Promise.all([
     readFile(join(folder, `${id}.tsx`), "utf8"),
     import(join(folder, "schema.ts")),
     import(join(folder, "events.ts")),
     import(join(folder, "meta.ts")),
   ]);
-  if (!exportsNamed(componentSource, id, join(folder, `${id}.tsx`))) throw new Error(`${id} registry entry is missing named component export ${id}`);
-  if (!schema.propsSchema || !schema.slotsSchema) throw new Error(`${id} registry entry schema.ts must export propsSchema and slotsSchema`);
-  if (!eventModule.events) throw new Error(`${id} registry entry events.ts must export events`);
-  if (!metaModule.meta) throw new Error(`${id} registry entry meta.ts must export meta`);
-  entries.push(defineSkeletonDefinition({ id, props: schema.propsSchema, slots: schema.slotsSchema, events: eventModule.events, meta: metaModule.meta }));
-}
+  return { id, files, componentExports: namedValueExports(componentSource, join(folder, `${id}.tsx`)), schema, events, metadata };
+}));
+entries.push(...discoverRegistryFolders(folders).map(({ definition }) => definition));
 const snapshot = { registry_version: registryVersion, components: entries.map(({ id }) => id).sort() };
 validateRegistryDefinitions(entries);
 
@@ -66,6 +67,17 @@ checkRegistrySnapshots(snapshots, snapshot);
 const artifacts = new Map(entries.map((entry) => [`${entry.id}.schema.json`, `${JSON.stringify(entry.schema.toJSONSchema(), null, 2)}\n`]));
 for (const historical of snapshots) artifacts.set(`registry-v${historical.registry_version}.json`, `${JSON.stringify(historical, null, 2)}\n`);
 artifacts.set("registry.json", `${JSON.stringify(snapshot, null, 2)}\n`);
+const typeCheckPath = resolve(sourceDirectory, "registry-props-typecheck.ts");
+const typeCheckSource = entries.length ? [
+  'import { defineSkeleton, defineSkeletonDefinition } from "./define-skeleton.ts";',
+  ...entries.flatMap(({ id }) => [
+    `import { ${id} as ${id}Component } from "./${id}/${id}.tsx";`,
+    `import { propsSchema as ${id}Props, slotsSchema as ${id}Slots } from "./${id}/schema.ts";`,
+    `import { events as ${id}Events } from "./${id}/events.ts";`,
+    `import { meta as ${id}Meta } from "./${id}/meta.ts";`,
+    `defineSkeleton(defineSkeletonDefinition({ id: "${id}", props: ${id}Props, slots: ${id}Slots, events: ${id}Events, meta: ${id}Meta }), ${id}Component);`,
+  ]),
+].join("\n") + "\n" : "export {};\n";
 const actualFiles = await readdir(directory).catch((error) => error.code === "ENOENT" ? [] : Promise.reject(error));
 const generatedFiles = actualFiles.filter((name) => name === "registry.json" || /^registry-v\d+\.json$/.test(name) || name.endsWith(".schema.json"));
 
@@ -74,8 +86,10 @@ if (check) {
   for (const [name, contents] of artifacts) {
     if (await readFile(resolve(directory, name), "utf8") !== contents) throw new Error(`${name} is stale; run make registry-generate`);
   }
+  if (await readFile(typeCheckPath, "utf8").catch(() => undefined) !== typeCheckSource) throw new Error("registry-props-typecheck.ts is stale; run make registry-generate");
 } else {
   await mkdir(directory, { recursive: true });
   for (const stale of generatedFiles.filter((name) => !artifacts.has(name))) await rm(resolve(directory, stale));
   for (const [name, contents] of artifacts) await writeFile(resolve(directory, name), contents);
+  await writeFile(typeCheckPath, typeCheckSource);
 }
