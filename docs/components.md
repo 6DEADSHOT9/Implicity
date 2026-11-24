@@ -49,7 +49,7 @@ These never move. Only additions, such as a new shortcut chip, are allowed.
 | --- | --- | --- | --- |
 | DataTable | Table, with a switch to other forms | Data Table | Direct |
 | DataChart | Line, bar and similar charts | Chart | Direct |
-| CodeBlock | Code and diffs, with modes for stack traces and terminal output | Code Block, Stack Trace, Terminal | Direct |
+| CodeBlock | Code and diffs, with variants for stack traces and terminal output | Code Block, Stack Trace, Terminal | Direct |
 | MediaPlayer | Inline video and audio from YouTube and attached files, open to more sources | None; Aspect Ratio and Slider help | Written by us |
 | ArtifactWorkspace | A document-style card, such as a recipe or a draft | Card, Scroll Area, Typography | Composed |
 | Checklist | Items with done and open states | Checkbox, Item | Composed |
@@ -89,7 +89,7 @@ Other widgets, such as a CI tracker or supplier watch, are a DataTable, DataChar
 
 - The table-or-chart switcher belongs to DataTable and DataChart.
 - The version switcher belongs to MessageActions.
-- Diffs and stack traces are modes of CodeBlock.
+- Diffs and stack traces are variants of CodeBlock.
 - Empty states use shadcn/ui's Empty inside the navigation and widgets.
 - Locks and the change history live in Settings.
 - Workbenches and dashboards are arrangements of the components above.

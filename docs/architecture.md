@@ -271,7 +271,7 @@ The person agrees once at onboarding, can see and correct everything afterwards,
 
 **Onboarding.** A short intro, then one screen with three switches, all on, each explained in one line: memory, deleted drafts, and state inference. The screen also says a typing profile is kept. It asks nothing else. Device context sets the first look, and everything else is learned.
 
-**Temporary chat.** A chat mode that sends no behaviour events, saves no memory, reads no drafts and feeds no inference.
+**Temporary chat.** A chat that sends no behaviour events, saves no memory, reads no drafts and feeds no inference.
 
 **Data controls, in Settings.**
 

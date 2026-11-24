@@ -63,24 +63,36 @@ Every event has the same shared fields and one of three shapes: an action, a tur
 | --- | --- | --- |
 | `session_started`, `session_ended` | A session begins, or ends on close or idle | Mode, text scale, local hour bucket |
 | `conversation_started`, `conversation_ended` | A conversation opens or is left | |
-| `message_sent` | The person sends a message | Length bucket, attachment count, shortcut used |
+| `message_sent` | The person sends a message | Length bucket, attachment count, the Command if a shortcut sent it |
 | `answer_shown` | An answer finishes rendering | Length bucket, has code, has table, has reasoning |
 | `component_shown` | A component renders | Its default state, such as folded or open |
-| `component_seen` | It stays on screen for a few seconds | Seconds visible |
-| `section_expanded`, `section_collapsed` | A foldable section is toggled | Which section type |
-| `representation_switched` | Data is switched between forms | From, to |
-| `panel_opened`, `panel_closed`, `panel_docked`, `panel_undocked` | A panel changes | Which panel |
-| `answer_copied`, `code_copied` | Content is copied | Share of the answer copied, as a bucket |
+| `component_seen` | It stays on screen for a few seconds | Its default state, seconds visible |
+| `section_expanded`, `section_collapsed` | A foldable section is toggled | None: `component` and `slot` identify the section |
+| `representation_switched` | An answer or data result is switched between forms | Dimension (`data_form` or `answer_form`), from, to: values of that dimension |
+| `panel_opened`, `panel_closed`, `panel_docked`, `panel_undocked` | A panel changes | None: `component` identifies the panel |
+| `answer_copied`, `code_copied` | Content is copied | Share copied: `some`, `most` or `all` |
 | `answer_regenerated`, `generation_stopped`, `message_edited` | The person redoes, stops or edits | Seconds since the answer began |
-| `shortcut_used` | A shortcut chip or key is used | Which shortcut |
+| `shortcut_used` | A shortcut chip or key is used | The Command, never the key pressed |
 | `search_used` | Search is opened and used | |
-| `attachment_added` | A file or photo is attached | Type |
+| `attachment_added` | A file or photo is attached | Type: `image`, `document`, `audio`, `video` or `other`. Never the file name |
 | `draft_deleted` | A draft of meaningful length is cleared before sending | Length bucket only. The text goes to the backend, never to PostHog |
-| `setting_changed` | The person sets something by hand | Dimension, value |
+| `setting_changed` | The person sets something by hand | Dimension, value, and the Command for `shortcut_chips` |
 | `change_shown`, `change_kept`, `change_undone` | An admitted change is displayed, kept or undone | Decision id |
 | `proposal_shown`, `proposal_kept`, `proposal_dismissed` | A proposal is displayed and answered | Proposal id, type |
-| `widget_seen`, `widget_used`, `widget_pinned`, `widget_dismissed` | Home widgets (Stage 4) | Widget id |
-| `media_played`, `media_paused`, `media_seeked`, `media_replayed` | Media playback (Stage 4) | Position bucket |
+| `widget_seen`, `widget_used`, `widget_pinned`, `widget_dismissed` | Home widgets (Stage 4; schema added in Stage 4) | Widget id |
+| `media_played`, `media_paused`, `media_seeked`, `media_replayed` | Media playback (Stage 4; schema added in Stage 4) | Position bucket |
+
+**Vocabularies.** Every value an event carries comes from a closed set, so no field can hold content (ADR 0020).
+
+| Field | Values |
+| --- | --- |
+| Mode | `light` or `dark`: the variant of the look actually displayed |
+| Text scale | The look's `text_size` step in effect, 1 to 5 |
+| Local hour bucket | `night` (0–6), `morning` (6–12), `afternoon` (12–18), `evening` (18–24), in local time |
+| Length bucket | `short`, `medium` or `long`, for messages, answers and drafts alike. The character cut-offs are a data file in `contracts`, starting at 80 and 400 for messages and drafts, 600 and 2,500 for answers |
+| Share copied | `some` (under half), `most` (half or more, not all), `all` |
+| Attachment type | `image`, `document`, `audio`, `video`, `other`, from the file's media type in the browser |
+| Component, slot, default state, Command | Declared by the registry. The schema checks the form of the identifier; the capture wrapper rejects any value the registry does not declare |
 
 **Turn summary.** `turn_summary` is sent once per turn and covers the message being written and the answer being read.
 
@@ -145,7 +157,7 @@ A dimension on a scale adds `scale: true`, which makes the engine move one value
 | `data_form` | table, chart | A data result, seen | Switching form, and time spent on each |
 | `sources_panel` | closed, docked | An answer with sources, seen | Opening or closing the sources panel |
 | `project_panel` | closed, docked | A conversation inside a project | Opening or closing the project panel |
-| `shortcut_chips` | One on/off per action | The action being performed by any route | The same action repeated often enough to pass the gate |
+| `shortcut_chips` | One on/off per Command | The action being performed by any route | The same action repeated often enough to pass the gate |
 | `density` | compact, comfortable, spacious (scale) | A session | Long scrolling through lists and tables, against misses on small targets |
 | `answer_length` | short, medium, long | An answer, seen | Stopping early or leaving before the end, against asking for more |
 | `answer_order` | answer first, explanation first | An answer with both parts | Skipping the introduction to reach the result |
@@ -259,6 +271,8 @@ A proposal asks for a change, a decision records one that was admitted, and the 
 | `GET /history` | Past decisions and their reasons |
 | `POST /sessions/{id}/exclude` | Exclude a marked session |
 | `POST /drafts` | A deleted draft's text, stored locally for 30 days |
+
+The request and response bodies of these calls are designed, and added to `contracts`, by the ticket that builds each endpoint.
 
 A change counts as made only after `shown` is reported. Until then it is pending and can be withdrawn.
 

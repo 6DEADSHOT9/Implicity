@@ -34,6 +34,10 @@ _Avoid_: Metric, stat
 One moment where a choice was really available to the person and seen on screen.
 _Avoid_: Opportunity, impression, episode
 
+**Command**:
+Something the person can do in the interface, such as copy an answer, regenerate or search, which a shortcut chip or key can trigger. Events name the Command, never the key.
+_Avoid_: Action (an action is an event sent as it happens), shortcut
+
 **Event source**:
 The interface the engine reads feature counts through.
 _Avoid_: Analytics client, PostHog client
@@ -97,6 +101,10 @@ _Avoid_: Generated UI, widget (a widget lives on Home)
 **Look**:
 A named set of token values with a light and a dark variant.
 _Avoid_: Theme, skin
+
+**Mode**:
+Whether the light or the dark variant of a look is in effect.
+_Avoid_: Using "mode" for temporary chat, for CodeBlock variants, or for how a dimension changes
 
 **Token**:
 A named design value that components read, such as a colour, radius or density.
