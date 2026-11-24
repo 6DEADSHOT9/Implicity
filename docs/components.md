@@ -142,6 +142,10 @@ A look is a named set of token values, and every component reads only tokens.
 - Judgment principles such as visual hierarchy, grouping and restraint are guidance inside Hermes's "propose a look" skill.
 - Settings on a scale move one step per change.
 
+The complete shared token names are listed in `contracts/looks/tokens.json`; each mode defines every one. The contract includes shadcn/ui colour roles (including charts and sidebar), spacing and text scales, typeface and weight tokens, radius, density, target size, texture, and motion. Each hand-written look is in `contracts/looks` and is checked in both modes for WCAG AA text contrast.
+
+The bundled typefaces are Inter (sans), IBM Plex Mono (mono), Source Serif 4 (serif), and Caveat (informal). Their licensed files are served from `web/public/fonts`; no font CDN is used. Default uses comfortable density and medium radius, focused uses compact density and square corners, and notebook uses spacious density, a softer radius and paper grain.
+
 ## Adding components later
 
 The registry is built to grow: adding a component touches the registry and nothing else.
@@ -171,4 +175,4 @@ Before adding, check whether the need is a new component or a new arrangement of
 - [x] Item works as a general row
 - [ ] Spike: confirm the AI SDK's stream format works from the Python backend relaying Hermes. If not, return to assistant-ui
 - [ ] Check whether shadcn/ui's Message ships its own markdown renderer; otherwise use react-markdown with GitHub-flavoured extensions
-- [ ] Choose the four bundled typefaces
+- [x] Choose the four bundled typefaces: Inter, IBM Plex Mono, Source Serif 4, and Caveat
