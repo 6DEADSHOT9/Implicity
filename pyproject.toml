@@ -1,0 +1,24 @@
+[project]
+name = "implicity-workspace"
+version = "0.1.0"
+requires-python = ">=3.14,<3.15"
+dependencies = []
+
+[dependency-groups]
+dev = ["pytest==9.0.2", "ruff==0.14.8"]
+
+[tool.uv.workspace]
+members = ["api", "engine/python"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["api/tests", "engine/python/tests"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
