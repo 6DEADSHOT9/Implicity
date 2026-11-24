@@ -54,7 +54,7 @@ Every event has the same shared fields and one of three shapes: an action, a tur
 | `kind` | The kind of chat, when known: a predefined kind name or the opaque id of an accepted custom kind, never its label |
 | `component`, `slot` | The registry component and slot it concerns, when relevant |
 | `layout_version`, `registry_version` | The workspace the person was looking at: integers, on every event, since the browser has both before it sends anything |
-| `device_class`, `input_type` | Desktop or tablet, from the viewport; mouse, trackpad or touch, starting from the pointer media query and then the last input used. Always present |
+| `device_class`, `input_type` | `desktop` or `tablet`, from the viewport, at a breakpoint T18 documents. `mouse`, `touch`, `pen` or `none`: `mouse` includes trackpads, which browsers cannot tell apart. It starts from the pointer media query (fine gives `mouse`, coarse `touch`, none `none`), then follows the last Pointer Events type, and an unknown type maps to `mouse`. Always present |
 
 A field that does not apply to an event is left out, never sent as null. A suspected guest is not marked on events: the mark is kept in SQLite with the module that owns it. The sessions actually excluded are those currently set aside plus those the owner has excluded; the owning module supplies that set to the host, which passes it to the event source for both feature counts and session summaries (ADR 0016, ADR 0020).
 
@@ -78,8 +78,8 @@ A field that does not apply to an event is left out, never sent as null. A suspe
 | `attachment_added` | A file or photo is attached | Type: `image`, `document`, `audio`, `video` or `other`. Never the file name |
 | `draft_deleted` | A draft of meaningful length is cleared before sending | Length bucket only. The text goes to the backend, never to PostHog |
 | `setting_changed` | The person sets something by hand | Dimension, value, and the Command for `shortcut_chips` |
-| `change_shown`, `change_kept`, `change_undone` | An admitted change is displayed, kept or undone | Decision id |
-| `proposal_shown`, `proposal_kept`, `proposal_dismissed` | A proposal is shown on a ProposalCard and answered | Proposal id, proposal type copied from the stored proposal. A dimension change offered to the person uses the change events instead |
+| `change_shown`, `change_kept`, `change_undone` | An admitted change is displayed, kept or undone. Only once the arbiter has created a decision | Decision id |
+| `proposal_shown`, `proposal_kept`, `proposal_dismissed` | A proposal is shown on a ProposalCard and answered, before any decision exists | Proposal id, proposal type copied from the stored proposal |
 | `widget_seen`, `widget_used`, `widget_pinned`, `widget_dismissed` | Home widgets (Stage 4; schema added in Stage 4) | Widget id |
 | `media_played`, `media_paused`, `media_seeked`, `media_replayed` | Media playback (Stage 4; schema added in Stage 4) | Position bucket |
 
@@ -102,7 +102,7 @@ A field that does not apply to an event is left out, never sent as null. A suspe
 
 - The typing, reading and pointer groups are always present on `turn_summary`, and the session's typing statistics always on `session_summary`.
 - Counts are whole numbers, 0 or more, and never null.
-- Durations, rates and means are numbers, and null when no sample exists: one keystroke gives no gap between keys, a turn with no next action has no wait, a turn with no pointer use has no hesitation. A measured 0 is a real value.
+- Durations, rates and means are numbers, and null when no sample exists: one keystroke gives no gap between keys, a turn with no next action has no wait before it. A count with nothing observed, such as no hesitations, is 0. A measured 0 is a real value. The contracts' table also covers statistics that are neither counts nor durations, such as gap spread, furthest point reached and pointer distance.
 - `seconds_since_answer` is null when the message is edited before an answer began.
 - The kinds of chat in a session summary are a list of distinct kind ids; an unknown kind is left out.
 
@@ -251,7 +251,7 @@ A proposal asks for a change, a decision records one that was admitted, and the 
   "kind": "coding",            // or null for global
   "to": "open",
   "change_policy": "automatic" | "proposed",
-  "type": "look" | "widget" | "workflow" | "kind" | "schedule",   // set by the app when it stores a proposal shown on a ProposalCard
+  "type": "look" | "widget" | "workflow" | "kind" | "schedule" | "dimension",   // required, set by the app when it stores the proposal
   "reason": "You opened long answers in 18 of the last 21 coding chats.",
   "evidence": { "features": […], "occasions": 21, "conversations": 6, "days": 5 },
   "payload": { }               // a look, widget, workflow, kind or schedule, for proposed changes
@@ -272,6 +272,8 @@ A proposal asks for a change, a decision records one that was admitted, and the 
 ```
 
 The contracts define the envelope above. The shape of each `evidence.features` entry belongs to the engine ticket (T20), and each `payload` belongs to the ticket that builds that kind of proposal. `to` is checked against the dimension's values at runtime.
+
+Every offer to the person, including a dimension change under `change_policy: proposed`, is a proposal shown on a ProposalCard, and the proposal events describe it. Keep sends it to the arbiter; only an admitted proposal becomes a decision, and only a decision has change events. Automatic changes are admitted directly and shown with a ChangeNotice.
 
 **State API.** The browser fetches state at session start and when a conversation ends. There is no push channel for adaptation.
 

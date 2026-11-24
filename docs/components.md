@@ -82,7 +82,7 @@ Other widgets, such as a CI tracker or supplier watch, are a DataTable, DataChar
 | Component | What it is | shadcn/ui base | Build |
 | --- | --- | --- | --- |
 | ChangeNotice | "This changed because…" with Keep and Undo | Marker inside a conversation, Toast outside one | Composed |
-| ProposalCard | A proposed look, widget, workflow, schedule or kind of chat, with Keep and Dismiss and a preview | Card, Button | Composed |
+| ProposalCard | A proposed look, widget, workflow, schedule, kind of chat or setting change, with Keep and Dismiss and a preview | Card, Button | Composed |
 | Nudge | The once-a-day in-app prompt at session start | Alert, Button | Composed |
 
 ### Features that are not separate components

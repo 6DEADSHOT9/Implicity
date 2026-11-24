@@ -20,8 +20,9 @@ Every value an event carries comes from a closed set, a typed measurement, or an
 - `component_seen` carries its default state, because an occasion is a component seen in a given state.
 - `representation_switched` names its dimension (`data_form` or `answer_form`), and from and to are values of that dimension.
 - Commands always travel under the key `command`, on `message_sent`, `shortcut_used` and `setting_changed` (which carries it for `shortcut_chips`). The key binding is never captured.
-- A proposal stores a `type`: `look`, `widget`, `workflow`, `kind` or `schedule`, set by the app. The proposal events copy it and fire only for proposals shown on a ProposalCard; a dimension change offered to the person uses the change events.
+- Every proposal stores a required `type`: `look`, `widget`, `workflow`, `kind`, `schedule` or `dimension`, set by the app. Every offer to the person, including a dimension change under `change_policy: proposed`, is shown on a ProposalCard and described by the proposal events. Change events exist only once the arbiter has created a decision: for automatic changes, and after Keep. So the arbiter stays the only gate (rule 1).
 - Events carry no guest mark. A suspected guest is an inference, so the mark stays in SQLite with its module (ADR 0016). The sessions excluded are those currently set aside plus those the owner excluded, supplied by the owning module to both `daily_counts` and `session_summaries`, which gains an `exclude_sessions` parameter.
+- `input_type` is `mouse`, `touch`, `pen` or `none`, because browsers cannot tell a trackpad from a mouse; it starts from the pointer media query and then follows Pointer Events. T18 documents the `device_class` breakpoint.
 - `layout_version`, `registry_version`, `device_class` and `input_type` are on every event; `component` and `slot` are required on the events whose identity they are.
 - A field that does not apply is left out, never sent as null. Timestamps are UTC RFC 3339 to the millisecond; version fields are integers.
 
