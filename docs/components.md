@@ -26,7 +26,7 @@ These never move. Only additions, such as a new shortcut chip, are allowed.
 | ConversationNavigation | Sidebar with Home, New chat, Search, chat list, recent work, projects, and the quota indicator in its footer | Sidebar, Item, Kbd, Avatar | Composed |
 | Composer | Input with attachments and shortcut chips | Prompt Input | Direct |
 | ChatHeader | Title, kind-of-chat badge, settings | Badge, Button, Dropdown Menu | Composed |
-| Search | Search across chats, also the command palette | Command | Direct |
+| Search | Search across chats, also the command palette | Command (the shadcn/ui component) | Direct |
 | Settings | Preferences, locks, "What Implicity notices", change history, quota detail | Dialog or Sheet, Tabs, Field, Switch, Table | Composed |
 
 ### Conversation
@@ -40,7 +40,7 @@ These never move. Only additions, such as a new shortcut chip, are allowed.
 | AttachmentTray | Files and photos attached to a message | Attachment | Direct |
 | Citation | A source chip, including links to the person's own memory | Inline Citation | Direct |
 | ContextChip | What shaped this answer, with a one-tap correction. Variants: "Remembered", "Noticed", "Set" | Marker, Button | Composed |
-| ShortcutChips | Quick actions and workflow chips | Suggestion | Direct |
+| ShortcutChips | Chips for Commands, including workflow chips | Suggestion | Direct |
 | ApprovalRequest | Approve, edit or deny before anything is run or changed | Confirmation | Direct |
 
 ### Content
@@ -49,7 +49,7 @@ These never move. Only additions, such as a new shortcut chip, are allowed.
 | --- | --- | --- | --- |
 | DataTable | Table, with a switch to other forms | Data Table | Direct |
 | DataChart | Line, bar and similar charts | Chart | Direct |
-| CodeBlock | Code and diffs, with modes for stack traces and terminal output | Code Block, Stack Trace, Terminal | Direct |
+| CodeBlock | Code, with variants for diffs, stack traces and terminal output | Code Block, Stack Trace, Terminal | Direct |
 | MediaPlayer | Inline video and audio from YouTube and attached files, open to more sources | None; Aspect Ratio and Slider help | Written by us |
 | ArtifactWorkspace | A document-style card, such as a recipe or a draft | Card, Scroll Area, Typography | Composed |
 | Checklist | Items with done and open states | Checkbox, Item | Composed |
@@ -82,14 +82,14 @@ Other widgets, such as a CI tracker or supplier watch, are a DataTable, DataChar
 | Component | What it is | shadcn/ui base | Build |
 | --- | --- | --- | --- |
 | ChangeNotice | "This changed because…" with Keep and Undo | Marker inside a conversation, Toast outside one | Composed |
-| ProposalCard | A proposed look, widget, workflow or kind of chat, with Keep and Dismiss and a preview | Card, Button | Composed |
+| ProposalCard | A proposed look, widget, workflow, schedule, kind of chat or setting change, with Keep and Dismiss and a preview | Card, Button | Composed |
 | Nudge | The once-a-day in-app prompt at session start | Alert, Button | Composed |
 
 ### Features that are not separate components
 
 - The table-or-chart switcher belongs to DataTable and DataChart.
 - The version switcher belongs to MessageActions.
-- Diffs and stack traces are modes of CodeBlock.
+- Diffs and stack traces are variants of CodeBlock.
 - Empty states use shadcn/ui's Empty inside the navigation and widgets.
 - Locks and the change history live in Settings.
 - Workbenches and dashboards are arrangements of the components above.
@@ -136,7 +136,7 @@ A look is a named set of token values, and every component reads only tokens.
 | Texture | None, paper grain, ruled lines |
 | Motion | None, subtle, full. Follows the system's reduced-motion setting and is not learned |
 
-- Every look has a light and a dark variant. The mode follows the system unless the person chooses one.
+- Every look has a light and a dark variant. The mode follows the system, at onboarding and afterwards, unless the person has saved a choice.
 - A few presets ship with the product. Hermes can generate a look from a request or a rule's suggestion, always as a proposal with a preview.
 - A look is offered only if it passes every automatic check: text contrast, minimum text and target sizes, a consistent spacing scale, a limited palette, comfortable line length, clear heading steps, and colour harmony.
 - Judgment principles such as visual hierarchy, grouping and restraint are guidance inside Hermes's "propose a look" skill.
