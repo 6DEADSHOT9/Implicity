@@ -45,42 +45,66 @@ Every event has the same shared fields and one of three shapes: an action, a tur
 
 | Field | Meaning |
 | --- | --- |
-| `event_id` | Unique id, for deduplication |
+| `event_id` | Unique id, for deduplication: a UUID minted in the browser |
 | `name` | The event name |
-| `timestamp` | When it happened, from the browser |
-| `contracts_version` | Version of the contracts it was built against |
-| `session_id` | The session it belongs to |
-| `conversation_id` | The conversation, when there is one |
-| `kind` | The kind of chat, when known |
+| `timestamp` | When it happened, from the browser: UTC, RFC 3339, to the millisecond |
+| `contracts_version` | Version of the contracts it was built against: an integer |
+| `session_id` | The session it belongs to: a UUID minted by the app |
+| `conversation_id` | The conversation, when there is one: a UUID minted by the app |
+| `kind` | The kind of chat, when known: a predefined kind name or the opaque id of an accepted custom kind, never its label |
 | `component`, `slot` | The registry component and slot it concerns, when relevant |
-| `layout_version`, `registry_version` | The workspace the person was looking at |
-| `device_class`, `input_type` | Desktop or tablet; mouse, trackpad or touch |
-| `session_flag` | `normal` or `guest_suspected` |
+| `layout_version`, `registry_version` | The workspace the person was looking at: integers, on every event, since the browser has both before it sends anything |
+| `device_class`, `input_type` | `desktop` or `tablet`, from the viewport, at a breakpoint T18 documents. `mouse`, `touch`, `pen` or `none`: `mouse` includes trackpads, which browsers cannot tell apart. It starts from the pointer media query (fine gives `mouse`, coarse `touch`, none `none`), then follows the last Pointer Events type, and an unknown type maps to `mouse`. Always present |
+
+A field that does not apply to an event is left out, never sent as null. A suspected guest is not marked on events: the mark is kept in SQLite with the module that owns it. The sessions actually excluded are those currently set aside plus those the owner has excluded; the owning module supplies that set to the host, which passes it to the event source for both feature counts and session summaries (ADR 0016, ADR 0020).
 
 **Actions, sent as they happen.**
 
 | Event | Sent when | Extra fields |
 | --- | --- | --- |
-| `session_started`, `session_ended` | A session begins, or ends on close or idle | Mode, text scale, local hour bucket |
+| `session_started`, `session_ended` | A session begins, or ends on close or idle | Mode, text scale, local hour bucket (both carry the bucket of the session's start) |
 | `conversation_started`, `conversation_ended` | A conversation opens or is left | |
-| `message_sent` | The person sends a message | Length bucket, attachment count, shortcut used |
+| `message_sent` | The person sends a message | Length bucket, attachment count, the Command if a shortcut sent it |
 | `answer_shown` | An answer finishes rendering | Length bucket, has code, has table, has reasoning |
 | `component_shown` | A component renders | Its default state, such as folded or open |
-| `component_seen` | It stays on screen for a few seconds | Seconds visible |
-| `section_expanded`, `section_collapsed` | A foldable section is toggled | Which section type |
-| `representation_switched` | Data is switched between forms | From, to |
-| `panel_opened`, `panel_closed`, `panel_docked`, `panel_undocked` | A panel changes | Which panel |
-| `answer_copied`, `code_copied` | Content is copied | Share of the answer copied, as a bucket |
+| `component_seen` | It stays on screen for a few seconds | Its default state, seconds visible. `slot` is required whenever the occasion is slot-scoped |
+| `section_expanded`, `section_collapsed` | A foldable section is toggled | None. `component` and `slot` are required and identify the section |
+| `representation_switched` | An answer or data result is switched between forms | Dimension (`data_form` or `answer_form`), from, to: values of that dimension |
+| `panel_opened`, `panel_closed`, `panel_docked`, `panel_undocked` | A panel changes | None. `component` is required and identifies the panel |
+| `answer_copied`, `code_copied` | Content is copied | Share copied: `some`, `most` or `all` |
 | `answer_regenerated`, `generation_stopped`, `message_edited` | The person redoes, stops or edits | Seconds since the answer began |
-| `shortcut_used` | A shortcut chip or key is used | Which shortcut |
+| `shortcut_used` | A shortcut chip or key is used | The Command, never the key pressed |
 | `search_used` | Search is opened and used | |
-| `attachment_added` | A file or photo is attached | Type |
+| `attachment_added` | A file or photo is attached | Type: `image`, `document`, `audio`, `video` or `other`. Never the file name |
 | `draft_deleted` | A draft of meaningful length is cleared before sending | Length bucket only. The text goes to the backend, never to PostHog |
-| `setting_changed` | The person sets something by hand | Dimension, value |
-| `change_shown`, `change_kept`, `change_undone` | An admitted change is displayed, kept or undone | Decision id |
-| `proposal_shown`, `proposal_kept`, `proposal_dismissed` | A proposal is displayed and answered | Proposal id, type |
-| `widget_seen`, `widget_used`, `widget_pinned`, `widget_dismissed` | Home widgets (Stage 4) | Widget id |
-| `media_played`, `media_paused`, `media_seeked`, `media_replayed` | Media playback (Stage 4) | Position bucket |
+| `setting_changed` | The person sets something by hand | Dimension, value, and the Command for `shortcut_chips` |
+| `change_shown`, `change_kept`, `change_undone` | An admitted change is displayed, kept or undone. Only once the arbiter has created a decision | Decision id |
+| `proposal_shown`, `proposal_kept`, `proposal_dismissed` | A proposal is shown on a ProposalCard and answered, before any decision exists | Proposal id, proposal type copied from the stored proposal |
+| `widget_seen`, `widget_used`, `widget_pinned`, `widget_dismissed` | Home widgets (Stage 4; schema added in Stage 4) | Widget id |
+| `media_played`, `media_paused`, `media_seeked`, `media_replayed` | Media playback (Stage 4; schema added in Stage 4) | Position bucket |
+
+**Vocabularies.** Every value an event carries is a closed enum, a typed measurement or an id minted by trusted code, so no field can hold content (ADR 0020).
+
+| Field | Values |
+| --- | --- |
+| Mode | `light` or `dark`: the variant of the look actually displayed |
+| Text scale | The look's `text_size` step displayed, 1 to 5 |
+| Local hour bucket | `night` [0, 6), `morning` [6, 12), `afternoon` [12, 18), `evening` [18, 24), in local time, taken when the session began, for `session_started`, `session_ended` and `session_summary`. Weekday or weekend is taken at the same moment |
+| Length bucket | `short`, `medium` or `long`, for messages, answers and drafts alike. The character cut-offs are a data file in `contracts`, starting at 80 and 400 for messages and drafts, 600 and 2,500 for answers |
+| Share copied | `some` (under half), `most` (half or more, not all), `all` |
+| Attachment type | `image`, `document`, `audio`, `video`, `other`, from the file's media type in the browser |
+| Component, slot, default state, built-in Command | Fixed, reviewed ids declared by the registry. The schema checks the form of the identifier; the capture wrapper rejects any value the registry does not declare. A slot named in a message spec from Hermes is checked against the registry, never taken on trust |
+| Workflow Command, custom kind, proposal id, decision id | Opaque ids minted by the app, never derived from a label, a title or content |
+| Command key | Always `command`, on `message_sent`, `shortcut_used` and `setting_changed`. Never the key binding |
+| Measurements | Units, thresholds and formulas belong to the capture tickets (T18 for actions, T19 for summaries). The wire rule is below |
+
+**Measurements on the wire.** The contracts publish each statistic's key and type; the capture tickets own what it means.
+
+- The typing, reading and pointer groups are always present on `turn_summary`, and the session's typing statistics always on `session_summary`.
+- Counts are whole numbers, 0 or more, and never null.
+- Durations, rates and means are numbers, and null when no sample exists: one keystroke gives no gap between keys, a turn with no next action has no wait before it. A count with nothing observed, such as no hesitations, is 0. A measured 0 is a real value. The contracts' table also covers statistics that are neither counts nor durations, such as gap spread, furthest point reached and pointer distance.
+- `seconds_since_answer` is null when the message is edited before an answer began.
+- The kinds of chat in a session summary are a list of distinct kind ids; an unknown kind is left out.
 
 **Turn summary.** `turn_summary` is sent once per turn and covers the message being written and the answer being read.
 
@@ -120,7 +144,7 @@ area: layout              # layout | look | answer_style | home | workflow
 values: [folded, open]
 default: folded
 scope: kind               # kind, with a global fallback
-mode: automatic           # automatic | proposed
+change_policy: automatic  # automatic | proposed
 occasion: A long answer shown and seen on screen
 evidence:
   open:   { for: long_answer_expanded,  against: long_answer_collapsed }
@@ -145,7 +169,7 @@ A dimension on a scale adds `scale: true`, which makes the engine move one value
 | `data_form` | table, chart | A data result, seen | Switching form, and time spent on each |
 | `sources_panel` | closed, docked | An answer with sources, seen | Opening or closing the sources panel |
 | `project_panel` | closed, docked | A conversation inside a project | Opening or closing the project panel |
-| `shortcut_chips` | One on/off per action | The action being performed by any route | The same action repeated often enough to pass the gate |
+| `shortcut_chips` | One on/off per Command | The Command being performed by any route | The same Command performed often enough to pass the gate |
 | `density` | compact, comfortable, spacious (scale) | A session | Long scrolling through lists and tables, against misses on small targets |
 | `answer_length` | short, medium, long | An answer, seen | Stopping early or leaving before the end, against asking for more |
 | `answer_order` | answer first, explanation first | An answer with both parts | Skipping the introduction to reach the result |
@@ -170,6 +194,7 @@ class EventSource(Protocol):
 
     def session_summaries(
         self, start: date, end: date,
+        exclude_sessions: Sequence[str] = (),
     ) -> list[SessionSummary]: ...
     # used for baselines and guest detection
 ```
@@ -220,20 +245,21 @@ A proposal asks for a change, a decision records one that was admitted, and the 
 ```jsonc
 // Proposal
 {
-  "id": "prop_…",
+  "id": "prop_…",               // minted by the app when it stores the proposal
   "source": "rule" | "hermes" | "person",
   "dimension": "long_answers",
   "kind": "coding",            // or null for global
   "to": "open",
-  "mode": "automatic" | "proposed",
+  "change_policy": "automatic" | "proposed",
+  "type": "look" | "widget" | "workflow" | "kind" | "schedule" | "dimension",   // required, set by the app when it stores the proposal
   "reason": "You opened long answers in 18 of the last 21 coding chats.",
   "evidence": { "features": […], "occasions": 21, "conversations": 6, "days": 5 },
-  "payload": { }               // a look, widget, workflow or kind, for proposed changes
+  "payload": { }               // a look, widget, workflow, kind or schedule, for proposed changes
 }
 
 // Decision
 {
-  "id": "dec_…",
+  "id": "dec_…",                // minted when the proposal is admitted
   "proposal_id": "prop_…",
   "dimension": "long_answers", "kind": "coding",
   "from": "folded", "to": "open",
@@ -245,6 +271,10 @@ A proposal asks for a change, a decision records one that was admitted, and the 
 }
 ```
 
+The contracts define the envelope above. The shape of each `evidence.features` entry belongs to the engine ticket (T20), and each `payload` belongs to the ticket that builds that kind of proposal. `to` is checked against the dimension's values at runtime.
+
+Every offer to the person, including a dimension change under `change_policy: proposed`, is a proposal shown on a ProposalCard, and the proposal events describe it. Keep sends it to the arbiter; only an admitted proposal becomes a decision, and only a decision has change events. Automatic changes are admitted directly and shown with a ChangeNotice.
+
 **State API.** The browser fetches state at session start and when a conversation ends. There is no push channel for adaptation.
 
 | Call | Purpose |
@@ -254,11 +284,13 @@ A proposal asks for a change, a decision records one that was admitted, and the 
 | `POST /notices/{id}/shown` | The change was actually displayed |
 | `POST /decisions/{id}/keep`, `/undo` | The person's answer to a change |
 | `POST /proposals/{id}/keep`, `/dismiss` | The person's answer to a proposal |
-| `PUT /settings/{dimension}` | Set a value by hand, or return it to automatic |
+| `PUT /settings/{dimension}` | Set a value by hand, or return it to automatic. Whether returning to automatic sends `setting_changed`, and how, is decided with this endpoint's body by the Stage 2 Settings ticket |
 | `PUT /locks/{area}`, `PUT /freeze` | Lock an area, or freeze everything |
 | `GET /history` | Past decisions and their reasons |
 | `POST /sessions/{id}/exclude` | Exclude a marked session |
 | `POST /drafts` | A deleted draft's text, stored locally for 30 days |
+
+The request and response bodies of these calls are designed, and added to `contracts`, by the ticket that builds each endpoint.
 
 A change counts as made only after `shown` is reported. Until then it is pending and can be withdrawn.
 
@@ -318,7 +350,7 @@ web/src/registry/DataTable/
 }
 ```
 
-The colour keys are shadcn/ui's theming variables. A look is valid only if both variants pass every automatic check: contrast, minimum sizes, spacing scale, palette size, line length, heading steps and colour harmony. The checks run in the backend before a look is ever offered.
+The light and dark objects contain only shadcn/ui colour keys, including `sidebar` for the sidebar surface; those colour values belong to each look. The shared code and terminal palette is defined once per mode in `contracts/looks/tokens.json`, along with derived CSS values for the root radius, density and text-size choices, spacing and dimensions. Preset tests check the fixed key sets, CSS units and scale completeness, contrast, target and input sizes, palette budget and local fonts. The later backend proposal gate must apply those checks to proposed looks and also assess colour harmony before offering them.
 
 ## Hermes: the agent interface and tools
 
@@ -343,7 +375,7 @@ class Agent(Protocol):
 | --- | --- | --- |
 | `catalogue` | Optional role filter | Each component's name, props schema, slots and limits |
 | `render` | A message spec | An id the frontend renders, or a validation error |
-| `propose` | A proposal with `source: hermes` | The arbiter's verdict |
+| `propose` | A proposal request with `source: hermes` and no id; the app mints the id | The arbiter's verdict |
 | `memory_save` | Item type, text, scope, sensitive flag | Saved, or queued for the person's confirmation |
 | `label_kind` | Conversation id, kind | Recorded |
 | `set_preference` | Dimension, value, the person's own words | Set as explicit, with a chip offering Undo |
