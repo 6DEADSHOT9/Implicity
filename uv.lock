@@ -137,7 +137,7 @@ requires-dist = [
 [[package]]
 name = "implicity-engine"
 version = "0.1.0"
-source = { virtual = "engine/python" }
+source = { editable = "engine/python" }
 dependencies = [
     { name = "implicity-contracts" },
 ]

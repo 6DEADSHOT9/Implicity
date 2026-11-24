@@ -273,6 +273,8 @@ A proposal asks for a change, a decision records one that was admitted, and the 
 
 The contracts define the envelope above. The shape of each `evidence.features` entry belongs to the engine ticket (T20), and each `payload` belongs to the ticket that builds that kind of proposal. `to` is checked against the dimension's values at runtime.
 
+T20 defines each `evidence.features` entry as `{feature, day, kind, happened, could_have, weight}`: the feature id, UTC date, kind id, raw integer counts and the applied half-life weight. `occasions`, `conversations` and `days` on the enclosing Evidence are unweighted gate totals.
+
 Every offer to the person, including a dimension change under `change_policy: proposed`, is a proposal shown on a ProposalCard, and the proposal events describe it. Keep sends it to the arbiter; only an admitted proposal becomes a decision, and only a decision has change events. Automatic changes are admitted directly and shown with a ChangeNotice.
 
 **State API.** The browser fetches state at session start and when a conversation ends. There is no push channel for adaptation.

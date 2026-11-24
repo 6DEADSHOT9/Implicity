@@ -1,0 +1,17 @@
+{
+  "id": "long_answers",
+  "version": 1,
+  "area": "layout",
+  "values": ["folded", "open"],
+  "default": "folded",
+  "scope": "kind",
+  "change_policy": "automatic",
+  "occasion": "A long answer shown and seen on screen",
+  "evidence": {
+    "open": {"for": "long_answer_expanded", "against": "long_answer_collapsed"},
+    "folded": {"for": "long_answer_collapsed", "against": "long_answer_expanded"}
+  },
+  "gate": {"occasions": 20, "conversations": 3, "days": 2, "lead": {"for": 0.7, "against": 0.1}},
+  "window_days": 60,
+  "half_life_days": 14
+}
