@@ -1,193 +1,311 @@
 import ast
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+from uuid import UUID
 
 import pytest
+from implicity_contracts.generated import (
+    DayType,
+    DeviceClass,
+    InputType,
+    Kinds,
+    LocalHourBucket,
+    Typing,
+)
+from implicity_contracts.generated import (
+    SessionSummary as ContractSessionSummary,
+)
 from implicity_engine import (
     DailyCount,
     Evidence,
     FakeEventSource,
     Feature,
-    Gate,
-    SessionSummary,
+    evaluate_belief,
     load_dimension,
     load_feature,
     lookup_value,
     rate,
     select_value,
-    weight,
 )
 
 TODAY = date(2026, 11, 25)
 
 
-def test_yaml_loaders_require_valid_files_and_occasion(tmp_path: Path) -> None:
-    feature_path = tmp_path / "feature.yaml"
+def count(day: date, happened: int, could_have: int, *conversations: str):
+    return DailyCount(day, "coding", happened, could_have, frozenset(conversations))
+
+
+def fake_count(row: DailyCount, session_id: str = "s1"):
+    return row, session_id
+
+
+def contract_summary(timestamp: datetime, session_id: str) -> ContractSessionSummary:
+    return ContractSessionSummary(
+        event_id=UUID("11111111-1111-4111-8111-111111111111"),
+        timestamp=timestamp,
+        contracts_version=1,
+        session_id=UUID(session_id),
+        layout_version=1,
+        registry_version=1,
+        device_class=DeviceClass.desktop,
+        input_type=InputType.none,
+        name="session_summary",
+        duration=10.0,
+        active_time=10.0,
+        turns=1,
+        kinds=[Kinds.coding],
+        local_hour_bucket=LocalHourBucket.morning,
+        day_type=DayType.weekday,
+        typing=Typing(
+            composing_time=None,
+            mean_key_gap=None,
+            key_gap_spread=None,
+            burst_count=0,
+            pause_count=0,
+            backspace_rate=None,
+        ),
+    )
+
+
+def dimension_file(tmp_path: Path, text: str) -> Path:
+    path = tmp_path / "dimension.yaml"
+    path.write_text(text)
+    return path
+
+
+def test_recomputes_belief_from_fake_source_and_retains_judged_scale_value(
+    tmp_path: Path,
+) -> None:
+    dimension = load_dimension(
+        dimension_file(
+            tmp_path,
+            "id: density\nversion: 1\narea: layout\n"
+            "values: [compact, comfortable, spacious]\ndefault: compact\n"
+            "scope: kind\nchange_policy: automatic\nscale: true\noccasion: session\n"
+            "evidence: {spacious: {for: scroll, against: misses}, "
+            "comfortable: {for: comfort, against: misses}, "
+            "compact: {for: misses, against: scroll}}\n"
+            "gate: {occasions: 1, conversations: 1, days: 1, "
+            "lead: {for: 0.7, against: 0.1}}\nwindow_days: 60\nhalf_life_days: 14\n",
+        )
+    )
+    rows = {
+        "session": [fake_count(count(TODAY, 0, 1, "c1"))],
+        "scroll": [fake_count(count(TODAY, 9, 10, "c1"))],
+        "comfort": [fake_count(count(TODAY, 8, 10, "c1"))],
+        "misses": [fake_count(count(TODAY, 1, 10, "c1"))],
+    }
+    source = FakeEventSource(
+        rows, [], local_timezone="UTC", occasion_features=frozenset({"session"})
+    )
+    first = evaluate_belief(dimension, source, "compact", "coding", TODAY)
+    second = evaluate_belief(dimension, source, "compact", "coding", TODAY)
+    assert (first.judged_value, first.applied_value) == ("spacious", "comfortable")
+    assert first == second
+    assert source.daily_count_calls == 8
+    saved = Evidence.from_dict(first.evidence.to_dict())
+    replay = dimension.gate.check(
+        "spacious",
+        "coding",
+        TODAY,
+        60,
+        14,
+        "session",
+        saved.features,
+        dimension.evidence["spacious"],
+    )
+    assert replay == first.gates["spacious"]
+
+
+def test_yaml_loaders_keep_documented_fields_and_reject_invalid_definitions(
+    tmp_path: Path,
+) -> None:
+    feature_path = tmp_path / "seen.yaml"
     feature_path.write_text(
         "id: seen\ncould_have: {event: component_seen}\ngroup_by: [day, kind]\n"
     )
-    assert load_feature(feature_path) == Feature(
-        "seen", None, {"event": "component_seen"}
+    feature = load_feature(feature_path)
+    assert feature == Feature(
+        "seen", None, {"event": "component_seen"}, ("day", "kind")
     )
+    feature_path.write_text("id: bad\ncould_have: {event: []}\ngroup_by: [day, kind]\n")
+    with pytest.raises(ValueError, match="seen.yaml"):
+        load_feature(feature_path)
 
-    dimension_path = tmp_path / "dimension.yaml"
-    dimension_path.write_text(
+    valid = (
         "id: answer\nversion: 1\narea: layout\nvalues: [folded, open]\n"
         "default: folded\nscope: kind\nchange_policy: automatic\noccasion: seen\n"
         "evidence: {open: {for: expanded, against: collapsed}}\n"
         "gate: {occasions: 20, conversations: 3, days: 2, "
-        "lead: {for: 0.7, against: 0.1}}\n"
-        "window_days: 60\nhalf_life_days: 14\n"
+        "lead: {for: 0.7, against: 0.1}}\nwindow_days: 60\nhalf_life_days: 14\n"
     )
-    assert load_dimension(dimension_path).occasion == "seen"
-    dimension_path.write_text("id: broken: [")
-    with pytest.raises(ValueError):
-        load_dimension(dimension_path)
-    dimension_path.write_text("id: answer\n")
-    with pytest.raises(ValueError, match="occasion"):
-        load_dimension(dimension_path)
+    path = dimension_file(tmp_path, valid)
+    assert load_dimension(path).occasion == "seen"
+    for invalid in (
+        valid.replace("occasion: seen\n", ""),
+        valid.replace("occasion: seen", "occasion: ''"),
+        valid.replace("half_life_days: 14", "half_life_days: 0"),
+        valid.replace("occasions: 20", "occasions: []"),
+    ):
+        path.write_text(invalid)
+        with pytest.raises(ValueError, match="dimension.yaml"):
+            load_dimension(path)
+    path.write_text("id: broken: [")
+    with pytest.raises(ValueError, match="dimension.yaml"):
+        load_dimension(path)
 
 
-def test_event_source_exclusions_and_occasion_only_counts() -> None:
-    rows = [DailyCount(TODAY, "coding", 0, 3, frozenset({"c1"}), "s1")]
-    summary = SessionSummary(TODAY, "coding", "s1", {})
-    source = FakeEventSource({"seen": rows}, [summary])
-    assert source.daily_counts("seen", TODAY, TODAY, exclude_sessions=["s1"]) == []
-    assert source.daily_counts("seen", TODAY, TODAY)[0].happened == 0
-    assert source.session_summaries(TODAY, TODAY, exclude_sessions=["s1"]) == []
+def test_fake_uses_shared_session_summary_and_honours_local_day_and_exclusions() -> (
+    None
+):
+    row = count(TODAY, 0, 3, "c1")
+    session_id = "22222222-2222-4222-8222-222222222222"
+    summary = contract_summary(
+        datetime(2026, 11, 26, 1, tzinfo=timezone.utc), session_id
+    )
+    source = FakeEventSource(
+        {"seen": [fake_count(row, session_id)]},
+        [summary],
+        local_timezone="America/Los_Angeles",
+    )
+    assert (
+        source.daily_counts("seen", TODAY, TODAY, exclude_sessions=[session_id]) == []
+    )
+    assert source.daily_counts("seen", TODAY, TODAY)[0] == row
     assert source.session_summaries(TODAY, TODAY) == [summary]
+    assert source.session_summaries(TODAY, TODAY, [session_id]) == []
 
 
-def test_distinct_conversations_and_occasion_feature_gate() -> None:
-    seen = [
-        DailyCount(TODAY - timedelta(days=2), "coding", 0, 10, frozenset({"same"})),
-        DailyCount(TODAY - timedelta(days=1), "coding", 0, 10, frozenset({"same"})),
-        DailyCount(TODAY, "coding", 0, 10, frozenset({"same"})),
-    ]
+def test_gate_counts_distinct_conversations_and_only_occasion_rows(
+    tmp_path: Path,
+) -> None:
+    path = dimension_file(
+        tmp_path,
+        "id: answer\nversion: 1\narea: layout\nvalues: [folded, open]\n"
+        "default: folded\nscope: kind\nchange_policy: automatic\noccasion: seen\n"
+        "evidence: {open: {for: expanded, against: collapsed}, "
+        "folded: {for: collapsed, against: expanded}}\n"
+        "gate: {occasions: 20, conversations: 3, days: 2, "
+        "lead: {for: 0.7, against: 0.1}}\nwindow_days: 3\nhalf_life_days: 14\n",
+    )
+    dimension = load_dimension(path)
+    source = FakeEventSource(
+        {
+            "seen": [
+                fake_count(count(TODAY - timedelta(days=2), 0, 10, "same")),
+                fake_count(count(TODAY - timedelta(days=1), 0, 10, "same")),
+                fake_count(count(TODAY, 0, 10, "same")),
+            ],
+            "expanded": [fake_count(count(TODAY, 18, 20))],
+            "collapsed": [fake_count(count(TODAY, 1, 20))],
+        },
+        [],
+    )
+    one_conversation = evaluate_belief(dimension, source, "folded", "coding", TODAY)
+    assert one_conversation.gates["open"].conversations == 1
+    assert not one_conversation.gates["open"].met
+    source.counts["seen"][-1] = fake_count(count(TODAY, 0, 10, "third"))
+    source.counts["seen"][-2] = fake_count(
+        count(TODAY - timedelta(days=1), 0, 10, "second")
+    )
     assert (
-        not Gate(20, 3, 2, 0.7, 0.1)
-        .check(
-            "open",
-            "folded",
-            "coding",
-            TODAY,
-            3,
-            14,
-            "seen",
-            {"seen": seen, "expanded": [], "collapsed": []},
-        )
-        .met
+        evaluate_belief(dimension, source, "folded", "coding", TODAY).gates["open"].met
     )
-    seen[-1] = DailyCount(TODAY, "coding", 0, 10, frozenset({"third"}))
-    seen[-2] = DailyCount(
-        TODAY - timedelta(days=1), "coding", 0, 10, frozenset({"second"})
-    )
-    evidence = {
-        "seen": seen,
-        "expanded": [DailyCount(TODAY, "coding", 18, 20, frozenset())],
-        "collapsed": [DailyCount(TODAY, "coding", 1, 20, frozenset())],
-    }
-    evidence["collapsed"] = [DailyCount(TODAY, "coding", 0, 0, frozenset())]
-    assert not (
-        Gate(20, 3, 2, 0.7, 0.1)
-        .check(
-            "open",
-            "folded",
-            "coding",
-            TODAY,
-            3,
-            14,
-            "seen",
-            evidence,
-            {"open": {"for": "expanded", "against": "collapsed"}},
-        )
-        .met
-    )
-    evidence["collapsed"] = [DailyCount(TODAY, "coding", 1, 20, frozenset())]
+    source.counts["collapsed"] = [fake_count(count(TODAY, 0, 0))]
     assert (
-        Gate(20, 3, 2, 0.7, 0.1)
-        .check(
-            "open",
-            "folded",
-            "coding",
-            TODAY,
-            3,
-            14,
-            "seen",
-            evidence,
-            {"open": {"for": "expanded", "against": "collapsed"}},
-        )
+        not evaluate_belief(dimension, source, "folded", "coding", TODAY)
+        .gates["open"]
         .met
     )
 
 
-def test_occasion_feature_counts_both_states_once() -> None:
-    rows = [
-        DailyCount(TODAY, "coding", 0, 20, frozenset({"folded"})),
-        DailyCount(TODAY, "coding", 0, 20, frozenset({"open"})),
-    ]
-    result = Gate(40, 2, 1, 0.7, 0.1).check(
-        "open",
-        "folded",
-        "coding",
-        TODAY,
-        1,
-        14,
-        "seen",
-        {"seen": rows, "expanded": [], "collapsed": []},
+def test_occasions_use_only_designated_feature_and_weighted_leads_have_own_denominators(
+    tmp_path: Path,
+) -> None:
+    path = dimension_file(
+        tmp_path,
+        "id: answer\nversion: 1\narea: layout\nvalues: [folded, open]\n"
+        "default: folded\nscope: kind\nchange_policy: automatic\noccasion: seen\n"
+        "evidence: {open: {for: expanded, against: collapsed}}\n"
+        "gate: {occasions: 40, conversations: 2, days: 1, "
+        "lead: {for: 0.7, against: 0.1}}\nwindow_days: 60\nhalf_life_days: 14\n",
     )
-    assert (result.occasions, result.conversations, result.days) == (40, 2, 1)
-
-
-def test_leads_use_weighted_feature_denominators_and_reject_invalid_rates() -> None:
-    assert rate(
-        [DailyCount(TODAY, "coding", 18, 20, frozenset())], TODAY, 14
-    ) == pytest.approx(0.9)
-    assert rate(
-        [DailyCount(TODAY, "coding", 1, 20, frozenset())], TODAY, 14
-    ) == pytest.approx(0.05)
-    assert rate([DailyCount(TODAY, "coding", 0, 0, frozenset())], TODAY, 14) is None
+    dimension = load_dimension(path)
+    source = FakeEventSource(
+        {
+            "seen": [
+                fake_count(count(TODAY, 99, 20, "folded")),
+                fake_count(count(TODAY, 0, 20, "open")),
+            ],
+            "expanded": [fake_count(count(TODAY, 18, 20))],
+            "collapsed": [fake_count(count(TODAY, 1, 20))],
+        },
+        [],
+        occasion_features=frozenset({"seen"}),
+    )
+    result = evaluate_belief(dimension, source, "folded", "coding", TODAY)
+    assert all(row.happened == 0 for row in result.evidence.features["seen"])
+    assert result.gates["open"].occasions == 40
+    assert result.gates["open"].for_rate == pytest.approx(0.9)
+    assert result.gates["open"].against_rate == pytest.approx(0.05)
+    assert result.gates["open"].met
     with pytest.raises(ValueError, match="rate"):
-        rate([DailyCount(TODAY, "coding", 2, 1, frozenset())], TODAY, 14)
+        rate([count(TODAY, 2, 1)], TODAY, 14)
 
 
-def test_day_weight_and_inclusive_window() -> None:
-    assert weight(TODAY, TODAY, 14) == 1
-    assert weight(TODAY - timedelta(days=14), TODAY, 14) == pytest.approx(0.5)
-    assert weight(TODAY - timedelta(days=60), TODAY, 14) == pytest.approx(
-        0.5 ** (60 / 14)
-    )
-    assert (
-        rate(
-            [DailyCount(TODAY - timedelta(days=60), "coding", 1, 1, frozenset())],
-            TODAY,
-            14,
-            start=TODAY - timedelta(days=59),
+def test_day_weights_and_window_boundary(tmp_path: Path) -> None:
+    dimension = load_dimension(
+        dimension_file(
+            tmp_path,
+            "id: answer\nversion: 1\narea: layout\nvalues: [folded, open]\n"
+            "default: folded\nscope: kind\nchange_policy: automatic\noccasion: seen\n"
+            "evidence: {open: {for: expanded, against: collapsed}}\n"
+            "gate: {occasions: 1, conversations: 1, days: 1, "
+            "lead: {for: 0, against: 1}}\nwindow_days: 60\nhalf_life_days: 14\n",
         )
-        is None
     )
+    source = FakeEventSource(
+        {
+            "seen": [
+                fake_count(count(TODAY, 0, 1, "today")),
+                fake_count(count(TODAY - timedelta(days=60), 0, 100, "outside")),
+            ],
+            "expanded": [
+                fake_count(count(TODAY, 0, 10)),
+                fake_count(count(TODAY - timedelta(days=14), 10, 10)),
+            ],
+            "collapsed": [fake_count(count(TODAY, 0, 10))],
+        },
+        [],
+    )
+    result = evaluate_belief(dimension, source, "folded", "coding", TODAY)
+    assert result.gates["open"].occasions == 1
+    assert result.gates["open"].days == 1
+    assert result.gates["open"].for_rate == pytest.approx(1 / 3)
 
 
-def test_highest_rate_wins_tie_keeps_current_and_scale_moves_one_step() -> None:
-    gates = {"short": 0.8, "long": 0.8, "spacious": 0.9}
-    assert select_value("medium", ["short", "medium", "long"], gates) == "medium"
+def test_selects_highest_qualifying_rate_ties_keep_current_and_scales_step_once() -> (
+    None
+):
+    values = ["short", "medium", "long"]
     assert (
-        select_value(
-            "medium",
-            ["short", "medium", "long"],
-            {"short": 0.8, "medium": 0.8, "long": 0.1},
-        )
+        select_value("medium", values, {"short": 0.8, "medium": 0.9, "long": 0.7})
         == "medium"
     )
+    assert select_value("medium", values, {"short": 0.8, "long": 0.8}) == "medium"
+    assert select_value("medium", values, {"short": 0.9, "medium": 0.9}) == "medium"
     assert (
         select_value(
-            "compact", ["compact", "comfortable", "spacious"], gates, scale=True
+            "compact",
+            ["compact", "comfortable", "spacious"],
+            {"spacious": 0.9},
+            scale=True,
         )
         == "comfortable"
     )
 
 
-def test_value_lookup_order_and_undone_values_are_not_learned() -> None:
+def test_lookup_order_and_undone_values_never_return_from_automatic_fallbacks() -> None:
     assert (
         lookup_value(
             "coding",
@@ -212,55 +330,89 @@ def test_value_lookup_order_and_undone_values_are_not_learned() -> None:
     )
     assert (
         lookup_value(
-            "writing",
-            "folded",
-            learned={"writing": "open"},
-            undone={"writing": {"open"}},
+            "writing", "folded", global_value="open", undone={"writing": {"open"}}
         )
         == "folded"
     )
-
-
-def test_evidence_snapshot_preserves_judged_value_rows_cutoff_and_day() -> None:
-    row = DailyCount(TODAY, "coding", 18, 20, frozenset({"c1", "c2"}))
-    evidence = Evidence("spacious", {"seen": [row]}, TODAY - timedelta(days=3), TODAY)
-    assert evidence.to_dict() == {
-        "judged_value": "spacious",
-        "features": [
-            {
-                "id": "seen",
-                "daily_counts": [
-                    {
-                        "day": "2026-11-25",
-                        "kind": "coding",
-                        "happened": 18,
-                        "could_have": 20,
-                        "conversation_ids": ["c1", "c2"],
-                    }
-                ],
-            }
-        ],
-        "freshness_cutoff": "2026-11-22",
-        "evaluation_day": "2026-11-25",
-    }
-
-
-def test_engine_import_boundary() -> None:
-    package = Path(__file__).parents[1] / "implicity_engine"
-    forbidden = {"app", "chat", "memory", "hermes"}
-    for path in package.glob("*.py"):
-        tree = ast.parse(path.read_text())
-        imports = [
-            node.module.split(".")[0]
-            for node in ast.walk(tree)
-            if isinstance(node, ast.ImportFrom) and node.module
-        ]
-        imports += [
-            alias.name.split(".")[0]
-            for node in ast.walk(tree)
-            if isinstance(node, ast.Import)
-            for alias in node.names
-        ]
-        assert forbidden.isdisjoint(imports), (
-            f"forbidden engine import in {path}: {imports}"
+    assert (
+        lookup_value(
+            "writing",
+            "folded",
+            explicit={"writing": "open"},
+            global_value="open",
+            undone={"writing": {"open"}},
         )
+        == "open"
+    )
+
+
+def test_daily_count_has_only_contract_fields() -> None:
+    assert tuple(DailyCount.__dataclass_fields__) == (
+        "day",
+        "kind",
+        "happened",
+        "could_have",
+        "conversation_ids",
+    )
+
+
+def forbidden_imports(package: Path, repository: Path) -> list[str]:
+    forbidden = {"app", "chat", "memory", "hermes", "api", "web", "implicity_api"}
+    api_root = repository / "api/src/implicity_api"
+    forbidden.update(
+        "implicity_api." + path.relative_to(api_root).as_posix().replace("/", ".")
+        for path in (
+            repository / "api/src/implicity_api/modules/app",
+            repository / "api/src/implicity_api/modules/memory",
+            repository / "api/src/implicity_api/modules/agent",
+            repository / "api/src/implicity_api/stores",
+        )
+        if path.exists()
+    )
+    found = []
+    for path in package.rglob("*.py"):
+        module = "implicity_engine." + ".".join(
+            path.relative_to(package).with_suffix("").parts
+        )
+        for node in ast.walk(ast.parse(path.read_text())):
+            imported = []
+            if isinstance(node, ast.Import):
+                imported.extend(alias.name for alias in node.names)
+            elif isinstance(node, ast.ImportFrom):
+                base = node.module or ""
+                if node.level:
+                    parent = module.rsplit(".", node.level)[0]
+                    base = f"{parent}.{base}".strip(".")
+                imported.append(base)
+                imported.extend(f"{base}.{alias.name}" for alias in node.names)
+            for name in imported:
+                parts = name.lower().split(".")
+                if any(part in forbidden for part in parts) or any(
+                    name == root or name.startswith(root + ".") for root in forbidden
+                ):
+                    found.append(f"{path}: {name}")
+    return found
+
+
+def test_engine_import_boundary_covers_nested_and_real_repository_packages(
+    tmp_path: Path,
+) -> None:
+    package = Path(__file__).parents[1] / "implicity_engine"
+    repository = Path(__file__).parents[3]
+    assert forbidden_imports(package, repository) == []
+    for imported in (
+        "api",
+        "web",
+        "Hermes",
+        "implicity_api",
+        "implicity_api.models.memory",
+        "implicity_api.stores.app",
+        "memory",
+    ):
+        nested = tmp_path / "implicity_engine" / "nested"
+        nested.mkdir(parents=True, exist_ok=True)
+        (nested / "guard.py").write_text(f"import {imported}\n")
+        assert forbidden_imports(tmp_path / "implicity_engine", repository)
+        (nested / "guard.py").unlink()
+    (nested / "guard.py").write_text("from . import memory\n")
+    assert forbidden_imports(tmp_path / "implicity_engine", repository)
