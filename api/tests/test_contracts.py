@@ -457,7 +457,18 @@ def test_specs_and_records_round_trip_with_app_minted_ids():
         "change_policy": "proposed",
         "type": "dimension",
         "reason": "evidence",
-        "evidence": {"features": [{"open": True}]},
+        "evidence": {
+            "features": [
+                {
+                    "feature": "long_answer_expanded",
+                    "day": "2026-11-24",
+                    "kind": "coding",
+                    "happened": 1,
+                    "could_have": 1,
+                    "weight": 1,
+                }
+            ]
+        },
         "payload": {},
     }
     decoded_request = decode_proposal_request(json.dumps(request))

@@ -2,6 +2,58 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://implicity.local/contracts/",
   "$defs": {
+    "EvidenceFeature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "feature",
+        "day",
+        "kind",
+        "happened",
+        "could_have",
+        "weight"
+      ],
+      "properties": {
+        "feature": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "day": {
+          "type": "string",
+          "format": "date"
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
+            },
+            {
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          ]
+        },
+        "happened": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "could_have": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "weight": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
     "Action_SessionStarted": {
       "type": "object",
       "additionalProperties": false,
@@ -4359,7 +4411,10 @@
           "additionalProperties": true,
           "properties": {
             "features": {
-              "type": "array"
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceFeature"
+              }
             },
             "occasions": {
               "type": "integer",
@@ -4811,7 +4866,10 @@
           "additionalProperties": true,
           "properties": {
             "features": {
-              "type": "array"
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceFeature"
+              }
             },
             "occasions": {
               "type": "integer",

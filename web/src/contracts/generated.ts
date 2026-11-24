@@ -1,5 +1,5 @@
 // Generated from contracts/schemas; run make contracts-generate.
-// schema-sha256: f8826138fc72ea352a776a935fff4699a57c9b773e054eb465fb41834d0ccf8a
+// schema-sha256: f4c286882c50f05d76e1fd84988893a3ca1271b8e74d9c4339decc22cb4ef125
 export type HttpsImplicityLocalContracts = Event | Proposal | Decision | Spec | ProposalRequest;
 export type Event =
   | Action_SessionStarted
@@ -807,7 +807,7 @@ export interface Proposal {
   to: unknown;
   reason: string;
   evidence: {
-    features?: unknown[];
+    features?: EvidenceFeature[];
     occasions?: number;
     conversations?: number;
     days?: number;
@@ -818,6 +818,14 @@ export interface Proposal {
   };
   change_policy: "automatic" | "proposed";
   type: "look" | "widget" | "workflow" | "kind" | "schedule" | "dimension";
+}
+export interface EvidenceFeature {
+  feature: string;
+  day: string;
+  kind: ("casual" | "coding" | "writing" | "analysis" | "other") | string;
+  happened: number;
+  could_have: number;
+  weight: number;
 }
 export interface Decision {
   id: DecisionId;
@@ -858,7 +866,7 @@ export interface ProposalRequest {
   to: unknown;
   reason: string;
   evidence: {
-    features?: unknown[];
+    features?: EvidenceFeature[];
     occasions?: number;
     conversations?: number;
     days?: number;
