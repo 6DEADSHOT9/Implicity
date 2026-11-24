@@ -28,8 +28,10 @@ docker compose --profile development config --format json | python3 -c '
 import json, sys
 config = json.load(sys.stdin)
 images = [service.get("image", "") for service in config["services"].values()]
-pin = "posthog/posthog:be0a6f2a4cb4f9614a7954e01032ca3223bfdbaf"
-assert sum(image == pin for image in images) == 2, images
+app_pin = "posthog/posthog@sha256:e83432bf0072817cf30f90bc1d05c3974a9694bc3fa2e2a27b1505be9f1ed519"
+node_pin = "ghcr.io/posthog/posthog-node@sha256:fb496e55708308c9e4cd324e301d0f665c8a4b2403131481c55f2f31b897afc6"
+assert sum(image == app_pin for image in images) == 2, images
+assert sum(image == node_pin for image in images) == 1, images
 assert any(image.startswith("ghcr.io/posthog/posthog/capture:") and "@sha256:" in image for image in images), images
 assert any(image.startswith("ghcr.io/posthog/posthog-node:") and "@sha256:" in image for image in images), images
 assert all(config["services"][name]["environment"].get(key) for name, key in [("hermes", "API_SERVER_KEY"), ("posthog-db", "POSTGRES_PASSWORD"), ("posthog", "SECRET_KEY"), ("posthog-clickhouse", "CLICKHOUSE_PASSWORD"), ("posthog-ingestion-general", "ENCRYPTION_SALT_KEYS")])
@@ -120,8 +122,10 @@ payload = json.dumps({"api_key": credentials["project_token"], "event": event, "
 request = urllib.request.Request(base + "/i/v0/e/", data=payload, headers={"Content-Type": "application/json"}, method="POST")
 with urllib.request.urlopen(request, timeout=15) as response:
     assert response.status == 200, response.status
-query = json.dumps({"query": {"kind": "HogQLQuery", "query": f"SELECT event FROM events WHERE distinct_id = '{distinct_id}' LIMIT 1"}}).encode()
+sent_at = time.monotonic()
 for _ in range(60):
+    cache_buster = time.time_ns()
+    query = json.dumps({"query": {"kind": "HogQLQuery", "query": f"SELECT event FROM events WHERE distinct_id = '{distinct_id}' AND {cache_buster} > 0 LIMIT 1"}}).encode()
     request = urllib.request.Request(
         f"{base}/api/projects/{credentials['team_id']}/query/",
         data=query,
@@ -132,7 +136,7 @@ for _ in range(60):
         with urllib.request.urlopen(request, timeout=15) as response:
             result = json.load(response)
         if any(row.get("event") == event for row in result.get("results", [])):
-            print("SDK-shaped capture to PostHog query API: PASS")
+            print(f"SDK-shaped capture to PostHog query API: PASS after {time.monotonic() - sent_at:.2f}s")
             break
     except urllib.error.HTTPError:
         raise
