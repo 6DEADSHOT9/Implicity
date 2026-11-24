@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 ---
 
 # Vercel AI SDK for chat state
