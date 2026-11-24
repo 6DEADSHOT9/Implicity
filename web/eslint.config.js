@@ -13,4 +13,8 @@ export default [
     },
     rules: { "no-unused-vars": "off" },
   },
+  {
+    files: ["**/*.{ts,tsx}"],
+    rules: { "no-undef": "off" },
+  },
 ];
