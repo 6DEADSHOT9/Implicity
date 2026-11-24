@@ -22,6 +22,8 @@ def test_health_isolated_from_integrations_in_a_cold_process(tmp_path):
     }
     script = '''
 import builtins
+import importlib
+import importlib.abc
 from importlib.util import resolve_name
 import os
 import socket
@@ -34,6 +36,23 @@ attempts = []
 forbidden = {"hermes", "posthog", "engine", "implicity_engine"}
 original_import = builtins.__import__
 stubs = {}
+
+class ForbiddenFinder(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname.split(".")[0] in forbidden:
+            attempts.append(("dynamic import", fullname))
+            raise AssertionError(f"forbidden dynamic import: {fullname}")
+        return None
+
+sys.meta_path.insert(0, ForbiddenFinder())
+try:
+    importlib.import_module("hermes")
+except AssertionError:
+    pass
+else:
+    raise AssertionError("dynamic import guard did not reject Hermes")
+assert attempts == [("dynamic import", "hermes")]
+attempts.clear()
 
 def tracked_module(name):
     module = types.ModuleType(name)

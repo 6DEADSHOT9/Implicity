@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.sql import visitors
 from sqlalchemy.sql.elements import ColumnClause, TextClause
 from sqlalchemy.sql.schema import Table
+from sqlalchemy.sql.selectable import TableClause
 
 from implicity_api.db import engine as default_engine
 from implicity_api.models import METADATA
@@ -74,11 +75,11 @@ def _check_tables(statement: Any, owner: str) -> None:
         ):
             raise PermissionError("Textual SQL bypasses module table ownership")
         table = element
-        if isinstance(table, Table):
+        if isinstance(table, (Table, TableClause)):
             actual_owner = TABLE_OWNERS.get(table.name)
-            if actual_owner is not None and actual_owner != owner:
+            if actual_owner != owner:
                 raise PermissionError(
-                    f"{owner} cannot access {actual_owner}.{table.name}"
+                    f"{owner} cannot access {actual_owner or 'unowned'}.{table.name}"
                 )
 
 

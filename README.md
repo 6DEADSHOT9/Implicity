@@ -45,4 +45,5 @@ day. It retains the seven newest dated copies in `data/backups/implicity.db/`.
 Set an absolute `DATABASE_URL` before migration, API startup and backup commands
 to use another file; its dated copies live in `backups/<database-filename>/` beside it.
 To restore, stop the API and replace `data/implicity.db` with the selected
-backup before starting it again.
+backup before starting it again. Databases and backup snapshots created before
+this pre-release must be rebuilt; they cannot be upgraded.

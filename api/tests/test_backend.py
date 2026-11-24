@@ -22,7 +22,15 @@ from implicity_api.models.agent import AgentSession
 from implicity_api.models.app import Conversation, Message, MessageSpec
 from implicity_api.models.engine import Decision
 from implicity_api.persistence import create_store
-from sqlalchemy import create_engine, inspect, literal_column, select, text
+from sqlalchemy import (
+    column,
+    create_engine,
+    inspect,
+    literal_column,
+    select,
+    table,
+    text,
+)
 from sqlalchemy.engine import make_url
 
 API_ROOT = Path(__file__).parents[1]
@@ -280,6 +288,8 @@ def test_owner_bound_stores_block_cross_owner_reads_writes_and_raw_sql(tmp_path)
         engine_store.select(
             select(Decision).join(Conversation, Decision.id == Conversation.id)
         )
+    with pytest.raises(PermissionError, match="app.conversations"):
+        engine_store.select(select(table("conversations", column("id"))))
     with pytest.raises(PermissionError):
         engine_store.select(text("SELECT * FROM conversations"))
     with pytest.raises(PermissionError):
