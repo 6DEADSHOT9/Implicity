@@ -163,6 +163,9 @@ def test_yaml_loaders_keep_documented_fields_and_reject_invalid_definitions(
         path.write_text(invalid)
         with pytest.raises(ValueError, match="dimension.yaml"):
             load_dimension(path)
+    path.write_text(valid.replace("occasion: seen", "occasion: ''\noccasion: seen"))
+    with pytest.raises(ValueError, match=r"dimension.yaml.*occasion"):
+        load_dimension(path)
     path.write_text("id: broken: [")
     with pytest.raises(ValueError, match="dimension.yaml"):
         load_dimension(path)
