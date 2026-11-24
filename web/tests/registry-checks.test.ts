@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkGeneratedFileSet, checkRegistryVersion } from "../src/registry/snapshot";
+import { checkGeneratedFileSet, checkRegistryVersion, checkRegistryVersionSnapshot } from "../src/registry/snapshot";
 
 describe("registry generation guards", () => {
   it("requires a version increase for every roster change", () => {
@@ -11,5 +11,11 @@ describe("registry generation guards", () => {
 
   it("rejects schema files left behind after removing registry entries", () => {
     expect(() => checkGeneratedFileSet(["registry.json"], ["registry.json", "TextBlock.schema.json"])).toThrow(/do not match the registry/);
+  });
+
+  it("does not allow a committed version's roster to be rewritten", () => {
+    const committed = { registry_version: 2, components: [] };
+    expect(() => checkRegistryVersionSnapshot(committed, { registry_version: 2, components: ["AppShell"] })).toThrow(/committed version 2 snapshot/);
+    expect(() => checkRegistryVersionSnapshot(committed, { registry_version: 2, components: [] })).not.toThrow();
   });
 });

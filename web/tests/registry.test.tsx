@@ -22,6 +22,12 @@ const goodLayout = {
   elements: { panel: { type: "ReviewPanel", props: { count: 8 }, slots: { main: [] } } },
 };
 
+export function rejectMismatchedSkeletonProps() {
+  const mismatchedSkeleton = ({ label }: { label: string }) => <strong>{label.toUpperCase()}</strong>;
+  // @ts-expect-error component props must be supplied by the Skeleton schema
+  defineSkeleton(panelDefinition, mismatchedSkeleton);
+}
+
 async function markup(element: ReactElement): Promise<string> {
   const container = document.createElement("div");
   const root = createRoot(container);

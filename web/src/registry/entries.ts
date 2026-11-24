@@ -1,7 +1,6 @@
-import { defineSkeleton, type SkeletonEntry, type SkeletonDefinition } from "./define-skeleton.ts";
-import type { ComponentType } from "react";
+import type { SkeletonEntry, SkeletonDefinition } from "./define-skeleton.ts";
 
-const components = import.meta.glob<Record<string, ComponentType<never>>>(["./*/*.tsx", "!**/*.test.tsx"], { eager: true });
+const components = import.meta.glob<{ entry: SkeletonEntry }>(["./*/*.tsx", "!**/*.test.tsx"], { eager: true });
 const definitions = import.meta.glob<{ definition: SkeletonDefinition }>("./*/schema.ts", { eager: true });
 
 export const entries: readonly SkeletonEntry[] = Object.entries(components)
@@ -9,9 +8,14 @@ export const entries: readonly SkeletonEntry[] = Object.entries(components)
     const [, folder, file] = path.match(/^\.\/([^/]+)\/([^/]+)\.tsx$/)!;
     if (file !== folder) return [];
     const definition = definitions[`./${folder}/schema.ts`]?.definition;
-    const Skeleton = module[folder];
-    if (definition?.id !== folder || typeof Skeleton !== "function") {
+    const entry = module.entry;
+    if (definition?.id !== folder || entry?.id !== folder
+      || entry.propsSchema !== definition.propsSchema
+      || entry.slotsSchema !== definition.slotsSchema
+      || entry.schema !== definition.schema
+      || entry.events !== definition.events
+      || entry.meta !== definition.meta) {
       throw new Error(`Skeleton folder, file, schema and export must match: ${path}`);
     }
-    return [defineSkeleton(definition, Skeleton) as SkeletonEntry];
+    return [entry];
   });

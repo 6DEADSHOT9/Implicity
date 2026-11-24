@@ -9,6 +9,10 @@ describe("token-only style guard", () => {
     ['const View = () => <div style={{ fontFamily: "Arial" }} />;', "fontFamily"],
     ['const styles = { letterSpacing: "1px" };', "letterSpacing"],
     ['const View = () => <div className="text-red-500 text-[19px] font-serif" />;', "text-red-500"],
+    ['const View = () => <div className={"text-red-500"} />;', "text-red-500"],
+    ['const color = "rebeccapurple"; const appearance = { color }; const View = () => <div style={appearance} />;', "color: rebeccapurple"],
+    ['const base = { color: "rebeccapurple" }; const appearance = { ...base }; const View = () => <div style={appearance} />;', "color: rebeccapurple"],
+    ['const View = () => <div style={getAppearance()} />;', "unsupported style expression"],
     ['const View = () => <div className="gap-4" />;', "gap-4"],
   ])("rejects %s", (source, violation) => {
     expect(tokenStyleViolations(source).some((message) => message.includes(violation))).toBe(true);
@@ -17,6 +21,7 @@ describe("token-only style guard", () => {
   it("allows semantic Token references", () => {
     expect(tokenStyleViolations('const View = () => <div style={{ color: "var(--foreground)" }} />;')).toEqual([]);
     expect(tokenStyleViolations('const styles = { fontFamily: "var(--font-body)" };', "styles.ts")).toEqual([]);
+    expect(tokenStyleViolations('const appearance = { fontFamily: "var(--font-body)" }; const View = () => <div style={appearance} />;')).toEqual([]);
     expect(tokenStyleViolations(".text { font-family: var(--font-body); color: var(--foreground); }", "styles.css")).toEqual([]);
   });
 

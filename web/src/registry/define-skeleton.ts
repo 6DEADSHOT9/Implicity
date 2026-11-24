@@ -63,14 +63,14 @@ export function defineSkeletonDefinition<P extends z.ZodObject<z.ZodRawShape>, S
 
 export function defineSkeleton<P extends z.ZodObject<z.ZodRawShape>, S extends z.ZodObject<z.ZodRawShape>>(
   definition: SkeletonDefinition<P, S>,
-  Skeleton: ComponentType<never>,
+  Skeleton: ComponentType<ComponentProps<P, S>>,
 ) {
   function Component({ props, slots }: { props: unknown; slots: Record<string, ReactNode> }) {
     const propsSchema = definition.propsSchema;
     const parsed = propsSchema.safeParse(props);
     if (!parsed.success) throw new Error("Skeleton props failed runtime validation");
     const slotArrays = Object.fromEntries(Object.entries(slots).map(([name, children]) => [name, Array.isArray(children) ? children : [children]]));
-    return createElement(Skeleton as ComponentType<ComponentProps<P, S>>, { ...(parsed.data as ComponentProps<P, S>), slots: slotArrays as ComponentProps<P, S>["slots"] });
+    return createElement(Skeleton, { ...(parsed.data as ComponentProps<P, S>), slots: slotArrays as ComponentProps<P, S>["slots"] });
   }
   return {
     ...definition,

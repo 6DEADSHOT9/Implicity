@@ -11,3 +11,10 @@ export function checkRegistryVersion(previous: RegistrySnapshot | undefined, cur
 export function checkGeneratedFileSet(expected: readonly string[], actual: readonly string[]): void {
   if ([...expected].sort().join("\0") !== [...actual].sort().join("\0")) throw new Error("Generated component schemas do not match the registry");
 }
+
+export function checkRegistryVersionSnapshot(committed: RegistrySnapshot, current: RegistrySnapshot): void {
+  if (committed.registry_version !== current.registry_version
+    || [...committed.components].sort().join("\0") !== [...current.components].sort().join("\0")) {
+    throw new Error(`Registry roster differs from committed version ${current.registry_version} snapshot`);
+  }
+}
