@@ -1,2 +1,6 @@
-def test_api_scaffold_exists() -> None:
-    assert True
+from fastapi.testclient import TestClient
+from implicity_api.app import app
+
+
+def test_health_check():
+    assert TestClient(app).get("/health").json() == {"status": "ok"}
