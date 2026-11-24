@@ -1,0 +1,847 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://implicity.local/contracts/",
+  "$defs": {
+    "EventBase": {
+      "type": "object",
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "session_flag"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z]+_[a-z]+$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "conversation_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "kind": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "component": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "slot": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        }
+      }
+    },
+    "ActionEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contracts_version",
+        "device_class",
+        "event_id",
+        "input_type",
+        "name",
+        "session_flag",
+        "session_id",
+        "timestamp"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string"
+        },
+        "name": {
+          "enum": [
+            "session_started",
+            "session_ended",
+            "conversation_started",
+            "conversation_ended",
+            "message_sent",
+            "answer_shown",
+            "component_shown",
+            "component_seen",
+            "section_expanded",
+            "section_collapsed",
+            "representation_switched",
+            "panel_opened",
+            "panel_closed",
+            "panel_docked",
+            "panel_undocked",
+            "answer_copied",
+            "code_copied",
+            "answer_regenerated",
+            "generation_stopped",
+            "message_edited",
+            "shortcut_used",
+            "search_used",
+            "attachment_added",
+            "draft_deleted",
+            "setting_changed",
+            "change_shown",
+            "change_kept",
+            "change_undone",
+            "proposal_shown",
+            "proposal_kept",
+            "proposal_dismissed",
+            "widget_seen",
+            "widget_used",
+            "widget_pinned",
+            "widget_dismissed",
+            "media_played",
+            "media_paused",
+            "media_seeked",
+            "media_replayed"
+          ]
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "conversation_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "kind": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "component": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "slot": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "mode": {
+          "type": "string"
+        },
+        "text_scale": {
+          "type": "integer"
+        },
+        "local_hour_bucket": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 23
+        },
+        "length_bucket": {
+          "type": "string"
+        },
+        "attachment_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "shortcut": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "has_code": {
+          "type": "boolean"
+        },
+        "has_table": {
+          "type": "boolean"
+        },
+        "has_reasoning": {
+          "type": "boolean"
+        },
+        "default_state": {
+          "type": "string"
+        },
+        "seconds_visible": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "section_type": {
+          "type": "string"
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "panel": {
+          "type": "string"
+        },
+        "share_bucket": {
+          "type": "string"
+        },
+        "seconds_since_answer": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "shortcut_name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "dimension": {
+          "type": "string"
+        },
+        "value": {},
+        "decision_id": {
+          "type": "string"
+        },
+        "proposal_id": {
+          "type": "string"
+        },
+        "proposal_type": {
+          "type": "string"
+        },
+        "widget_id": {
+          "type": "string"
+        },
+        "position_bucket": {
+          "type": "string"
+        }
+      }
+    },
+    "TurnSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contracts_version",
+        "device_class",
+        "event_id",
+        "input_type",
+        "name",
+        "pointer",
+        "reading",
+        "session_flag",
+        "session_id",
+        "timestamp",
+        "typing"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string"
+        },
+        "name": {
+          "const": "turn_summary"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "conversation_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "kind": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "component": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "slot": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "typing": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "composing_time",
+            "mean_key_gap",
+            "key_gap_spread",
+            "burst_count",
+            "pause_count",
+            "backspace_rate"
+          ],
+          "properties": {
+            "composing_time": {
+              "type": "number",
+              "minimum": 0
+            },
+            "mean_key_gap": {
+              "type": "number",
+              "minimum": 0
+            },
+            "key_gap_spread": {
+              "type": "number",
+              "minimum": 0
+            },
+            "burst_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "pause_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "backspace_rate": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        },
+        "reading": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "time_on_answer",
+            "furthest_point",
+            "scroll_backs",
+            "time_before_next_action"
+          ],
+          "properties": {
+            "time_on_answer": {
+              "type": "number",
+              "minimum": 0
+            },
+            "furthest_point": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "scroll_backs": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "time_before_next_action": {
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        },
+        "pointer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "distance_travelled",
+            "hesitations",
+            "misses_on_small_targets"
+          ],
+          "properties": {
+            "distance_travelled": {
+              "type": "number",
+              "minimum": 0
+            },
+            "hesitations": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "misses_on_small_targets": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "SessionSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "active_time",
+        "contracts_version",
+        "day_type",
+        "device_class",
+        "duration",
+        "event_id",
+        "input_type",
+        "kinds",
+        "local_hour_bucket",
+        "name",
+        "session_flag",
+        "session_id",
+        "timestamp",
+        "turns",
+        "typing"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string"
+        },
+        "name": {
+          "const": "session_summary"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "conversation_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "kind": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "component": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "slot": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "layout_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "registry_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "trackpad",
+            "touch"
+          ]
+        },
+        "session_flag": {
+          "enum": [
+            "normal",
+            "guest_suspected"
+          ]
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 0
+        },
+        "active_time": {
+          "type": "number",
+          "minimum": 0
+        },
+        "turns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "kinds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "local_hour_bucket": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 23
+        },
+        "day_type": {
+          "enum": [
+            "weekday",
+            "weekend"
+          ]
+        },
+        "typing": {
+          "$ref": "#/$defs/TurnSummary/properties/typing"
+        }
+      }
+    },
+    "Proposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "source",
+        "dimension",
+        "kind",
+        "to",
+        "mode",
+        "reason",
+        "evidence",
+        "payload"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "source": {
+          "enum": [
+            "rule",
+            "hermes",
+            "person"
+          ]
+        },
+        "dimension": {
+          "type": "string"
+        },
+        "kind": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "to": {},
+        "mode": {
+          "enum": [
+            "automatic",
+            "proposed"
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "features": {
+              "type": "array"
+            },
+            "occasions": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "conversations": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "days": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "payload": {
+          "type": "object"
+        }
+      }
+    },
+    "Decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "proposal_id",
+        "dimension",
+        "kind",
+        "from",
+        "to",
+        "reason",
+        "evidence",
+        "dimension_version",
+        "status",
+        "created_at",
+        "shown_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "proposal_id": {
+          "type": "string"
+        },
+        "dimension": {
+          "type": "string"
+        },
+        "kind": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "from": {},
+        "to": {},
+        "reason": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "object"
+        },
+        "dimension_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "shown",
+            "kept",
+            "undone",
+            "reverted"
+          ]
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "shown_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        }
+      }
+    },
+    "Spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "registry_version",
+        "root",
+        "elements"
+      ],
+      "properties": {
+        "registry_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "root": {
+          "type": "string"
+        },
+        "elements": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/SpecElement"
+          }
+        }
+      }
+    },
+    "SpecElement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "props"
+      ],
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "props": {
+          "type": "object"
+        },
+        "slots": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "DraftPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text"
+      ],
+      "properties": {
+        "text": {
+          "type": "string"
+        }
+      }
+    },
+    "SettingPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "value"
+      ],
+      "properties": {
+        "value": {}
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/ActionEvent"
+    },
+    {
+      "$ref": "#/$defs/TurnSummary"
+    },
+    {
+      "$ref": "#/$defs/SessionSummary"
+    },
+    {
+      "$ref": "#/$defs/Proposal"
+    },
+    {
+      "$ref": "#/$defs/Decision"
+    },
+    {
+      "$ref": "#/$defs/Spec"
+    },
+    {
+      "$ref": "#/$defs/DraftPayload"
+    },
+    {
+      "$ref": "#/$defs/SettingPayload"
+    }
+  ]
+}
