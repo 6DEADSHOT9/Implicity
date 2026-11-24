@@ -1,4 +1,4 @@
-.PHONY: install lint lint-python lint-typescript test test-python test-typescript up-development up-production down
+.PHONY: install lint lint-python lint-typescript test test-python test-typescript up-development up-production down compose-smoke
 
 PNPM = npx --yes pnpm@12.23.0
 
@@ -23,10 +23,13 @@ test-typescript:
 	$(PNPM) test
 
 up-development:
-	docker compose --profile development up --build -d
+	docker compose --profile development up --build -d --wait --wait-timeout 1800
 
 up-production:
-	docker compose --profile production up --build -d
+	docker compose --profile production up --build -d --wait --wait-timeout 1800
 
 down:
 	docker compose --profile development --profile production down --remove-orphans
+
+compose-smoke:
+	./scripts/compose-smoke.sh

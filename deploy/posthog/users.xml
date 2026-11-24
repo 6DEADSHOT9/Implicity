@@ -86,7 +86,7 @@
                  Password could be specified in plaintext or in SHA256 (in hex format).
 
                  If you want to specify password in plaintext (not recommended), place it in 'password' element.
-                 Example: <password>qwerty</password>.
+                 Example: <password from_env="CLICKHOUSE_PASSWORD"/>.
                  Password could be empty.
 
                  If you want to specify SHA256, place it in 'password_sha256_hex' element.
@@ -125,7 +125,7 @@
             sha1sum | tr -d '-' | xxd -r -p | sha1sum | tr -d '-'
                  In first line will be password and in second - corresponding double SHA1.
             -->
-            <password></password>
+            <password from_env="CLICKHOUSE_PASSWORD"/>
 
             <!-- List of networks with open access.
 
@@ -166,7 +166,7 @@
         </default>
 
         <api>
-            <password>apipass</password>
+            <password from_env="CLICKHOUSE_PASSWORD"/>
 
             <networks>
                 <ip>::/0</ip>
@@ -178,7 +178,7 @@
         </api>
 
         <app>
-            <password>apppass</password>
+            <password from_env="CLICKHOUSE_PASSWORD"/>
 
             <networks>
                 <ip>::/0</ip>
@@ -193,7 +193,7 @@
              Mirrors prod's dict_reader: read-only, database-wide SELECT (not table-enumerated,
              so new dictionary source tables are covered without editing this file). -->
         <dict_reader>
-            <password>dictreaderpass</password>
+            <password from_env="CLICKHOUSE_PASSWORD"/>
 
             <networks>
                 <ip>::/0</ip>
@@ -211,7 +211,7 @@
             </grants>
         </dict_reader>
         <signals>
-            <password>signalspass</password>
+            <password from_env="CLICKHOUSE_PASSWORD"/>
             <networks><ip>::/0</ip></networks>
             <profile>signals</profile>
             <quota>default</quota>

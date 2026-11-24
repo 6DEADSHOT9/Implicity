@@ -31,10 +31,19 @@ Install the pinned workspaces with `make install`; run `make lint` and `make tes
 The TypeScript workspace uses the Node.js version in `.node-version` and npm;
 the Python workspace uses uv 0.11.25 with the version in `.python-version`.
 
-Copy `.env.example` to `.env` and replace its values with generated secrets. Start
-the containerized stack with `make up-development` or `make up-production`; check
-health with `docker compose --profile development ps` (or `production`), then run
-`make down` to stop it. The Compose project is named `implicity-local`.
+Copy `.env.example` to `.env` and replace the four secret placeholders with
+URI-safe values from `openssl rand -hex 32`, and the encryption salt with
+`openssl rand -hex 16`; retain the port settings unless they conflict with
+another local service. Start the containerized
+stack with `make up-development` or `make up-production`; each command waits up to
+30 minutes for healthy services. Check health with `docker compose --profile development ps`
+(or the `production` profile), then run `make down` to stop it. The Compose
+project is named `implicity-6deadshot9-local`.
+
+Run `make compose-smoke` to check image pins and required secrets, prove Compose
+rejects an unhealthy service, send a synthetic Event through PostHog capture to
+the query API, and verify ZooKeeper data survives `make down`/`make up-development`.
+The smoke command uses and removes an isolated Compose project.
 
 Hermes keeps its configuration in a named volume. After the first start, run
 `docker compose exec hermes hermes setup` to configure it, then complete Codex
@@ -42,5 +51,9 @@ subscription sign-in yourself inside the container. Keep that volume to retain t
 sign-in. The web and API services currently only keep the scaffold runtimes alive;
 T14 and T16 add the applications.
 
-The single-node ClickHouse configuration and PostgreSQL init script under
-`deploy/` are pinned to the PostHog revision used by the S2/S3 findings.
+PostHog serves plain HTTP only on a loopback-bound port; its secure redirect and
+secure cookies are disabled for this local-only endpoint. The capture proxy routes
+SDK requests to the pinned capture service. PostHog data services use a private
+network separate from Hermes and the app scaffolds. The single-node ClickHouse
+configuration and PostgreSQL init script under `deploy/` follow the PostHog
+revision used by the S2/S3 findings.
