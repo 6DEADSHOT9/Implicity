@@ -5,10 +5,14 @@ requires-python = ">=3.14,<3.15"
 dependencies = []
 
 [dependency-groups]
-dev = ["pytest==9.0.2", "ruff==0.14.8"]
+dev = [
+    "datamodel-code-generator==0.53.0",
+    "pytest==9.0.2",
+    "ruff==0.14.8",
+]
 
 [tool.uv.workspace]
-members = ["api", "engine/python"]
+members = ["api", "engine/python", "contracts/python"]
 
 [tool.uv]
 package = false
