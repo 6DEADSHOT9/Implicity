@@ -110,6 +110,9 @@ def test_recomputes_belief_from_fake_source_and_retains_judged_scale_value(
     assert (first.judged_value, first.applied_value) == ("spacious", "comfortable")
     assert first == second
     assert source.daily_count_calls == 8
+    assert {start for _, start, _, _ in source.daily_count_windows} == {
+        TODAY - timedelta(days=59)
+    }
     saved = Evidence.from_dict(first.evidence.to_dict())
     replay = dimension.gate.check(
         saved.judged_value,
@@ -127,6 +130,7 @@ def test_recomputes_belief_from_fake_source_and_retains_judged_scale_value(
         dimension, source, "compact", "coding", TODAY, freshness_cutoff=TODAY
     )
     assert (fresh_only.judged_value, fresh_only.applied_value) == ("compact", "compact")
+    assert all(not rows for rows in fresh_only.evidence.features.values())
 
 
 def test_yaml_loaders_keep_documented_fields_and_reject_invalid_definitions(
@@ -164,7 +168,7 @@ def test_yaml_loaders_keep_documented_fields_and_reject_invalid_definitions(
         with pytest.raises(ValueError, match="dimension.yaml"):
             load_dimension(path)
     path.write_text(valid.replace("occasion: seen", "occasion: ''\noccasion: seen"))
-    with pytest.raises(ValueError, match=r"dimension.yaml.*occasion"):
+    with pytest.raises(ValueError, match=r"(?s)dimension.yaml.*occasion"):
         load_dimension(path)
     path.write_text("id: broken: [")
     with pytest.raises(ValueError, match="dimension.yaml"):
@@ -411,6 +415,27 @@ def test_undone_value_is_never_gated_or_selected(tmp_path: Path) -> None:
     assert result.judged_value == "folded"
     assert result.applied_value == "folded"
     assert "open" not in result.gates
+    no_unblocked_value = evaluate_belief(
+        dimension, source, "open", "coding", TODAY, undone_values={"open", "folded"}
+    )
+    assert no_unblocked_value.judged_value is None
+    assert no_unblocked_value.applied_value is None
+    assert (
+        select_value(
+            "compact",
+            ["compact", "comfortable", "spacious"],
+            {"spacious": 0.9},
+            scale=True,
+            undone_values={"comfortable"},
+        )
+        is None
+    )
+    assert (
+        select_value(
+            "folded", ["folded", "open"], {"open": 0.9}, undone_values={"open"}
+        )
+        == "folded"
+    )
     assert (
         lookup_value(
             "writing", "folded", global_value="open", undone={"writing": {"open"}}
