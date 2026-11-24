@@ -85,7 +85,7 @@ Stage 1 is 24 tickets after the spikes. Each becomes one GitHub issue with its b
 
 | # | Ticket | Delivers | Blocked by |
 | --- | --- | --- | --- |
-| T18 | Capture wrapper and actions | The wrapper around the PostHog SDK, schema validation, shared fields, every Stage 1 action event, shown and seen tracking, registry checks on every identifier | T3, T2, T8 |
+| T18 | Capture wrapper and actions | The wrapper around the PostHog SDK, schema validation, shared fields, every Stage 1 action event, shown and seen tracking, fixed values checked against the owning registry entry and app-minted ids checked through the owning app interface | T3, T2, T8 |
 | T19 | Turn and session summaries | Typing, reading and pointer statistics computed in the browser. A test proving no raw keystrokes, key identities or message text leave the page | T18 |
 
 ### Engine

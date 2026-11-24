@@ -20,8 +20,9 @@ Every value an event carries comes from a closed set, a typed measurement, or an
 - `component_seen` carries its default state, because an occasion is a component seen in a given state.
 - `representation_switched` names its dimension (`data_form` or `answer_form`), and from and to are values of that dimension.
 - Commands always travel under the key `command`, on `message_sent`, `shortcut_used` and `setting_changed` (which carries it for `shortcut_chips`). The key binding is never captured.
-- `proposal_type` is `look`, `widget`, `workflow`, `kind` or `schedule`.
-- Events carry no guest mark. A suspected guest is an inference, so the mark stays in SQLite with its module, and the event source excludes those sessions by id (ADR 0016).
+- A proposal stores a `type`: `look`, `widget`, `workflow`, `kind` or `schedule`, set by the app. The proposal events copy it and fire only for proposals shown on a ProposalCard; a dimension change offered to the person uses the change events.
+- Events carry no guest mark. A suspected guest is an inference, so the mark stays in SQLite with its module (ADR 0016). The sessions excluded are those currently set aside plus those the owner excluded, supplied by the owning module to both `daily_counts` and `session_summaries`, which gains an `exclude_sessions` parameter.
+- `layout_version`, `registry_version`, `device_class` and `input_type` are on every event; `component` and `slot` are required on the events whose identity they are.
 - A field that does not apply is left out, never sent as null. Timestamps are UTC RFC 3339 to the millisecond; version fields are integers.
 
 **Shared vocabularies.**
@@ -34,7 +35,8 @@ Every value an event carries comes from a closed set, a typed measurement, or an
 
 **What other tickets own.**
 
-- Measurement units, thresholds and rules: the capture tickets (T18 for actions, T19 for summaries). A value that could not be measured is null, never 0.
+- Measurement units, thresholds and formulas: the capture tickets (T18 for actions, T19 for summaries). On the wire, statistic groups are always present, counts are whole numbers and never null, and durations, rates and means are null when no sample exists; a measured 0 is a real value.
+- Whether returning a dimension to automatic sends `setting_changed`: the Stage 2 Settings ticket, with its endpoint body.
 - The shape of each `evidence.features` entry: the engine ticket (T20). Each proposal `payload`: the ticket that builds that kind of proposal. `to` is checked against the dimension's values at runtime.
 - API request and response bodies: the ticket that builds each endpoint.
 

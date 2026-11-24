@@ -226,7 +226,7 @@ Implicity infers momentary states, lasting traits and whether a guest is using i
 
 - Learning pauses for that session, and the owner's memory is neither used nor shown.
 - A quiet banner says the session is not being learned from, with "It's me" to restore everything.
-- The session is marked either way, in SQLite and never on events, so the owner can exclude it later even if the guest tapped "It's me".
+- The session is marked either way, in SQLite and never on events, so the owner can exclude it later even if the guest tapped "It's me". Only sessions currently set aside or explicitly excluded are left out of feature counts and baselines.
 - Set-aside data is kept seven days, then deleted unless the owner claims it.
 - An optional setting, off by default, keeps a guest's typing pattern as an unnamed "Guest A" to recognise them next time. The owner can name them. The banner tells the guest that returning guests are recognised.
 
