@@ -1,0 +1,27 @@
+event: run.started
+data: {"user_message": {"role": "user", "content": "What exact code phrase did I ask you to remember? Reply with only the phrase."}, "runtime": {"provider": "", "model": "", "route_source": "global", "requested": {"provider": "", "model": ""}}, "session_id": "4d8631c5-3622-4424-8b57-241fc05214c8", "run_id": "run_c4974c43c6ae41dfbe584d16ac2df4f4", "seq": 1, "ts": 1795521961.447472}
+
+event: message.started
+data: {"message": {"id": "msg_4b1cd3bb975b414fbbfdf79cb6933bde", "role": "assistant"}, "session_id": "4d8631c5-3622-4424-8b57-241fc05214c8", "run_id": "run_c4974c43c6ae41dfbe584d16ac2df4f4", "seq": 2, "ts": 1795521961.447478}
+
+event: assistant.delta
+data: {"message_id": "msg_4b1cd3bb975b414fbbfdf79cb6933bde", "delta": "OR", "session_id": "4d8631c5-3622-4424-8b57-241fc05214c8", "run_id": "run_c4974c43c6ae41dfbe584d16ac2df4f4", "seq": 3, "ts": 1795521962.9100108}
+
+event: assistant.delta
+data: {"message_id": "msg_4b1cd3bb975b414fbbfdf79cb6933bde", "delta": "BIT", "session_id": "4d8631c5-3622-4424-8b57-241fc05214c8", "run_id": "run_c4974c43c6ae41dfbe584d16ac2df4f4", "seq": 4, "ts": 1795521962.9307039}
+
+event: assistant.delta
+data: {"message_id": "msg_4b1cd3bb975b414fbbfdf79cb6933bde", "delta": "-", "session_id": "4d8631c5-3622-4424-8b57-241fc05214c8", "run_id": "run_c4974c43c6ae41dfbe584d16ac2df4f4", "seq": 5, "ts": 1795521962.957112}
+
+event: assistant.delta
+data: {"message_id": "msg_4b1cd3bb975b414fbbfdf79cb6933bde", "delta": "741", "session_id": "4d8631c5-3622-4424-8b57-241fc05214c8", "run_id": "run_c4974c43c6ae41dfbe584d16ac2df4f4", "seq": 6, "ts": 1795521962.970622}
+
+event: assistant.completed
+data: {"session_id": "4d8631c5-3622-4424-8b57-241fc05214c8", "message_id": "msg_4b1cd3bb975b414fbbfdf79cb6933bde", "content": "ORBIT-741", "completed": true, "partial": false, "interrupted": false, "runtime": {"provider": "", "model": "", "route_source": "global", "requested": {"provider": "", "model": ""}}, "run_id": "run_c4974c43c6ae41dfbe584d16ac2df4f4", "seq": 7, "ts": 1795521963.2556002}
+
+event: run.completed
+data: {"session_id": "4d8631c5-3622-4424-8b57-241fc05214c8", "message_id": "msg_4b1cd3bb975b414fbbfdf79cb6933bde", "completed": true, "partial": false, "interrupted": false, "messages": [{"role": "assistant", "content": "ORBIT-741", "timestamp": 1795521963.228918, "finish_reason": "stop", "reasoning": null}], "usage": {"input_tokens": 16690, "output_tokens": 8, "total_tokens": 16698}, "runtime": {"provider": "", "model": "", "route_source": "global", "requested": {"provider": "", "model": ""}}, "run_id": "run_c4974c43c6ae41dfbe584d16ac2df4f4", "seq": 8, "ts": 1795521963.255606}
+
+event: done
+data: {"session_id": "4d8631c5-3622-4424-8b57-241fc05214c8", "run_id": "run_c4974c43c6ae41dfbe584d16ac2df4f4", "seq": 9, "ts": 1795521963.255625}
+

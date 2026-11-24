@@ -1,0 +1,945 @@
+event: run.started
+data: {"user_message": {"role": "user", "content": "Write a 3,000-word story about an expedition through an immense cave. Continue until complete."}, "runtime": {"provider": "", "model": "", "route_source": "global", "requested": {"provider": "", "model": ""}}, "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 1, "ts": 1795521809.018534}
+
+event: message.started
+data: {"message": {"id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "role": "assistant"}, "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 2, "ts": 1795521809.018547}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": "The", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 3, "ts": 1795521815.816532}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " Hollow", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 4, "ts": 1795521815.8179042}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " Country", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 5, "ts": 1795521815.818767}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": "\n\n", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 6, "ts": 1795521815.819314}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": "The", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 7, "ts": 1795521815.8196118}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " entrance", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 8, "ts": 1795521815.820111}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " appeared", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 9, "ts": 1795521815.8236558}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " only", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 10, "ts": 1795521815.8298209}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " when", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 11, "ts": 1795521815.831546}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " the", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 12, "ts": 1795521815.839715}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " sun", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 13, "ts": 1795521815.8400488}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " stood", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 14, "ts": 1795521815.8403242}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " directly", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 15, "ts": 1795521815.8794491}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " above", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 16, "ts": 1795521815.8845818}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " the", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 17, "ts": 1795521815.8849878}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " valley", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 18, "ts": 1795521815.8852742}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": ".\n\n", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 19, "ts": 1795521815.885629}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": "For", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 20, "ts": 1795521815.8860319}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " most", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 21, "ts": 1795521815.886485}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " of", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 22, "ts": 1795521815.8919911}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " the", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 23, "ts": 1795521815.8923469}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " year", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 24, "ts": 1795521815.892704}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": ",", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 25, "ts": 1795521815.8930812}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " the", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 26, "ts": 1795521815.89335}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " cliff", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 27, "ts": 1795521815.894347}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " looked", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 28, "ts": 1795521815.905122}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " un", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 29, "ts": 1795521815.906653}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": "broken", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 30, "ts": 1795521815.906949}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": ":", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 31, "ts": 1795521815.912255}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " a", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 32, "ts": 1795521815.91255}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " sheer", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 33, "ts": 1795521815.9199302}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " wall", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 34, "ts": 1795521815.923958}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " of", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 35, "ts": 1795521815.939945}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " gray", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 36, "ts": 1795521815.943375}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " limestone", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 37, "ts": 1795521815.9499068}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " ve", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 38, "ts": 1795521815.950304}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": "ined", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 39, "ts": 1795521815.980721}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " with", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 40, "ts": 1795521815.981217}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " rust", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 41, "ts": 1795521815.981554}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": "-red", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 42, "ts": 1795521815.981858}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " streak", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 43, "ts": 1795521815.9888902}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": "s", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 44, "ts": 1795521815.989799}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": ",", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 45, "ts": 1795521815.990452}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " rising", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 46, "ts": 1795521815.991252}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " above", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 47, "ts": 1795521815.9917939}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " a", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 48, "ts": 1795521815.99211}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " forest", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 49, "ts": 1795521815.992502}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " so", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 50, "ts": 1795521815.993082}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " dense", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 51, "ts": 1795521815.9939551}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " that", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 52, "ts": 1795521815.994401}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " even", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 53, "ts": 1795521815.9947882}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " the", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 54, "ts": 1795521815.995382}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " river", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 55, "ts": 1795521815.995878}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " disappeared", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 56, "ts": 1795521815.996205}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " beneath", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 57, "ts": 1795521815.996458}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " its", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 58, "ts": 1795521815.996821}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " canopy", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 59, "ts": 1795521815.997254}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": ".", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 60, "ts": 1795521815.99772}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " But", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 61, "ts": 1795521815.9990551}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " on", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 62, "ts": 1795521815.9993432}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " the", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 63, "ts": 1795521815.999604}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " first", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 64, "ts": 1795521815.999944}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " clear", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 65, "ts": 1795521816.0003788}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " day", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 66, "ts": 1795521816.000823}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " after", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 67, "ts": 1795521816.001142}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " the", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 68, "ts": 1795521816.0014238}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " spring", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 69, "ts": 1795521816.001677}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " floods", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 70, "ts": 1795521816.0019572}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": ",", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 71, "ts": 1795521816.0022159}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " light", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 72, "ts": 1795521816.002508}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " reached", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 73, "ts": 1795521816.003066}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " a", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 74, "ts": 1795521816.003527}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " narrow", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 75, "ts": 1795521816.003804}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " notch", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 76, "ts": 1795521816.0041249}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " high", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 77, "ts": 1795521816.0045419}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " on", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 78, "ts": 1795521816.004832}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " the", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 79, "ts": 1795521816.00541}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " cliff", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 80, "ts": 1795521816.005995}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " and", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 81, "ts": 1795521816.0065432}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " slid", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 82, "ts": 1795521816.0068638}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " down", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 83, "ts": 1795521816.007071}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " its", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 84, "ts": 1795521816.007353}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " face", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 85, "ts": 1795521816.0075488}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": ".", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 86, "ts": 1795521816.0078201}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " A", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 87, "ts": 1795521816.007988}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " dark", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 88, "ts": 1795521816.00809}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " seam", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 89, "ts": 1795521816.009284}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " emerged", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 90, "ts": 1795521816.00942}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": ",", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 91, "ts": 1795521816.009644}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " widening", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 92, "ts": 1795521816.010997}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " as", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 93, "ts": 1795521816.011198}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " the", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 94, "ts": 1795521816.0114062}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " sun", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 95, "ts": 1795521816.01156}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " moved", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 96, "ts": 1795521816.011751}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": ",", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 97, "ts": 1795521816.012043}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " until", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 98, "ts": 1795521816.012296}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " it", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 99, "ts": 1795521816.012512}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " rese", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 100, "ts": 1795521816.012627}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": "mbled", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 101, "ts": 1795521816.0128279}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " a", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 102, "ts": 1795521816.012934}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " doorway", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 103, "ts": 1795521816.013153}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " cut", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 104, "ts": 1795521816.013376}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " for", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 105, "ts": 1795521816.013603}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " giants", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 106, "ts": 1795521816.014422}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": ".\n\n", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 107, "ts": 1795521816.014573}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": "The", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 108, "ts": 1795521816.014782}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " villagers", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 109, "ts": 1795521816.0181272}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " called", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 110, "ts": 1795521816.020614}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " it", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 111, "ts": 1795521816.0557802}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " the", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 112, "ts": 1795521816.056229}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " Mouth", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 113, "ts": 1795521816.0564291}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " of", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 114, "ts": 1795521816.056746}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " the", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 115, "ts": 1795521816.056936}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " Mountain", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 116, "ts": 1795521816.0572958}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": ".", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 117, "ts": 1795521816.0576608}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " Their", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 118, "ts": 1795521816.0580359}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " grandparents", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 119, "ts": 1795521816.0582569}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " said", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 120, "ts": 1795521816.058507}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " the", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 121, "ts": 1795521816.058895}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " cave", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 122, "ts": 1795521816.059378}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " ran", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 123, "ts": 1795521816.0597088}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " beneath", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 124, "ts": 1795521816.059932}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " the", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 125, "ts": 1795521816.0602849}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " entire", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 126, "ts": 1795521816.060525}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " range", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 127, "ts": 1795521816.078992}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " and", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 128, "ts": 1795521816.079356}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " opened", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 129, "ts": 1795521816.079617}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " somewhere", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 130, "ts": 1795521816.079801}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " beyond", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 131, "ts": 1795521816.080139}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " the", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 132, "ts": 1795521816.080353}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " northern", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 133, "ts": 1795521816.0806348}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " sea", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 134, "ts": 1795521816.0809548}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": ".", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 135, "ts": 1795521816.081142}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " Their", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 136, "ts": 1795521816.081315}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " grandparents", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 137, "ts": 1795521816.081812}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": "’", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 138, "ts": 1795521816.082125}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " grandparents", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 139, "ts": 1795521816.082535}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " said", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 140, "ts": 1795521816.082745}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " it", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 141, "ts": 1795521816.0829382}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " went", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 142, "ts": 1795521816.083186}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " farther", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 143, "ts": 1795521816.0833962}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " still", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 144, "ts": 1795521816.0837839}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": ",", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 145, "ts": 1795521816.0839958}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " into", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 146, "ts": 1795521816.084245}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " the", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 147, "ts": 1795521816.084556}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " deep", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 148, "ts": 1795521816.084917}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " country", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 149, "ts": 1795521816.085153}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " where", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 150, "ts": 1795521816.085512}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " the", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 151, "ts": 1795521816.085661}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " world", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 152, "ts": 1795521816.085942}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " was", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 153, "ts": 1795521816.086302}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " made", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 154, "ts": 1795521816.086464}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": ".", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 155, "ts": 1795521816.086731}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " No", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 156, "ts": 1795521816.11769}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " one", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 157, "ts": 1795521816.118151}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " who", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 158, "ts": 1795521816.1621141}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " entered", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 159, "ts": 1795521816.162474}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " had", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 160, "ts": 1795521816.195092}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " ever", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 161, "ts": 1795521816.195658}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " returned", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 162, "ts": 1795521816.226846}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " with", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 163, "ts": 1795521816.2276201}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " proof", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 164, "ts": 1795521816.253491}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": ".\n\n", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 165, "ts": 1795521816.254285}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": "L", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 166, "ts": 1795521816.311116}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": "ena", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 167, "ts": 1795521816.3119721}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " Or", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 168, "ts": 1795521816.3360362}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " had", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 169, "ts": 1795521816.361581}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " heard", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 170, "ts": 1795521816.377553}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " those", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 171, "ts": 1795521816.399057}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " stories", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 172, "ts": 1795521816.3997078}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " as", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 173, "ts": 1795521816.3999722}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " a", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 174, "ts": 1795521816.446499}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " child", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 175, "ts": 1795521816.4676769}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " and", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 176, "ts": 1795521816.468825}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " believed", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 177, "ts": 1795521816.490533}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " them", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 178, "ts": 1795521816.515367}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " with", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 179, "ts": 1795521816.546718}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " the", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 180, "ts": 1795521816.547912}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " wholehearted", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 181, "ts": 1795521816.5947971}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": "ness", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 182, "ts": 1795521816.5955021}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " children", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 183, "ts": 1795521816.596029}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " reserve", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 184, "ts": 1795521816.596799}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " for", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 185, "ts": 1795521816.636928}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " impossible", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 186, "ts": 1795521816.638207}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " things", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 187, "ts": 1795521816.701504}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": ".", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 188, "ts": 1795521816.702282}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " As", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 189, "ts": 1795521816.713973}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " an", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 190, "ts": 1795521816.773086}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " adult", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 191, "ts": 1795521816.774018}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": ",", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 192, "ts": 1795521816.774626}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " she", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 193, "ts": 1795521816.775433}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " became", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 194, "ts": 1795521816.802346}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " a", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 195, "ts": 1795521816.803406}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " survey", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 196, "ts": 1795521816.83109}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": "or", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 197, "ts": 1795521816.832719}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": ",", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 198, "ts": 1795521816.88067}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " then", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 199, "ts": 1795521816.8819351}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " an", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 200, "ts": 1795521816.896516}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " explorer", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 201, "ts": 1795521816.913858}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": ",", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 202, "ts": 1795521816.93524}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " and", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 203, "ts": 1795521816.936044}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " finally", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 204, "ts": 1795521816.9761338}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " the", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 205, "ts": 1795521816.97725}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " person", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 206, "ts": 1795521817.0040262}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " her", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 207, "ts": 1795521817.021068}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " colleagues", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 208, "ts": 1795521817.058976}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " called", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 209, "ts": 1795521817.059461}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " when", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 210, "ts": 1795521817.105132}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " a", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 211, "ts": 1795521817.1056871}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " map", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 212, "ts": 1795521817.1379788}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " ended", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 213, "ts": 1795521817.13936}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": ".\n\n", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 214, "ts": 1795521817.1839712}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": "Now", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 215, "ts": 1795521817.2078102}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " she", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 216, "ts": 1795521817.209632}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " stood", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 217, "ts": 1795521817.21235}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " at", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 218, "ts": 1795521817.22971}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " the", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 219, "ts": 1795521817.240161}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " edge", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 220, "ts": 1795521817.26911}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " of", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 221, "ts": 1795521817.27358}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " the", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 222, "ts": 1795521817.308631}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " valley", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 223, "ts": 1795521817.3244119}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " with", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 224, "ts": 1795521817.325506}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " four", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 225, "ts": 1795521817.3481169}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " companions", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 226, "ts": 1795521817.379761}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " and", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 227, "ts": 1795521817.4081202}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " watched", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 228, "ts": 1795521817.410687}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " the", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 229, "ts": 1795521817.4286442}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " sun", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 230, "ts": 1795521817.429572}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " reveal", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 231, "ts": 1795521817.4906921}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " the", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 232, "ts": 1795521817.491804}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " entrance", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 233, "ts": 1795521817.492712}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": ".\n\n", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 234, "ts": 1795521817.514755}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": "“You", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 235, "ts": 1795521817.535521}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": "’re", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 236, "ts": 1795521817.536524}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " sure", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 237, "ts": 1795521817.5557702}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " this", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 238, "ts": 1795521817.590733}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " is", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 239, "ts": 1795521817.591855}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " the", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 240, "ts": 1795521817.615425}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " one", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 241, "ts": 1795521817.6467142}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": "?”", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 242, "ts": 1795521817.6756322}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " asked", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 243, "ts": 1795521817.6759942}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " Ren", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 244, "ts": 1795521817.6763809}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": ",", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 245, "ts": 1795521817.694627}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " shifting", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 246, "ts": 1795521817.711738}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " the", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 247, "ts": 1795521817.749283}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " weight", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 248, "ts": 1795521817.776035}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " of", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 249, "ts": 1795521817.77693}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " his", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 250, "ts": 1795521817.795373}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " pack", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 251, "ts": 1795521817.8114219}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": ".\n\n", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 252, "ts": 1795521817.90129}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": "L", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 253, "ts": 1795521817.9026089}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": "ena", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 254, "ts": 1795521817.903701}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " unfolded", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 255, "ts": 1795521817.904434}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " a", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 256, "ts": 1795521817.904982}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " sheet", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 257, "ts": 1795521817.92882}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " of", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 258, "ts": 1795521817.929376}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " oil", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 259, "ts": 1795521817.981339}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": "skin", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 260, "ts": 1795521817.9858549}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": ".", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 261, "ts": 1795521818.000154}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " It", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 262, "ts": 1795521818.045352}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " showed", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 263, "ts": 1795521818.046668}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " a", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 264, "ts": 1795521818.048985}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " cliff", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 265, "ts": 1795521818.0779111}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": ",", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 266, "ts": 1795521818.08198}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " a", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 267, "ts": 1795521818.103751}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " ridge", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 268, "ts": 1795521818.10614}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": ",", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 269, "ts": 1795521818.121299}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " and", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 270, "ts": 1795521818.1588311}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " an", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 271, "ts": 1795521818.1708002}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " old", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 272, "ts": 1795521818.204921}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " survey", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 273, "ts": 1795521818.205631}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": "or", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 274, "ts": 1795521818.235883}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": "’s", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 275, "ts": 1795521818.250047}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " mark", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 276, "ts": 1795521818.290493}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": ":", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 277, "ts": 1795521818.291455}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " a", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 278, "ts": 1795521818.306967}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " circle", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 279, "ts": 1795521818.307322}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " crossed", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 280, "ts": 1795521818.3297799}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " by", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 281, "ts": 1795521818.348157}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " three", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 282, "ts": 1795521818.381181}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " short", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 283, "ts": 1795521818.399745}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " lines", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 284, "ts": 1795521818.400361}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": ".", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 285, "ts": 1795521818.4313128}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " The", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 286, "ts": 1795521818.4444869}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " mark", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 287, "ts": 1795521818.457528}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " had", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 288, "ts": 1795521818.477107}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " belonged", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 289, "ts": 1795521818.510853}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " to", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 290, "ts": 1795521818.52408}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " her", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 291, "ts": 1795521818.524832}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " mother", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 292, "ts": 1795521818.536801}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": ",", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 293, "ts": 1795521818.5961459}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " who", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 294, "ts": 1795521818.597978}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " had", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 295, "ts": 1795521818.5986078}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " vanished", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 296, "ts": 1795521818.628457}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " in", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 297, "ts": 1795521818.650989}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " these", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 298, "ts": 1795521818.660948}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " mountains", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 299, "ts": 1795521818.682715}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " when", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 300, "ts": 1795521818.701121}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " Lena", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 301, "ts": 1795521818.7290308}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " was", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 302, "ts": 1795521818.73006}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " twelve", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 303, "ts": 1795521818.737955}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": ".\n\n", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 304, "ts": 1795521818.762073}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": "“I", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 305, "ts": 1795521818.780246}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": "’m", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 306, "ts": 1795521818.801358}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " sure", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 307, "ts": 1795521818.822867}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " this", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 308, "ts": 1795521818.8433018}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " is", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 309, "ts": 1795521818.864136}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " where", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 310, "ts": 1795521818.8695512}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " she", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 311, "ts": 1795521818.8915021}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " entered", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 312, "ts": 1795521818.907779}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": ",”", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 313, "ts": 1795521818.929302}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " Lena", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 314, "ts": 1795521818.949237}
+
+event: assistant.delta
+data: {"message_id": "msg_07d32a2f3b8c4992b4113b83308b1a5f", "delta": " said", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_f6e33592541a43998da96f765fe37da2", "seq": 315, "ts": 1795521818.96416}
+

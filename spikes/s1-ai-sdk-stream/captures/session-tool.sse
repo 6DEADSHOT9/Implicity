@@ -1,0 +1,45 @@
+event: run.started
+data: {"user_message": {"role": "user", "content": "Call terminal exactly once with the command printf 'SESSION-TOOL-RESULT-OK'. Then report exactly what it returned."}, "runtime": {"provider": "", "model": "", "route_source": "global", "requested": {"provider": "", "model": ""}}, "session_id": "121fef4b-1d8e-472e-b896-7c7a29c32545", "run_id": "run_c4968b4fde5243a68f4af958b0f84f62", "seq": 1, "ts": 1795522073.847091}
+
+event: message.started
+data: {"message": {"id": "msg_8a1667d6454b4d25b83c7cccb6aeb8aa", "role": "assistant"}, "session_id": "121fef4b-1d8e-472e-b896-7c7a29c32545", "run_id": "run_c4968b4fde5243a68f4af958b0f84f62", "seq": 2, "ts": 1795522073.8471081}
+
+event: tool.started
+data: {"message_id": "msg_8a1667d6454b4d25b83c7cccb6aeb8aa", "tool_name": "terminal", "preview": "printf 'SESSION-TOOL-RESULT-OK'", "args": {"command": "printf 'SESSION-TOOL-RESULT-OK'"}, "session_id": "121fef4b-1d8e-472e-b896-7c7a29c32545", "run_id": "run_c4968b4fde5243a68f4af958b0f84f62", "seq": 3, "ts": 1795522075.962083}
+
+event: tool.completed
+data: {"message_id": "msg_8a1667d6454b4d25b83c7cccb6aeb8aa", "tool_name": "terminal", "preview": null, "args": null, "session_id": "121fef4b-1d8e-472e-b896-7c7a29c32545", "run_id": "run_c4968b4fde5243a68f4af958b0f84f62", "seq": 4, "ts": 1795522076.091017}
+
+event: assistant.delta
+data: {"message_id": "msg_8a1667d6454b4d25b83c7cccb6aeb8aa", "delta": "\n\nSESSION", "session_id": "121fef4b-1d8e-472e-b896-7c7a29c32545", "run_id": "run_c4968b4fde5243a68f4af958b0f84f62", "seq": 5, "ts": 1795522077.3379781}
+
+event: assistant.delta
+data: {"message_id": "msg_8a1667d6454b4d25b83c7cccb6aeb8aa", "delta": "-", "session_id": "121fef4b-1d8e-472e-b896-7c7a29c32545", "run_id": "run_c4968b4fde5243a68f4af958b0f84f62", "seq": 6, "ts": 1795522077.3465421}
+
+event: assistant.delta
+data: {"message_id": "msg_8a1667d6454b4d25b83c7cccb6aeb8aa", "delta": "TO", "session_id": "121fef4b-1d8e-472e-b896-7c7a29c32545", "run_id": "run_c4968b4fde5243a68f4af958b0f84f62", "seq": 7, "ts": 1795522077.379689}
+
+event: assistant.delta
+data: {"message_id": "msg_8a1667d6454b4d25b83c7cccb6aeb8aa", "delta": "OL", "session_id": "121fef4b-1d8e-472e-b896-7c7a29c32545", "run_id": "run_c4968b4fde5243a68f4af958b0f84f62", "seq": 8, "ts": 1795522077.466671}
+
+event: assistant.delta
+data: {"message_id": "msg_8a1667d6454b4d25b83c7cccb6aeb8aa", "delta": "-", "session_id": "121fef4b-1d8e-472e-b896-7c7a29c32545", "run_id": "run_c4968b4fde5243a68f4af958b0f84f62", "seq": 9, "ts": 1795522077.4677289}
+
+event: assistant.delta
+data: {"message_id": "msg_8a1667d6454b4d25b83c7cccb6aeb8aa", "delta": "RESULT", "session_id": "121fef4b-1d8e-472e-b896-7c7a29c32545", "run_id": "run_c4968b4fde5243a68f4af958b0f84f62", "seq": 10, "ts": 1795522077.46858}
+
+event: assistant.delta
+data: {"message_id": "msg_8a1667d6454b4d25b83c7cccb6aeb8aa", "delta": "-", "session_id": "121fef4b-1d8e-472e-b896-7c7a29c32545", "run_id": "run_c4968b4fde5243a68f4af958b0f84f62", "seq": 11, "ts": 1795522077.469328}
+
+event: assistant.delta
+data: {"message_id": "msg_8a1667d6454b4d25b83c7cccb6aeb8aa", "delta": "OK", "session_id": "121fef4b-1d8e-472e-b896-7c7a29c32545", "run_id": "run_c4968b4fde5243a68f4af958b0f84f62", "seq": 12, "ts": 1795522077.47071}
+
+event: assistant.completed
+data: {"session_id": "121fef4b-1d8e-472e-b896-7c7a29c32545", "message_id": "msg_8a1667d6454b4d25b83c7cccb6aeb8aa", "content": "SESSION-TOOL-RESULT-OK", "completed": true, "partial": false, "interrupted": false, "runtime": {"provider": "", "model": "", "route_source": "global", "requested": {"provider": "", "model": ""}}, "run_id": "run_c4968b4fde5243a68f4af958b0f84f62", "seq": 13, "ts": 1795522077.736727}
+
+event: run.completed
+data: {"session_id": "121fef4b-1d8e-472e-b896-7c7a29c32545", "message_id": "msg_8a1667d6454b4d25b83c7cccb6aeb8aa", "completed": true, "partial": false, "interrupted": false, "messages": [{"role": "assistant", "content": "", "tool_calls": [{"call_id": "call_1ZEsF3CZzaN6lOUtcnyZkn1x", "function": {"arguments": "{\"command\":\"printf 'SESSION-TOOL-RESULT-OK'\"}", "name": "terminal"}, "id": "call_1ZEsF3CZzaN6lOUtcnyZkn1x", "response_item_id": "fc_00717aa1e98db1fa016b057e1b960c87d089e41e55567073a7", "type": "function"}], "timestamp": 1795522075.9586601, "finish_reason": "tool_calls", "reasoning": null}, {"role": "tool", "content": "{\"output\": \"SESSION-TOOL-RESULT-OK\", \"exit_code\": 0, \"error\": null}", "tool_call_id": "call_1ZEsF3CZzaN6lOUtcnyZkn1x", "tool_name": "terminal", "timestamp": 1795522076.090008}, {"role": "assistant", "content": "SESSION-TOOL-RESULT-OK", "timestamp": 1795522077.6879911, "finish_reason": "stop", "reasoning": null}], "usage": {"input_tokens": 33338, "output_tokens": 40, "total_tokens": 33378}, "runtime": {"provider": "", "model": "", "route_source": "global", "requested": {"provider": "", "model": ""}}, "run_id": "run_c4968b4fde5243a68f4af958b0f84f62", "seq": 14, "ts": 1795522077.736732}
+
+event: done
+data: {"session_id": "121fef4b-1d8e-472e-b896-7c7a29c32545", "run_id": "run_c4968b4fde5243a68f4af958b0f84f62", "seq": 15, "ts": 1795522077.736754}
+

@@ -1,14 +1,16 @@
 import asyncio
 import json
 import os
+import re
 import uuid
+from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse
 
 app = FastAPI()
-responses = {}
+sessions = set()
 
 
 def part(obj):
@@ -19,59 +21,83 @@ def part(obj):
 async def chat(request: Request):
     body = await request.json()
     chat_id = body.get("chatId", "default")
+    capture_case = re.sub(r"[^a-z0-9-]", "-", body.get("captureCase", "session").lower())
     last = body["messages"][-1]
     text = "".join(p.get("text", "") for p in last.get("parts", []) if p.get("type") == "text")
-    previous = responses.get(chat_id)
+    base = os.getenv("HERMES_URL", "http://127.0.0.1:8642")
+    headers = {"Authorization": f"Bearer {os.environ['HERMES_API_KEY']}"}
 
     async def stream():
         message_id = str(uuid.uuid4())
+        tool_ids = {}
+        reasoning_started = False
+        capture = Path("captures") / f"session-{capture_case}.sse"
         yield part({"type": "start", "messageId": message_id})
         try:
             async with httpx.AsyncClient(timeout=None) as client:
-                async with client.stream("POST", os.getenv("HERMES_URL", "http://127.0.0.1:8642/v1/responses"),
-                    headers={"Authorization": f"Bearer {os.environ['HERMES_API_KEY']}"},
-                    json={"model": "hermes-agent", "input": text, "previous_response_id": previous,
-                          "store": True, "stream": True}) as response:
+                if chat_id not in sessions:
+                    created = await client.post(f"{base}/api/sessions", headers=headers,
+                                                json={"id": chat_id})
+                    created.raise_for_status()
+                    sessions.add(chat_id)
+                turn = {"input": text}
+                if capture_case == "reasoning":
+                    turn["model_options"] = {"reasoning": {"enabled": True, "effort": "high"}}
+                async with client.stream("POST", f"{base}/api/sessions/{chat_id}/chat/stream",
+                    headers=headers, json=turn) as response:
                     response.raise_for_status()
-                    async for line in response.aiter_lines():
-                        if not line.startswith("data: ") or line[6:] == "[DONE]":
-                            continue
-                        event = json.loads(line[6:])
-                        typ = event.get("type")
-                        if typ == "response.created":
-                            responses[chat_id] = event["response"]["id"]
-                        elif typ == "response.output_item.added":
-                            item = event.get("item", {})
-                            kind = item.get("type")
-                            if kind == "message":
-                                yield part({"type": "text-start", "id": item["id"]})
-                            elif kind == "reasoning":
-                                yield part({"type": "reasoning-start", "id": item["id"]})
-                            elif kind == "function_call":
-                                yield part({"type": "tool-input-start", "toolCallId": item.get("call_id", item["id"]), "toolName": item.get("name", "unknown")})
-                        elif typ == "response.output_text.delta":
-                            yield part({"type": "text-delta", "id": event.get("item_id"), "delta": event["delta"]})
-                        elif typ == "response.reasoning_summary_text.delta":
-                            yield part({"type": "reasoning-delta", "id": event.get("item_id"), "delta": event["delta"]})
-                        elif typ == "response.function_call_arguments.delta":
-                            yield part({"type": "tool-input-delta", "toolCallId": event["call_id"], "inputTextDelta": event["delta"]})
-                        elif typ == "response.output_item.done":
-                            item = event.get("item", {})
-                            kind = item.get("type")
-                            if kind == "function_call":
-                                try:
-                                    args = json.loads(item.get("arguments", "{}"))
-                                except json.JSONDecodeError:
-                                    args = item.get("arguments", "")
-                                yield part({"type": "tool-input-available", "toolCallId": item["call_id"], "toolName": item["name"], "input": args})
-                            elif kind == "function_call_output":
-                                yield part({"type": "tool-output-available", "toolCallId": item["call_id"], "output": item.get("output")})
-                            elif kind == "reasoning":
-                                yield part({"type": "reasoning-end", "id": item["id"]})
-                            elif kind == "message":
-                                yield part({"type": "text-end", "id": item["id"]})
-                        elif typ == "response.completed":
-                            yield part({"type": "finish"})
+                    with capture.open("w") as raw:
+                        event_name = "message"
+                        async for line in response.aiter_lines():
+                            if line.startswith("event: "):
+                                event_name = line[7:]
+                                continue
+                            if not line.startswith("data: ") or line[6:] == "[DONE]":
+                                continue
+                            raw.write(f"event: {event_name}\ndata: {line[6:]}\n\n")
+                            raw.flush()
+                            event = json.loads(line[6:])
+                            typ = event_name
+                            if typ == "message.started":
+                                yield part({"type": "text-start", "id": message_id})
+                            elif typ == "assistant.delta":
+                                yield part({"type": "text-delta", "id": message_id, "delta": event.get("delta", "")})
+                            elif typ == "assistant.completed":
+                                yield part({"type": "text-end", "id": message_id})
+                            elif typ == "tool.progress" and event.get("tool_name") == "_thinking":
+                                if not reasoning_started:
+                                    yield part({"type": "reasoning-start", "id": message_id + "-reasoning"})
+                                    reasoning_started = True
+                                yield part({"type": "reasoning-delta", "id": message_id + "-reasoning", "delta": event.get("delta", "")})
+                            elif typ == "tool.started":
+                                tool_name = event.get("tool_name") or "unknown"
+                                call_id = str(uuid.uuid4())
+                                tool_ids.setdefault(tool_name, []).append(call_id)
+                                yield part({"type": "tool-input-start", "toolCallId": call_id, "toolName": tool_name})
+                                args = event.get("args")
+                                yield part({"type": "tool-input-available", "toolCallId": call_id,
+                                            "toolName": tool_name, "input": args if args is not None else {}})
+                            elif typ == "run.completed":
+                                for message in event.get("messages", []):
+                                    if message.get("role") != "tool":
+                                        continue
+                                    tool_name = message.get("tool_name") or "unknown"
+                                    ids = tool_ids.get(tool_name) or []
+                                    call_id = ids.pop(0) if ids else str(uuid.uuid4())
+                                    output = message.get("content")
+                                    try:
+                                        output = json.loads(output)
+                                    except (TypeError, json.JSONDecodeError):
+                                        pass
+                                    yield part({"type": "tool-output-available", "toolCallId": call_id, "output": output})
+                                if reasoning_started:
+                                    yield part({"type": "reasoning-end", "id": message_id + "-reasoning"})
+                                yield part({"type": "finish"})
+                            elif typ in {"run.failed", "run.cancelled", "error"}:
+                                if reasoning_started:
+                                    yield part({"type": "reasoning-end", "id": message_id + "-reasoning"})
+                                yield part({"type": "error", "errorText": json.dumps(event)})
+                                yield part({"type": "finish"})
                     yield b"data: [DONE]\n\n"
         except asyncio.CancelledError:
             raise

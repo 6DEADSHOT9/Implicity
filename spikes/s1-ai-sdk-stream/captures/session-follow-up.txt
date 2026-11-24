@@ -1,0 +1,26 @@
+S1 session route browser follow-up (2026-11-24, Asia/Kolkata)
+
+Hermes: 0.22.5 (2026.9.24). Endpoint authentication used Authorization: Bearer <ephemeral local API key>; the key is not recorded here.
+
+Session creation call:
+POST http://127.0.0.1:8642/api/sessions
+{"id":"<browser chatId>"}
+Observed HTTP 201; the response returned the same id as session.id.
+
+Turn call:
+POST http://127.0.0.1:8642/api/sessions/<session_id>/chat/stream
+{"input":"<last user message>"}
+Reasoning case additionally sent:
+{"model_options":{"reasoning":{"enabled":true,"effort":"high"}}}
+
+The frontend used AI SDK 7.0.181 and @ai-sdk/react 4.0.186 through the FastAPI relay. Raw Hermes SSE captures are session-plain.sse, session-long.sse, session-reasoning.sse, session-tool.sse, session-cancel.sse, session-context-first.sse, and session-context-second.sse. These are captures from actual browser turns; session-cancel.sse ends at client disconnect and has no terminal event.
+
+Observed case results:
+- Plain: browser rendered SESSION-PLAIN-OK. Hermes emitted six assistant.delta events.
+- Long: browser rendered a flowing story; 870 assistant.delta events over 74.6 seconds. The model also emitted tool.started/tool.completed events while drafting.
+- Reasoning: the request asked for high-effort reasoning. No tool.progress event with tool_name _thinking occurred; preview length was zero and no incremental reasoning part was produced.
+- Tool: terminal ran printf 'SESSION-TOOL-RESULT-OK'. tool.started.args was a structured {"command":"printf 'SESSION-TOOL-RESULT-OK'"}. tool.completed carried args=null and preview=null. The final run.completed event carried a role=tool message with content string {"output":"SESSION-TOOL-RESULT-OK","exit_code":0,"error":null}; the relay parsed it and the browser rendered it as a structured tool-output-available part.
+- Cancel: browser click timestamp 2026-11-24T12:03:38.973Z (17:33:38.973 IST). The relay capture stopped at the click. GET /v1/runs/run_f6e33592541a43998da96f765fe37da2 returned status running at 17:34:30 IST. gateway.log recorded inbound at 17:33:29.035 IST and normal response ready at 17:35:07.177 IST, time=98.1s, response=23715 chars. Completion was 88.2 seconds after the Cancel click. There was no Session SSE client disconnected/interrupted log; the run completed normally. The relay could not capture a terminal event after its client disconnected.
+- Context: in a clean browser page, the two turns reused session_id 4d8631c5-3622-4424-8b57-241fc05214c8. First requested memory of ORBIT-741; second asked for it and received ORBIT-741 exactly.
+
+The session route provides a reasoning.available -> tool.progress -> _thinking preview path in source, but the event did not occur in this live case. Tool inputs were structured; their call IDs were absent from tool lifecycle events, so the relay assigned local IDs. Actual tool result data arrived only at run.completed.messages, so the relay deferred tool-output-available until the terminal event and correlated results by tool name/FIFO order.

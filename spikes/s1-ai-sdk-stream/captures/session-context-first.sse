@@ -1,0 +1,18 @@
+event: run.started
+data: {"user_message": {"role": "user", "content": "Remember this exact code phrase for the next message: ORBIT-741. Reply only ACK."}, "runtime": {"provider": "", "model": "", "route_source": "global", "requested": {"provider": "", "model": ""}}, "session_id": "4d8631c5-3622-4424-8b57-241fc05214c8", "run_id": "run_45430dd12fa541788a52ba90d84e3b72", "seq": 1, "ts": 1795521953.426825}
+
+event: message.started
+data: {"message": {"id": "msg_3834538955e7451191d5b812d8f752f5", "role": "assistant"}, "session_id": "4d8631c5-3622-4424-8b57-241fc05214c8", "run_id": "run_45430dd12fa541788a52ba90d84e3b72", "seq": 2, "ts": 1795521953.426913}
+
+event: assistant.delta
+data: {"message_id": "msg_3834538955e7451191d5b812d8f752f5", "delta": "ACK", "session_id": "4d8631c5-3622-4424-8b57-241fc05214c8", "run_id": "run_45430dd12fa541788a52ba90d84e3b72", "seq": 3, "ts": 1795521959.465204}
+
+event: assistant.completed
+data: {"session_id": "4d8631c5-3622-4424-8b57-241fc05214c8", "message_id": "msg_3834538955e7451191d5b812d8f752f5", "content": "ACK", "completed": true, "partial": false, "interrupted": false, "runtime": {"provider": "", "model": "", "route_source": "global", "requested": {"provider": "", "model": ""}}, "run_id": "run_45430dd12fa541788a52ba90d84e3b72", "seq": 4, "ts": 1795521959.566935}
+
+event: run.completed
+data: {"session_id": "4d8631c5-3622-4424-8b57-241fc05214c8", "message_id": "msg_3834538955e7451191d5b812d8f752f5", "completed": true, "partial": false, "interrupted": false, "messages": [{"role": "assistant", "content": "ACK", "timestamp": 1795521959.52001, "finish_reason": "stop", "reasoning": null}], "usage": {"input_tokens": 16631, "output_tokens": 36, "total_tokens": 16667}, "runtime": {"provider": "", "model": "", "route_source": "global", "requested": {"provider": "", "model": ""}}, "run_id": "run_45430dd12fa541788a52ba90d84e3b72", "seq": 5, "ts": 1795521959.566942}
+
+event: done
+data: {"session_id": "4d8631c5-3622-4424-8b57-241fc05214c8", "run_id": "run_45430dd12fa541788a52ba90d84e3b72", "seq": 6, "ts": 1795521959.5669591}
+

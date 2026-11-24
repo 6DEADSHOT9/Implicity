@@ -8,4 +8,4 @@ Run from the repository root:
 cd spikes/s1-ai-sdk-stream && ./run.sh
 ```
 
-Open the Vite URL printed by the command. Use Cancel to close the browser stream. The `/v1/responses` route tested in this spike does not stop Hermes promptly on disconnect. This prototype is not production code.
+Open the Vite URL printed by the command. The current relay creates one Hermes session per browser page and sends turns to `/api/sessions/{session_id}/chat/stream`; the case selector names raw SSE captures in `captures/`. Cancel closes the browser and relay streams, but Hermes completed the observed session turn 88.2 seconds after the click. This prototype is not production code.

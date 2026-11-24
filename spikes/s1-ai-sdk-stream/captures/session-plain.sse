@@ -1,0 +1,33 @@
+event: run.started
+data: {"user_message": {"role": "user", "content": "Reply exactly with SESSION-PLAIN-OK."}, "runtime": {"provider": "", "model": "", "route_source": "global", "requested": {"provider": "", "model": ""}}, "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_0c5ad76f4f454757abea9c209b7a922a", "seq": 1, "ts": 1795521572.079608}
+
+event: message.started
+data: {"message": {"id": "msg_6ee826f0232640d3b6fcc104565e8306", "role": "assistant"}, "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_0c5ad76f4f454757abea9c209b7a922a", "seq": 2, "ts": 1795521572.07966}
+
+event: assistant.delta
+data: {"message_id": "msg_6ee826f0232640d3b6fcc104565e8306", "delta": "SESSION", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_0c5ad76f4f454757abea9c209b7a922a", "seq": 3, "ts": 1795521573.577607}
+
+event: assistant.delta
+data: {"message_id": "msg_6ee826f0232640d3b6fcc104565e8306", "delta": "-", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_0c5ad76f4f454757abea9c209b7a922a", "seq": 4, "ts": 1795521573.5865211}
+
+event: assistant.delta
+data: {"message_id": "msg_6ee826f0232640d3b6fcc104565e8306", "delta": "PL", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_0c5ad76f4f454757abea9c209b7a922a", "seq": 5, "ts": 1795521573.608573}
+
+event: assistant.delta
+data: {"message_id": "msg_6ee826f0232640d3b6fcc104565e8306", "delta": "AIN", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_0c5ad76f4f454757abea9c209b7a922a", "seq": 6, "ts": 1795521573.632412}
+
+event: assistant.delta
+data: {"message_id": "msg_6ee826f0232640d3b6fcc104565e8306", "delta": "-", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_0c5ad76f4f454757abea9c209b7a922a", "seq": 7, "ts": 1795521573.6484969}
+
+event: assistant.delta
+data: {"message_id": "msg_6ee826f0232640d3b6fcc104565e8306", "delta": "OK", "session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_0c5ad76f4f454757abea9c209b7a922a", "seq": 8, "ts": 1795521573.6746318}
+
+event: assistant.completed
+data: {"session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "message_id": "msg_6ee826f0232640d3b6fcc104565e8306", "content": "SESSION-PLAIN-OK", "completed": true, "partial": false, "interrupted": false, "runtime": {"provider": "", "model": "", "route_source": "global", "requested": {"provider": "", "model": ""}}, "run_id": "run_0c5ad76f4f454757abea9c209b7a922a", "seq": 9, "ts": 1795521574.049957}
+
+event: run.completed
+data: {"session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "message_id": "msg_6ee826f0232640d3b6fcc104565e8306", "completed": true, "partial": false, "interrupted": false, "messages": [{"role": "assistant", "content": "SESSION-PLAIN-OK", "timestamp": 1795521574.0048141, "finish_reason": "stop", "reasoning": null}], "usage": {"input_tokens": 16622, "output_tokens": 10, "total_tokens": 16632}, "runtime": {"provider": "", "model": "", "route_source": "global", "requested": {"provider": "", "model": ""}}, "run_id": "run_0c5ad76f4f454757abea9c209b7a922a", "seq": 10, "ts": 1795521574.049963}
+
+event: done
+data: {"session_id": "eccb47f1-d8bd-46a4-b78b-d0cd6970f2d8", "run_id": "run_0c5ad76f4f454757abea9c209b7a922a", "seq": 11, "ts": 1795521574.049973}
+
