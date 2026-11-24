@@ -2962,8 +2962,7 @@
           "const": "change_shown"
         },
         "decision_id": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_]*$"
+          "$ref": "#/$defs/DecisionId"
         }
       }
     },
@@ -3077,8 +3076,7 @@
           "const": "change_kept"
         },
         "decision_id": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_]*$"
+          "$ref": "#/$defs/DecisionId"
         }
       }
     },
@@ -3192,8 +3190,7 @@
           "const": "change_undone"
         },
         "decision_id": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_]*$"
+          "$ref": "#/$defs/DecisionId"
         }
       }
     },
@@ -3308,8 +3305,7 @@
           "const": "proposal_shown"
         },
         "proposal_id": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_]*$"
+          "$ref": "#/$defs/ProposalId"
         },
         "proposal_type": {
           "enum": [
@@ -3432,8 +3428,7 @@
           "const": "proposal_kept"
         },
         "proposal_id": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_]*$"
+          "$ref": "#/$defs/ProposalId"
         },
         "proposal_type": {
           "enum": [
@@ -3556,8 +3551,7 @@
           "const": "proposal_dismissed"
         },
         "proposal_id": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_]*$"
+          "$ref": "#/$defs/ProposalId"
         },
         "proposal_type": {
           "enum": [
@@ -6164,7 +6158,7 @@
       ],
       "properties": {
         "id": {
-          "type": "string"
+          "$ref": "#/$defs/ProposalId"
         },
         "source": {
           "enum": [
@@ -6237,10 +6231,10 @@
       ],
       "properties": {
         "id": {
-          "type": "string"
+          "$ref": "#/$defs/DecisionId"
         },
         "proposal_id": {
-          "type": "string"
+          "$ref": "#/$defs/ProposalId"
         },
         "dimension": {
           "type": "string"
@@ -6576,6 +6570,14 @@
         "stop_generation",
         "search"
       ]
+    },
+    "ProposalId": {
+      "type": "string",
+      "pattern": "^prop_[a-z0-9_-]{1,64}$"
+    },
+    "DecisionId": {
+      "type": "string",
+      "pattern": "^dec_[a-z0-9_-]{1,64}$"
     }
   },
   "oneOf": [

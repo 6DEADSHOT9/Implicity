@@ -1,5 +1,5 @@
 // Generated from contracts/schemas; run make contracts-generate.
-// schema-sha256: b20aa01ee0d04c05514cf3531f190399c688f1181f95f4777c7983bb46546764
+// schema-sha256: f0cf38851f23981f34d7c21b727e25ca5c768cc92d88c8e51b639dfc96a4146d
 export type HttpsImplicityLocalContracts = Event | Proposal | Decision | Spec;
 export type Event =
   | Action_SessionStarted
@@ -54,6 +54,8 @@ export type Event =
   | TurnSummary
   | SessionSummary;
 export type ShortcutId = "copy_answer" | "copy_code" | "regenerate_answer" | "stop_generation" | "search";
+export type DecisionId = string;
+export type ProposalId = string;
 
 export interface Action_SessionStarted {
   event_id: string;
@@ -485,7 +487,7 @@ export interface Action_ChangeShown {
   input_type: "mouse" | "trackpad" | "touch";
   session_flag: "normal" | "guest_suspected";
   name: "change_shown";
-  decision_id: string;
+  decision_id: DecisionId;
 }
 export interface Action_ChangeKept {
   event_id: string;
@@ -502,7 +504,7 @@ export interface Action_ChangeKept {
   input_type: "mouse" | "trackpad" | "touch";
   session_flag: "normal" | "guest_suspected";
   name: "change_kept";
-  decision_id: string;
+  decision_id: DecisionId;
 }
 export interface Action_ChangeUndone {
   event_id: string;
@@ -519,7 +521,7 @@ export interface Action_ChangeUndone {
   input_type: "mouse" | "trackpad" | "touch";
   session_flag: "normal" | "guest_suspected";
   name: "change_undone";
-  decision_id: string;
+  decision_id: DecisionId;
 }
 export interface Action_ProposalShown {
   event_id: string;
@@ -536,7 +538,7 @@ export interface Action_ProposalShown {
   input_type: "mouse" | "trackpad" | "touch";
   session_flag: "normal" | "guest_suspected";
   name: "proposal_shown";
-  proposal_id: string;
+  proposal_id: ProposalId;
   proposal_type: "look" | "widget" | "workflow" | "kind";
 }
 export interface Action_ProposalKept {
@@ -554,7 +556,7 @@ export interface Action_ProposalKept {
   input_type: "mouse" | "trackpad" | "touch";
   session_flag: "normal" | "guest_suspected";
   name: "proposal_kept";
-  proposal_id: string;
+  proposal_id: ProposalId;
   proposal_type: "look" | "widget" | "workflow" | "kind";
 }
 export interface Action_ProposalDismissed {
@@ -572,7 +574,7 @@ export interface Action_ProposalDismissed {
   input_type: "mouse" | "trackpad" | "touch";
   session_flag: "normal" | "guest_suspected";
   name: "proposal_dismissed";
-  proposal_id: string;
+  proposal_id: ProposalId;
   proposal_type: "look" | "widget" | "workflow" | "kind";
 }
 export interface Action_WidgetSeen {
@@ -969,7 +971,7 @@ export interface SessionSummary {
   typing: Typing;
 }
 export interface Proposal {
-  id: string;
+  id: ProposalId;
   source: "rule" | "hermes" | "person";
   dimension: string;
   kind: string | null;
@@ -988,8 +990,8 @@ export interface Proposal {
   };
 }
 export interface Decision {
-  id: string;
-  proposal_id: string;
+  id: DecisionId;
+  proposal_id: ProposalId;
   dimension: string;
   kind: string | null;
   from: unknown;

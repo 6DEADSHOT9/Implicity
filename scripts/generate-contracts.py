@@ -61,6 +61,12 @@ def generate(output_dir: Path) -> dict[str, str]:
         cwd=ROOT,
         check=True,
     )
+    python.write_text(
+        python.read_text().replace(
+            "model_config = ConfigDict(\n",
+            "model_config = ConfigDict(\n        strict=True,\n",
+        )
+    )
     typescript.write_text(
         f"// Generated from contracts/schemas; run make contracts-generate.\n"
         f"// schema-sha256: {fingerprint}\n" + typescript.read_text()

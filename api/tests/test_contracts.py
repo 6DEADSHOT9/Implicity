@@ -6,6 +6,7 @@ from implicity_contracts import decode_contract, encode_contract, generated
 from implicity_contracts.freshness import schema_fingerprint
 from jsonschema import Draft202012Validator, FormatChecker
 from jsonschema.exceptions import ValidationError
+from pydantic import ValidationError as PydanticValidationError
 
 ROOT = Path(__file__).parents[2]
 SCHEMA = json.loads((ROOT / "contracts/schemas/index.json").read_text())
@@ -299,6 +300,134 @@ def test_pydantic_codec_round_trips_decision_wire_names():
     assert (
         json.loads(encode_contract(decode_contract(json.dumps(decision)))) == decision
     )
+
+
+def test_record_ids_round_trip_through_their_events():
+    assert SCHEMA["$defs"]["Proposal"]["properties"]["id"] == {
+        "$ref": "#/$defs/ProposalId"
+    }
+    assert SCHEMA["$defs"]["Decision"]["properties"]["id"] == {
+        "$ref": "#/$defs/DecisionId"
+    }
+    assert SCHEMA["$defs"]["Decision"]["properties"]["proposal_id"] == {
+        "$ref": "#/$defs/ProposalId"
+    }
+    for name, event_schema in SCHEMA["$defs"].items():
+        if "decision_id" in event_schema.get("properties", {}):
+            assert event_schema["properties"]["decision_id"] == {
+                "$ref": "#/$defs/DecisionId"
+            }, name
+        if "proposal_id" in event_schema.get("properties", {}):
+            assert event_schema["properties"]["proposal_id"] == {
+                "$ref": "#/$defs/ProposalId"
+            }, name
+
+    proposal_id = "prop_550e8400-e29b-41d4-a716-446655440000"
+    decision_id = "dec_550e8400-e29b-41d4-a716-446655440000"
+    proposal = {
+        "id": proposal_id,
+        "source": "rule",
+        "dimension": "long_answers",
+        "kind": "coding",
+        "to": "open",
+        "mode": "automatic",
+        "reason": "evidence",
+        "evidence": {"features": [], "occasions": 20, "conversations": 3, "days": 2},
+        "payload": {},
+    }
+    decision = {
+        "id": decision_id,
+        "proposal_id": proposal_id,
+        "dimension": "long_answers",
+        "kind": "coding",
+        "from": "folded",
+        "to": "open",
+        "reason": "evidence",
+        "evidence": {},
+        "dimension_version": 1,
+        "status": "pending",
+        "created_at": "2026-11-24T00:00:00Z",
+        "shown_at": None,
+    }
+    proposal_event = action(
+        "proposal_shown", proposal_id=proposal_id, proposal_type="look"
+    )
+    decision_event = action("change_shown", decision_id=decision_id)
+
+    for record, event, field, record_field in (
+        (proposal, proposal_event, "proposal_id", "id"),
+        (decision, decision_event, "decision_id", "id"),
+    ):
+        decoded_record = decode_contract(json.dumps(record))
+        decoded_event = decode_contract(json.dumps(event))
+        assert (
+            json.loads(encode_contract(decoded_record))[record_field]
+            == record[record_field]
+        )
+        assert json.loads(encode_contract(decoded_event))[field] == record[record_field]
+
+    with pytest.raises(ValidationError):
+        VALIDATOR.validate(
+            action("proposal_shown", proposal_id=decision_id, proposal_type="look")
+        )
+    with pytest.raises(ValidationError):
+        VALIDATOR.validate(action("change_shown", decision_id=proposal_id))
+
+
+def test_codec_accepts_schema_valid_integer_float_spelling():
+    payload = action("search_used")
+    payload["contracts_version"] = 1.0
+    VALIDATOR.validate(payload)
+    decoded = decode_contract(json.dumps(payload))
+    assert decoded.contracts_version == 1
+
+
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_codec_rejects_non_json_number_tokens(constant):
+    spec = {
+        "registry_version": 1,
+        "root": "shell",
+        "elements": {"shell": {"type": "AppShell", "props": {"value": None}}},
+    }
+    wire = json.dumps(spec).replace("null", constant)
+    with pytest.raises(ValueError):
+        decode_contract(wire)
+
+
+def test_codec_checks_rfc3339_and_generated_models_are_strict_directly():
+    valid = action("search_used", timestamp="2026-11-24T00:00:00+00:00")
+    assert decode_contract(json.dumps(valid)).name == "search_used"
+
+    invalid = action("search_used", timestamp="2026-11-24T00:00:00+0000")
+    with pytest.raises(ValidationError):
+        decode_contract(json.dumps(invalid))
+
+    with pytest.raises(PydanticValidationError):
+        generated.ActionSearchUsed.model_validate(
+            {**action("search_used"), "contracts_version": "1"}
+        )
+    with pytest.raises(PydanticValidationError):
+        generated.ActionSearchUsed.model_validate(
+            {**action("search_used"), "timestamp": 0}
+        )
+    with pytest.raises(PydanticValidationError):
+        generated.ActionSearchUsed.model_validate(
+            {**action("search_used"), "contracts_version": 1.0}
+        )
+
+
+def test_codec_never_emits_non_json_numbers():
+    spec = generated.Spec.model_construct(
+        registry_version=1,
+        root="shell",
+        elements={
+            "shell": generated.SpecElement.model_construct(
+                type="AppShell", props={"value": float("nan")}
+            )
+        },
+    )
+    with pytest.raises(ValueError):
+        encode_contract(spec)
 
 
 @pytest.mark.parametrize(

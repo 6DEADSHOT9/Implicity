@@ -28,5 +28,5 @@ contracts-runtime-check:
 test-python:
 	uv run pytest
 
-test-typescript:
+test-typescript: lint-typescript
 	$(PNPM) test
