@@ -62,7 +62,7 @@ A field that does not apply to an event is left out, never sent as null. A suspe
 
 | Event | Sent when | Extra fields |
 | --- | --- | --- |
-| `session_started`, `session_ended` | A session begins, or ends on close or idle | Mode, text scale, local hour bucket (both carry the bucket of the session's start) |
+| `session_started`, `session_ended` | A session begins, or ends on close or idle | Mode, text scale, local hour bucket and weekday/weekend (both carry the buckets of the session's start) |
 | `conversation_started`, `conversation_ended` | A conversation opens or is left | |
 | `message_sent` | The person sends a message | Length bucket, attachment count, the Command if a shortcut sent it |
 | `answer_shown` | An answer finishes rendering | Length bucket, has code, has table, has reasoning |
@@ -105,6 +105,24 @@ A field that does not apply to an event is left out, never sent as null. A suspe
 - Durations, rates and means are numbers, and null when no sample exists: one keystroke gives no gap between keys, a turn with no next action has no wait before it. A count with nothing observed, such as no hesitations, is 0. A measured 0 is a real value. The contracts' table also covers statistics that are neither counts nor durations, such as gap spread, furthest point reached and pointer distance.
 - `seconds_since_answer` is null when the message is edited before an answer began.
 - The kinds of chat in a session summary are a list of distinct kind ids; an unknown kind is left out.
+
+| Event and group | Key | Wire type |
+| --- | --- | --- |
+| `turn_summary.typing` | `composing_time`, `mean_key_gap`, `key_gap_spread`, `backspace_rate` | number or null when there is no sample |
+| `turn_summary.typing` | `burst_count`, `pause_count` | integer, 0 or more |
+| `turn_summary.reading` | `time_on_answer`, `time_before_next_action` | number or null when there is no sample |
+| `turn_summary.reading` | `furthest_point` | number from 0 to 1 |
+| `turn_summary.reading` | `scroll_backs` | integer, 0 or more |
+| `turn_summary.pointer` | `distance_travelled` | number, 0 or more |
+| `turn_summary.pointer` | `hesitations`, `misses_on_small_targets` | integer, 0 or more |
+| `session_summary` | `duration`, `active_time` | number or null when there is no sample |
+| `session_summary` | `turns` | integer, 0 or more |
+| `session_summary.typing` | `composing_time`, `mean_key_gap`, `key_gap_spread`, `backspace_rate` | number or null when there is no sample |
+| `session_summary.typing` | `burst_count`, `pause_count` | integer, 0 or more |
+| `answer_regenerated`, `generation_stopped` | `seconds_since_answer` | number, 0 or more |
+| `message_edited` | `seconds_since_answer` | number or null when edited before an answer began |
+
+Each listed group is required even when measurements have no samples. Null is allowed only for measurements marked nullable; counts and measured distances never use null.
 
 **Turn summary.** `turn_summary` is sent once per turn and covers the message being written and the answer being read.
 
@@ -245,7 +263,7 @@ A proposal asks for a change, a decision records one that was admitted, and the 
 ```jsonc
 // Proposal
 {
-  "id": "prop_…",               // minted by the app when it stores the proposal
+  "id": "prop_…",               // minted by the app when it stores the proposal; absent from the propose request
   "source": "rule" | "hermes" | "person",
   "dimension": "long_answers",
   "kind": "coding",            // or null for global
@@ -271,7 +289,7 @@ A proposal asks for a change, a decision records one that was admitted, and the 
 }
 ```
 
-The contracts define the envelope above. The shape of each `evidence.features` entry belongs to the engine ticket (T20), and each `payload` belongs to the ticket that builds that kind of proposal. `to` is checked against the dimension's values at runtime.
+The propose request has `source: hermes` and no `id`; the app mints the id when it stores the proposal. The contracts define the envelope above. The shape of each `evidence.features` entry belongs to the engine ticket (T20), and each `payload` belongs to the ticket that builds that kind of proposal. `to` is checked against the dimension's values at runtime.
 
 Every offer to the person, including a dimension change under `change_policy: proposed`, is a proposal shown on a ProposalCard, and the proposal events describe it. Keep sends it to the arbiter; only an admitted proposal becomes a decision, and only a decision has change events. Automatic changes are admitted directly and shown with a ChangeNotice.
 

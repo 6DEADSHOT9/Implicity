@@ -5,13 +5,14 @@ import schema from "../../contracts/schemas/index.json";
 import { describe, expect, it } from "vitest";
 
 const sharedFields = {
-  event_id: "evt_1",
-  timestamp: "2026-11-24T00:00:00Z",
+  event_id: "550e8400-e29b-41d4-a716-446655440000",
+  timestamp: "2026-11-24T00:00:00.000Z",
   contracts_version: 1,
-  session_id: "ses_1",
+  session_id: "550e8400-e29b-41d4-a716-446655440001",
+  layout_version: 1,
+  registry_version: 1,
   device_class: "desktop",
   input_type: "mouse",
-  session_flag: "normal",
 } as const;
 
 const validEvent: Event = {
@@ -48,6 +49,9 @@ describe("generated contract types", () => {
     expect(validateContract(validEvent)).toBe(true);
     expect(validateContract(validSetting)).toBe(true);
     expect(validateContract({ ...validEvent, message_text: "private" })).toBe(false);
+    expect(validateContract({ ...validEvent, input_type: "trackpad" })).toBe(false);
+    expect(validateContract({ ...validEvent, session_flag: "normal" })).toBe(false);
+    expect(validateContract({ ...validEvent, timestamp: "2026-11-24T00:00:00Z" })).toBe(false);
   });
 });
 

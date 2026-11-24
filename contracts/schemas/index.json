@@ -13,19 +13,23 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
         "mode",
         "text_scale",
-        "local_hour_bucket"
+        "local_hour_bucket",
+        "layout_version",
+        "registry_version",
+        "day_type"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -33,63 +37,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -100,22 +87,19 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
           "const": "session_started"
         },
         "mode": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "enum": [
+            "light",
+            "dark"
+          ]
         },
         "text_scale": {
           "type": "integer",
@@ -123,9 +107,18 @@
           "maximum": 5
         },
         "local_hour_bucket": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 23
+          "enum": [
+            "night",
+            "morning",
+            "afternoon",
+            "evening"
+          ]
+        },
+        "day_type": {
+          "enum": [
+            "weekday",
+            "weekend"
+          ]
         }
       }
     },
@@ -140,19 +133,23 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
         "mode",
         "text_scale",
-        "local_hour_bucket"
+        "local_hour_bucket",
+        "layout_version",
+        "registry_version",
+        "day_type"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -160,63 +157,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -227,22 +207,19 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
           "const": "session_ended"
         },
         "mode": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "enum": [
+            "light",
+            "dark"
+          ]
         },
         "text_scale": {
           "type": "integer",
@@ -250,9 +227,18 @@
           "maximum": 5
         },
         "local_hour_bucket": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 23
+          "enum": [
+            "night",
+            "morning",
+            "afternoon",
+            "evening"
+          ]
+        },
+        "day_type": {
+          "enum": [
+            "weekday",
+            "weekend"
+          ]
         }
       }
     },
@@ -267,16 +253,19 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag"
+        "layout_version",
+        "registry_version"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -284,63 +273,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -351,14 +323,9 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
@@ -377,16 +344,19 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag"
+        "layout_version",
+        "registry_version"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -394,63 +364,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -461,14 +414,9 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
@@ -487,18 +435,21 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
         "length_bucket",
-        "attachment_count"
+        "attachment_count",
+        "layout_version",
+        "registry_version"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -506,63 +457,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -573,14 +507,9 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
@@ -597,15 +526,8 @@
           "type": "integer",
           "minimum": 0
         },
-        "shortcut": {
-          "oneOf": [
-            {
-              "$ref": "#/$defs/ShortcutId"
-            },
-            {
-              "type": "null"
-            }
-          ]
+        "command": {
+          "$ref": "#/$defs/Command"
         }
       }
     },
@@ -620,20 +542,23 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
         "length_bucket",
         "has_code",
         "has_table",
-        "has_reasoning"
+        "has_reasoning",
+        "layout_version",
+        "registry_version"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -641,63 +566,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -708,14 +616,9 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
@@ -750,17 +653,21 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
-        "default_state"
+        "default_state",
+        "layout_version",
+        "registry_version",
+        "component"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -768,63 +675,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -835,29 +725,17 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
           "const": "component_shown"
         },
         "default_state": {
-          "enum": [
-            "empty",
-            "loading",
-            "long_content",
-            "error",
-            "folded",
-            "open",
-            "closed"
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         }
       }
     },
@@ -872,17 +750,22 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
-        "seconds_visible"
+        "seconds_visible",
+        "layout_version",
+        "registry_version",
+        "default_state",
+        "component"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -890,63 +773,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -957,22 +823,21 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
           "const": "component_seen"
         },
         "seconds_visible": {
-          "type": "integer",
+          "type": "number",
           "minimum": 0
+        },
+        "default_state": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         }
       }
     },
@@ -987,17 +852,21 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
-        "section_type"
+        "layout_version",
+        "registry_version",
+        "component",
+        "slot"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -1005,63 +874,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -1072,26 +924,13 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
           "const": "section_expanded"
-        },
-        "section_type": {
-          "enum": [
-            "reasoning",
-            "long_answer",
-            "details",
-            "run_activity"
-          ]
         }
       }
     },
@@ -1106,17 +945,21 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
-        "section_type"
+        "layout_version",
+        "registry_version",
+        "component",
+        "slot"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -1124,63 +967,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -1191,26 +1017,13 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
           "const": "section_collapsed"
-        },
-        "section_type": {
-          "enum": [
-            "reasoning",
-            "long_answer",
-            "details",
-            "run_activity"
-          ]
         }
       }
     },
@@ -1225,18 +1038,22 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
         "from",
-        "to"
+        "to",
+        "layout_version",
+        "registry_version",
+        "dimension"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -1244,63 +1061,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -1311,38 +1111,81 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
           "const": "representation_switched"
         },
-        "from": {
+        "dimension": {
           "enum": [
-            "prose",
-            "list",
-            "table",
-            "chart",
-            "code"
+            "data_form",
+            "answer_form"
           ]
         },
+        "from": {
+          "type": "string"
+        },
         "to": {
-          "enum": [
-            "prose",
-            "list",
-            "table",
-            "chart",
-            "code"
-          ]
+          "type": "string"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "dimension": {
+                "const": "data_form"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "from": {
+                "enum": [
+                  "table",
+                  "chart"
+                ]
+              },
+              "to": {
+                "enum": [
+                  "table",
+                  "chart"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dimension": {
+                "const": "answer_form"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "from": {
+                "enum": [
+                  "prose",
+                  "list",
+                  "table"
+                ]
+              },
+              "to": {
+                "enum": [
+                  "prose",
+                  "list",
+                  "table"
+                ]
+              }
+            }
+          }
+        }
+      ]
     },
     "Action_PanelOpened": {
       "type": "object",
@@ -1355,17 +1198,20 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
-        "panel"
+        "layout_version",
+        "registry_version",
+        "component"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -1373,63 +1219,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -1440,24 +1269,13 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
           "const": "panel_opened"
-        },
-        "panel": {
-          "enum": [
-            "sources",
-            "project"
-          ]
         }
       }
     },
@@ -1472,17 +1290,20 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
-        "panel"
+        "layout_version",
+        "registry_version",
+        "component"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -1490,63 +1311,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -1557,24 +1361,13 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
           "const": "panel_closed"
-        },
-        "panel": {
-          "enum": [
-            "sources",
-            "project"
-          ]
         }
       }
     },
@@ -1589,17 +1382,20 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
-        "panel"
+        "layout_version",
+        "registry_version",
+        "component"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -1607,63 +1403,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -1674,24 +1453,13 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
           "const": "panel_docked"
-        },
-        "panel": {
-          "enum": [
-            "sources",
-            "project"
-          ]
         }
       }
     },
@@ -1706,17 +1474,20 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
-        "panel"
+        "layout_version",
+        "registry_version",
+        "component"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -1724,63 +1495,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -1791,24 +1545,13 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
           "const": "panel_undocked"
-        },
-        "panel": {
-          "enum": [
-            "sources",
-            "project"
-          ]
         }
       }
     },
@@ -1823,17 +1566,20 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
-        "share_bucket"
+        "share_bucket",
+        "layout_version",
+        "registry_version"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -1841,63 +1587,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -1908,14 +1637,9 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
@@ -1923,9 +1647,9 @@
         },
         "share_bucket": {
           "enum": [
-            "small",
-            "half",
-            "large"
+            "some",
+            "most",
+            "all"
           ]
         }
       }
@@ -1941,17 +1665,20 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
-        "share_bucket"
+        "share_bucket",
+        "layout_version",
+        "registry_version"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -1959,63 +1686,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -2026,14 +1736,9 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
@@ -2041,9 +1746,9 @@
         },
         "share_bucket": {
           "enum": [
-            "small",
-            "half",
-            "large"
+            "some",
+            "most",
+            "all"
           ]
         }
       }
@@ -2059,17 +1764,20 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
-        "seconds_since_answer"
+        "seconds_since_answer",
+        "layout_version",
+        "registry_version"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -2077,63 +1785,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -2144,21 +1835,16 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
           "const": "answer_regenerated"
         },
         "seconds_since_answer": {
-          "type": "integer",
+          "type": "number",
           "minimum": 0
         }
       }
@@ -2174,17 +1860,20 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
-        "seconds_since_answer"
+        "seconds_since_answer",
+        "layout_version",
+        "registry_version"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -2192,63 +1881,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -2259,21 +1931,16 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
           "const": "generation_stopped"
         },
         "seconds_since_answer": {
-          "type": "integer",
+          "type": "number",
           "minimum": 0
         }
       }
@@ -2289,17 +1956,20 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
-        "seconds_since_answer"
+        "seconds_since_answer",
+        "layout_version",
+        "registry_version"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -2307,63 +1977,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -2374,21 +2027,19 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
           "const": "message_edited"
         },
         "seconds_since_answer": {
-          "type": "integer",
+          "type": [
+            "number",
+            "null"
+          ],
           "minimum": 0
         }
       }
@@ -2404,17 +2055,20 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
-        "shortcut_name"
+        "command",
+        "layout_version",
+        "registry_version"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -2422,63 +2076,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -2489,21 +2126,16 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
           "const": "shortcut_used"
         },
-        "shortcut_name": {
-          "$ref": "#/$defs/ShortcutId"
+        "command": {
+          "$ref": "#/$defs/Command"
         }
       }
     },
@@ -2518,16 +2150,19 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag"
+        "layout_version",
+        "registry_version"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -2535,63 +2170,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -2602,14 +2220,9 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
@@ -2628,17 +2241,20 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
-        "type"
+        "type",
+        "layout_version",
+        "registry_version"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -2646,63 +2262,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -2713,14 +2312,9 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
@@ -2728,8 +2322,11 @@
         },
         "type": {
           "enum": [
-            "file",
-            "photo"
+            "image",
+            "document",
+            "audio",
+            "video",
+            "other"
           ]
         }
       }
@@ -2745,17 +2342,20 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
-        "length_bucket"
+        "length_bucket",
+        "layout_version",
+        "registry_version"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -2763,63 +2363,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -2830,14 +2413,9 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
@@ -2863,17 +2441,20 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
-        "decision_id"
+        "decision_id",
+        "layout_version",
+        "registry_version"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -2881,63 +2462,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -2948,14 +2512,9 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
@@ -2977,17 +2536,20 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
-        "decision_id"
+        "decision_id",
+        "layout_version",
+        "registry_version"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -2995,63 +2557,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -3062,14 +2607,9 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
@@ -3091,17 +2631,20 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
-        "decision_id"
+        "decision_id",
+        "layout_version",
+        "registry_version"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -3109,63 +2652,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -3176,14 +2702,9 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
@@ -3205,18 +2726,21 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
         "proposal_id",
-        "proposal_type"
+        "proposal_type",
+        "layout_version",
+        "registry_version"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -3224,63 +2748,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -3291,14 +2798,9 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
@@ -3312,7 +2814,9 @@
             "look",
             "widget",
             "workflow",
-            "kind"
+            "kind",
+            "schedule",
+            "dimension"
           ]
         }
       }
@@ -3328,18 +2832,21 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
         "proposal_id",
-        "proposal_type"
+        "proposal_type",
+        "layout_version",
+        "registry_version"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -3347,63 +2854,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -3414,14 +2904,9 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
@@ -3435,7 +2920,9 @@
             "look",
             "widget",
             "workflow",
-            "kind"
+            "kind",
+            "schedule",
+            "dimension"
           ]
         }
       }
@@ -3451,18 +2938,21 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
         "proposal_id",
-        "proposal_type"
+        "proposal_type",
+        "layout_version",
+        "registry_version"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -3470,63 +2960,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -3537,14 +3010,9 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
@@ -3558,947 +3026,9 @@
             "look",
             "widget",
             "workflow",
-            "kind"
-          ]
-        }
-      }
-    },
-    "Action_WidgetSeen": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "event_id",
-        "name",
-        "timestamp",
-        "contracts_version",
-        "session_id",
-        "device_class",
-        "input_type",
-        "session_flag",
-        "widget_id"
-      ],
-      "properties": {
-        "event_id": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-        },
-        "timestamp": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "contracts_version": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "session_id": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-        },
-        "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "kind": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
-        },
-        "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
-        },
-        "device_class": {
-          "enum": [
-            "desktop",
-            "tablet"
-          ]
-        },
-        "input_type": {
-          "enum": [
-            "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
-          ]
-        },
-        "name": {
-          "const": "widget_seen"
-        },
-        "widget_id": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_]*$"
-        }
-      }
-    },
-    "Action_WidgetUsed": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "event_id",
-        "name",
-        "timestamp",
-        "contracts_version",
-        "session_id",
-        "device_class",
-        "input_type",
-        "session_flag",
-        "widget_id"
-      ],
-      "properties": {
-        "event_id": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-        },
-        "timestamp": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "contracts_version": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "session_id": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-        },
-        "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "kind": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
-        },
-        "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
-        },
-        "device_class": {
-          "enum": [
-            "desktop",
-            "tablet"
-          ]
-        },
-        "input_type": {
-          "enum": [
-            "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
-          ]
-        },
-        "name": {
-          "const": "widget_used"
-        },
-        "widget_id": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_]*$"
-        }
-      }
-    },
-    "Action_WidgetPinned": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "event_id",
-        "name",
-        "timestamp",
-        "contracts_version",
-        "session_id",
-        "device_class",
-        "input_type",
-        "session_flag",
-        "widget_id"
-      ],
-      "properties": {
-        "event_id": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-        },
-        "timestamp": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "contracts_version": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "session_id": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-        },
-        "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "kind": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
-        },
-        "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
-        },
-        "device_class": {
-          "enum": [
-            "desktop",
-            "tablet"
-          ]
-        },
-        "input_type": {
-          "enum": [
-            "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
-          ]
-        },
-        "name": {
-          "const": "widget_pinned"
-        },
-        "widget_id": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_]*$"
-        }
-      }
-    },
-    "Action_WidgetDismissed": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "event_id",
-        "name",
-        "timestamp",
-        "contracts_version",
-        "session_id",
-        "device_class",
-        "input_type",
-        "session_flag",
-        "widget_id"
-      ],
-      "properties": {
-        "event_id": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-        },
-        "timestamp": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "contracts_version": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "session_id": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-        },
-        "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "kind": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
-        },
-        "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
-        },
-        "device_class": {
-          "enum": [
-            "desktop",
-            "tablet"
-          ]
-        },
-        "input_type": {
-          "enum": [
-            "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
-          ]
-        },
-        "name": {
-          "const": "widget_dismissed"
-        },
-        "widget_id": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_]*$"
-        }
-      }
-    },
-    "Action_MediaPlayed": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "event_id",
-        "name",
-        "timestamp",
-        "contracts_version",
-        "session_id",
-        "device_class",
-        "input_type",
-        "session_flag",
-        "position_bucket"
-      ],
-      "properties": {
-        "event_id": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-        },
-        "timestamp": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "contracts_version": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "session_id": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-        },
-        "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "kind": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
-        },
-        "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
-        },
-        "device_class": {
-          "enum": [
-            "desktop",
-            "tablet"
-          ]
-        },
-        "input_type": {
-          "enum": [
-            "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
-          ]
-        },
-        "name": {
-          "const": "media_played"
-        },
-        "position_bucket": {
-          "enum": [
-            "start",
-            "quarter",
-            "middle",
-            "three_quarters",
-            "end"
-          ]
-        }
-      }
-    },
-    "Action_MediaPaused": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "event_id",
-        "name",
-        "timestamp",
-        "contracts_version",
-        "session_id",
-        "device_class",
-        "input_type",
-        "session_flag",
-        "position_bucket"
-      ],
-      "properties": {
-        "event_id": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-        },
-        "timestamp": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "contracts_version": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "session_id": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-        },
-        "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "kind": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
-        },
-        "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
-        },
-        "device_class": {
-          "enum": [
-            "desktop",
-            "tablet"
-          ]
-        },
-        "input_type": {
-          "enum": [
-            "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
-          ]
-        },
-        "name": {
-          "const": "media_paused"
-        },
-        "position_bucket": {
-          "enum": [
-            "start",
-            "quarter",
-            "middle",
-            "three_quarters",
-            "end"
-          ]
-        }
-      }
-    },
-    "Action_MediaSeeked": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "event_id",
-        "name",
-        "timestamp",
-        "contracts_version",
-        "session_id",
-        "device_class",
-        "input_type",
-        "session_flag",
-        "position_bucket"
-      ],
-      "properties": {
-        "event_id": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-        },
-        "timestamp": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "contracts_version": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "session_id": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-        },
-        "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "kind": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
-        },
-        "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
-        },
-        "device_class": {
-          "enum": [
-            "desktop",
-            "tablet"
-          ]
-        },
-        "input_type": {
-          "enum": [
-            "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
-          ]
-        },
-        "name": {
-          "const": "media_seeked"
-        },
-        "position_bucket": {
-          "enum": [
-            "start",
-            "quarter",
-            "middle",
-            "three_quarters",
-            "end"
-          ]
-        }
-      }
-    },
-    "Action_MediaReplayed": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "event_id",
-        "name",
-        "timestamp",
-        "contracts_version",
-        "session_id",
-        "device_class",
-        "input_type",
-        "session_flag",
-        "position_bucket"
-      ],
-      "properties": {
-        "event_id": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-        },
-        "timestamp": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "contracts_version": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "session_id": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-        },
-        "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "kind": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
-        },
-        "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
-        },
-        "device_class": {
-          "enum": [
-            "desktop",
-            "tablet"
-          ]
-        },
-        "input_type": {
-          "enum": [
-            "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
-          ]
-        },
-        "name": {
-          "const": "media_replayed"
-        },
-        "position_bucket": {
-          "enum": [
-            "start",
-            "quarter",
-            "middle",
-            "three_quarters",
-            "end"
+            "kind",
+            "schedule",
+            "dimension"
           ]
         }
       }
@@ -4514,18 +3044,21 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
         "dimension",
-        "value"
+        "value",
+        "layout_version",
+        "registry_version"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -4533,63 +3066,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -4600,14 +3116,9 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
@@ -4635,18 +3146,21 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
         "dimension",
-        "value"
+        "value",
+        "layout_version",
+        "registry_version"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -4654,63 +3168,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -4721,14 +3218,9 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
@@ -4756,18 +3248,21 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
         "dimension",
-        "value"
+        "value",
+        "layout_version",
+        "registry_version"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -4775,63 +3270,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -4842,14 +3320,9 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
@@ -4877,18 +3350,21 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
         "dimension",
-        "value"
+        "value",
+        "layout_version",
+        "registry_version"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -4896,63 +3372,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -4963,14 +3422,9 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
@@ -4998,18 +3452,21 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
         "dimension",
-        "value"
+        "value",
+        "layout_version",
+        "registry_version"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -5017,63 +3474,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -5084,14 +3524,9 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
@@ -5119,18 +3554,22 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
         "dimension",
-        "value"
+        "value",
+        "layout_version",
+        "registry_version",
+        "command"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -5138,63 +3577,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -5205,14 +3627,9 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
@@ -5223,9 +3640,12 @@
         },
         "value": {
           "enum": [
-            true,
-            false
+            "on",
+            "off"
           ]
+        },
+        "command": {
+          "$ref": "#/$defs/Command"
         }
       }
     },
@@ -5240,18 +3660,21 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
         "dimension",
-        "value"
+        "value",
+        "layout_version",
+        "registry_version"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -5259,63 +3682,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -5326,14 +3732,9 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
@@ -5362,18 +3763,21 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
         "dimension",
-        "value"
+        "value",
+        "layout_version",
+        "registry_version"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -5381,63 +3785,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -5448,14 +3835,9 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
@@ -5484,18 +3866,21 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
         "dimension",
-        "value"
+        "value",
+        "layout_version",
+        "registry_version"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -5503,63 +3888,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -5570,14 +3938,9 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
@@ -5605,18 +3968,21 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
         "dimension",
-        "value"
+        "value",
+        "layout_version",
+        "registry_version"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -5624,63 +3990,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -5691,14 +4040,9 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
@@ -5727,18 +4071,21 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
         "dimension",
-        "value"
+        "value",
+        "layout_version",
+        "registry_version"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -5746,63 +4093,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -5813,14 +4143,9 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
@@ -5849,19 +4174,22 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
         "typing",
         "reading",
-        "pointer"
+        "pointer",
+        "layout_version",
+        "registry_version"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -5869,56 +4197,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
           "type": "string",
           "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -5929,14 +4247,9 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
@@ -5956,7 +4269,10 @@
           ],
           "properties": {
             "time_on_answer": {
-              "type": "number",
+              "type": [
+                "number",
+                "null"
+              ],
               "minimum": 0
             },
             "furthest_point": {
@@ -5969,7 +4285,10 @@
               "minimum": 0
             },
             "time_before_next_action": {
-              "type": "number",
+              "type": [
+                "number",
+                "null"
+              ],
               "minimum": 0
             }
           }
@@ -6010,23 +4329,26 @@
         "session_id",
         "device_class",
         "input_type",
-        "session_flag",
         "duration",
         "active_time",
         "turns",
         "kinds",
         "local_hour_bucket",
         "day_type",
-        "typing"
+        "typing",
+        "layout_version",
+        "registry_version"
       ],
       "properties": {
         "event_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
         },
         "contracts_version": {
           "type": "integer",
@@ -6034,56 +4356,46 @@
         },
         "session_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "conversation_id": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "kind": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
             },
             {
-              "type": "null"
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           ]
         },
         "component": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "slot": {
           "type": "string",
           "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "layout_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "registry_version": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": "integer",
+          "minimum": 1
         },
         "device_class": {
           "enum": [
@@ -6094,25 +4406,26 @@
         "input_type": {
           "enum": [
             "mouse",
-            "trackpad",
-            "touch"
-          ]
-        },
-        "session_flag": {
-          "enum": [
-            "normal",
-            "guest_suspected"
+            "touch",
+            "pen",
+            "none"
           ]
         },
         "name": {
           "const": "session_summary"
         },
         "duration": {
-          "type": "number",
+          "type": [
+            "number",
+            "null"
+          ],
           "minimum": 0
         },
         "active_time": {
-          "type": "number",
+          "type": [
+            "number",
+            "null"
+          ],
           "minimum": 0
         },
         "turns": {
@@ -6121,15 +4434,32 @@
         },
         "kinds": {
           "type": "array",
+          "uniqueItems": true,
           "items": {
-            "type": "string",
-            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            "oneOf": [
+              {
+                "enum": [
+                  "casual",
+                  "coding",
+                  "writing",
+                  "analysis",
+                  "other"
+                ]
+              },
+              {
+                "type": "string",
+                "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              }
+            ]
           }
         },
         "local_hour_bucket": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 23
+          "enum": [
+            "night",
+            "morning",
+            "afternoon",
+            "evening"
+          ]
         },
         "day_type": {
           "enum": [
@@ -6151,10 +4481,11 @@
         "dimension",
         "kind",
         "to",
-        "mode",
+        "change_policy",
         "reason",
         "evidence",
-        "payload"
+        "payload",
+        "type"
       ],
       "properties": {
         "id": {
@@ -6168,21 +4499,30 @@
           ]
         },
         "dimension": {
-          "type": "string"
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "kind": {
-          "type": [
-            "string",
-            "null"
+          "oneOf": [
+            {
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
+            },
+            {
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "to": {},
-        "mode": {
-          "enum": [
-            "automatic",
-            "proposed"
-          ]
-        },
         "reason": {
           "type": "string"
         },
@@ -6209,6 +4549,22 @@
         },
         "payload": {
           "type": "object"
+        },
+        "change_policy": {
+          "enum": [
+            "automatic",
+            "proposed"
+          ]
+        },
+        "type": {
+          "enum": [
+            "look",
+            "widget",
+            "workflow",
+            "kind",
+            "schedule",
+            "dimension"
+          ]
         }
       }
     },
@@ -6240,9 +4596,23 @@
           "type": "string"
         },
         "kind": {
-          "type": [
-            "string",
-            "null"
+          "oneOf": [
+            {
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
+            },
+            {
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "from": {},
@@ -6293,7 +4663,8 @@
           "minimum": 1
         },
         "root": {
-          "type": "string"
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "elements": {
           "type": "object",
@@ -6312,7 +4683,8 @@
       ],
       "properties": {
         "type": {
-          "type": "string"
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
         },
         "props": {
           "type": "object"
@@ -6322,7 +4694,8 @@
           "additionalProperties": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
             }
           }
         }
@@ -6458,30 +4831,6 @@
           "$ref": "#/$defs/Action_ProposalDismissed"
         },
         {
-          "$ref": "#/$defs/Action_WidgetSeen"
-        },
-        {
-          "$ref": "#/$defs/Action_WidgetUsed"
-        },
-        {
-          "$ref": "#/$defs/Action_WidgetPinned"
-        },
-        {
-          "$ref": "#/$defs/Action_WidgetDismissed"
-        },
-        {
-          "$ref": "#/$defs/Action_MediaPlayed"
-        },
-        {
-          "$ref": "#/$defs/Action_MediaPaused"
-        },
-        {
-          "$ref": "#/$defs/Action_MediaSeeked"
-        },
-        {
-          "$ref": "#/$defs/Action_MediaReplayed"
-        },
-        {
           "$ref": "#/$defs/SettingChanged_Reasoning"
         },
         {
@@ -6535,15 +4884,24 @@
       ],
       "properties": {
         "composing_time": {
-          "type": "number",
+          "type": [
+            "number",
+            "null"
+          ],
           "minimum": 0
         },
         "mean_key_gap": {
-          "type": "number",
+          "type": [
+            "number",
+            "null"
+          ],
           "minimum": 0
         },
         "key_gap_spread": {
-          "type": "number",
+          "type": [
+            "number",
+            "null"
+          ],
           "minimum": 0
         },
         "burst_count": {
@@ -6555,29 +4913,121 @@
           "minimum": 0
         },
         "backspace_rate": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
         }
       }
     },
-    "ShortcutId": {
-      "type": "string",
-      "enum": [
-        "copy_answer",
-        "copy_code",
-        "regenerate_answer",
-        "stop_generation",
-        "search"
-      ]
-    },
     "ProposalId": {
       "type": "string",
-      "pattern": "^prop_[a-z0-9_-]{1,64}$"
+      "pattern": "^prop_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
     },
     "DecisionId": {
       "type": "string",
-      "pattern": "^dec_[a-z0-9_-]{1,64}$"
+      "pattern": "^dec_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "ProposalRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "dimension",
+        "kind",
+        "to",
+        "change_policy",
+        "reason",
+        "evidence",
+        "payload",
+        "type"
+      ],
+      "properties": {
+        "source": {
+          "const": "hermes"
+        },
+        "dimension": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
+            },
+            {
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "to": {},
+        "reason": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "features": {
+              "type": "array"
+            },
+            "occasions": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "conversations": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "days": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "payload": {
+          "type": "object"
+        },
+        "change_policy": {
+          "enum": [
+            "automatic",
+            "proposed"
+          ]
+        },
+        "type": {
+          "enum": [
+            "look",
+            "widget",
+            "workflow",
+            "kind",
+            "schedule",
+            "dimension"
+          ]
+        }
+      }
+    },
+    "Command": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+        },
+        {
+          "type": "string",
+          "pattern": "^cmd_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        }
+      ]
     }
   },
   "oneOf": [
@@ -6592,6 +5042,9 @@
     },
     {
       "$ref": "#/$defs/Spec"
+    },
+    {
+      "$ref": "#/$defs/ProposalRequest"
     }
   ]
 }

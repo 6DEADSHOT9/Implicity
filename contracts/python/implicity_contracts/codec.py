@@ -26,6 +26,19 @@ def _reject_nonfinite(value: object) -> None:
             _reject_nonfinite(item)
 
 
+def _preserve_milliseconds(value: object) -> None:
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if key in {"timestamp", "created_at", "shown_at"} and isinstance(item, str):
+                if item.endswith("Z") and "." not in item.rsplit("T", 1)[-1]:
+                    value[key] = item[:-1] + ".000Z"
+            else:
+                _preserve_milliseconds(item)
+    elif isinstance(value, list):
+        for item in value:
+            _preserve_milliseconds(item)
+
+
 def decode_contract(payload: str) -> BaseModel:
     VALIDATOR.validate(json.loads(payload, parse_constant=_reject_constant))
     model = Contracts.model_validate_json(payload, strict=False)
@@ -39,6 +52,7 @@ def encode_contract(value: BaseModel) -> str:
         value.model_dump(mode="python", by_alias=True, exclude_unset=True)
     )
     payload = value.model_dump(mode="json", by_alias=True, exclude_unset=True)
+    _preserve_milliseconds(payload)
     wire = json.dumps(payload, separators=(",", ":"), allow_nan=False)
     VALIDATOR.validate(json.loads(wire, parse_constant=_reject_constant))
     return wire
