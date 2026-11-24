@@ -30,3 +30,14 @@ Stage 1, foundation. Three spikes run before any other work: see `docs/spikes`.
 Install the pinned workspaces with `make install`; run `make lint` and `make test`.
 The TypeScript workspace uses the Node.js version in `.node-version` and npm;
 the Python workspace uses uv 0.11.25 with the version in `.python-version`.
+
+Copy `.env.example` to `.env` and replace its values with generated secrets. Start
+the containerized stack with `make up-development` or `make up-production`; check
+health with `docker compose --profile development ps` (or `production`), then run
+`make down` to stop it. The Compose project is named `implicity-local`.
+
+Hermes keeps its configuration in a named volume. After the first start, run
+`docker compose exec hermes hermes setup` to configure it, then complete Codex
+subscription sign-in yourself inside the container. Keep that volume to retain the
+sign-in. The web and API services currently only keep the scaffold runtimes alive;
+T14 and T16 add the applications.

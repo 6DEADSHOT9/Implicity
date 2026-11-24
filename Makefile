@@ -1,4 +1,4 @@
-.PHONY: install lint lint-python lint-typescript test test-python test-typescript
+.PHONY: install lint lint-python lint-typescript test test-python test-typescript up-development up-production down
 
 PNPM = npx --yes pnpm@12.23.0
 
@@ -21,3 +21,12 @@ test-python:
 
 test-typescript:
 	$(PNPM) test
+
+up-development:
+	docker compose --profile development up --build -d
+
+up-production:
+	docker compose --profile production up --build -d
+
+down:
+	docker compose down --remove-orphans
