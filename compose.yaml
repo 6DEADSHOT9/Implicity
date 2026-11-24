@@ -124,6 +124,7 @@ services:
     volumes:
       - posthog-zookeeper:/data
       - posthog-zookeeper-datalog:/datalog
+      - posthog-zookeeper-logs:/logs
     hostname: zookeeper
     healthcheck:
       test: ["CMD-SHELL", "echo ruok | nc -w 2 127.0.0.1 2181 | grep imok"]
@@ -270,10 +271,11 @@ services:
       CELERY_MAX_TASKS_PER_CHILD: 1000
       OPT_OUT_CAPTURE: "true"
     healthcheck:
-      test: ["CMD", "python", "-c", "from posthog.celery import app; app.connection_for_read().ensure_connection(max_retries=0)"]
-      interval: 10s
+      test: ["CMD", "python", "-c", "import socket; from posthog.celery import app; reply = app.control.inspect(timeout=3, destination=[f'node@{socket.gethostname()}']).ping(); assert reply and all(result.get('ok') == 'pong' for result in reply.values())"]
+      interval: 3s
       timeout: 5s
-      retries: 12
+      retries: 3
+      start_period: 60s
 
   posthog-capture:
     profiles: [development, production]
@@ -372,6 +374,7 @@ volumes:
   posthog-kafka:
   posthog-zookeeper:
   posthog-zookeeper-datalog:
+  posthog-zookeeper-logs:
   posthog-data:
 
 networks:
