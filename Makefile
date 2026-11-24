@@ -29,4 +29,4 @@ up-production:
 	docker compose --profile production up --build -d
 
 down:
-	docker compose down --remove-orphans
+	docker compose --profile development --profile production down --remove-orphans

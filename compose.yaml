@@ -9,16 +9,19 @@ x-web-build: &web-build
     COPY web/package.json web/package.json
     COPY engine/react/package.json engine/react/package.json
     COPY engine/demo/package.json engine/demo/package.json
+    RUN npx --yes pnpm@12.23.0 install --frozen-lockfile
     CMD ["sleep", "infinity"]
 
 x-api-build: &api-build
   context: .
   dockerfile_inline: |
     FROM python:3.14.7-slim
+    COPY --from=ghcr.io/astral-sh/uv:0.11.25 /uv /uvx /bin/
     WORKDIR /workspace
     COPY pyproject.toml uv.lock ./
     COPY api/pyproject.toml api/pyproject.toml
     COPY engine/python/pyproject.toml engine/python/pyproject.toml
+    RUN uv sync --all-packages --locked
     CMD ["sleep", "infinity"]
 
 x-app-healthcheck: &app-healthcheck
@@ -165,7 +168,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 30
-      start_period: 120s
+      start_period: 15m
     volumes:
       - posthog-data:/var/lib/posthog
 
