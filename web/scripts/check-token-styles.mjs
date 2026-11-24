@@ -9,7 +9,7 @@ import { tokenNames, tokenUtilities } from "../src/registry/token-values.mjs";
 const safeKeywords = new Set(["inherit", "initial", "unset", "currentcolor", "transparent", "normal", "auto", "none"]);
 const tokenReference = /^var\(\s*(--[\w-]+)\s*\)$/i;
 const layoutUtility = /^(?:block|inline|inline-block|flex|inline-flex|grid|inline-grid|hidden|contents|flow-root|flex-(?:row|row-reverse|col|col-reverse|wrap|wrap-reverse|nowrap|1|auto|initial|none|grow|shrink)|grid-flow-(?:row|col|dense)|items-(?:start|end|center|baseline|stretch)|justify-(?:normal|start|end|center|between|around|evenly|stretch)|self-(?:auto|start|end|center|stretch|baseline)|content-(?:normal|center|start|end|between|around|evenly|baseline|stretch)|place-(?:content|items|self)-(?:start|end|center|stretch|between|around|evenly|baseline)|col-span-(?:full|\d+)|row-span-(?:full|\d+)|order-(?:first|last|none|\d+)|relative|absolute|fixed|sticky|static|overflow-(?:auto|hidden|clip|visible|scroll)|z-(?:auto|\d+))$/;
-const tokenImport = /(?:^|\/)token(?:\.ts)?$/;
+const approvedTokenModule = resolve(dirname(fileURLToPath(import.meta.url)), "../src/registry/token.ts");
 
 function unwrap(node) {
   while (ts.isParenthesizedExpression(node) || ts.isAsExpression(node) || ts.isSatisfiesExpression(node) || ts.isTypeAssertionExpression(node) || ts.isNonNullExpression(node)) node = node.expression;
@@ -41,31 +41,52 @@ function variable(node, vars, seen) {
   return { value: unwrap(item.initializer), seen: nextSeen };
 }
 
-function importedToken(sourceFile, filename) {
-  return sourceFile.statements.some((statement) => ts.isImportDeclaration(statement)
-    && ts.isStringLiteral(statement.moduleSpecifier)
-    && tokenImport.test(resolve(dirname(filename), statement.moduleSpecifier.text))
-    && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings)
-    && statement.importClause.namedBindings.elements.some(({ name, propertyName }) => name.text === "token" || propertyName?.text === "token"));
+function importedTokenBindings(sourceFile, filename) {
+  const bindings = new Set();
+  const shadowed = new Set();
+  const addBindingNames = (name) => {
+    if (ts.isIdentifier(name)) shadowed.add(name.text);
+    else if (ts.isObjectBindingPattern(name) || ts.isArrayBindingPattern(name)) {
+      for (const element of name.elements) if (ts.isBindingElement(element)) addBindingNames(element.name);
+    }
+  };
+  const findShadowed = (node) => {
+    if (ts.isVariableDeclaration(node) || ts.isParameter(node)) addBindingNames(node.name);
+    if ((ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node) || ts.isClassDeclaration(node) || ts.isClassExpression(node) || ts.isEnumDeclaration(node)) && node.name) shadowed.add(node.name.text);
+    ts.forEachChild(node, findShadowed);
+  };
+  findShadowed(sourceFile);
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) continue;
+    const path = resolve(dirname(filename), statement.moduleSpecifier.text);
+    if (![path, `${path}.ts`, resolve(path, "index.ts")].includes(approvedTokenModule)) continue;
+    const namedBindings = statement.importClause?.namedBindings;
+    if (namedBindings && ts.isNamedImports(namedBindings)) {
+      for (const binding of namedBindings.elements) {
+        if ((binding.propertyName ?? binding.name).text === "token" && !shadowed.has(binding.name.text)) bindings.add(binding.name.text);
+      }
+    }
+  }
+  return bindings;
 }
 
-function tokenCall(node, hasTokenImport) {
+function tokenCall(node, tokenBindings) {
   node = unwrap(node);
-  if (!hasTokenImport || !ts.isCallExpression(node) || !ts.isIdentifier(node.expression) || node.expression.text !== "token" || node.arguments.length !== 1) return undefined;
+  if (!ts.isCallExpression(node) || !ts.isIdentifier(node.expression) || !tokenBindings.has(node.expression.text) || node.arguments.length !== 1) return undefined;
   const [argument] = node.arguments;
   if (!ts.isStringLiteralLike(argument) || !tokenNames.has(argument.text)) return undefined;
   return argument.text.startsWith("--") ? `var(${argument.text})` : argument.text;
 }
 
-function styleValue(node, vars, seen, hasTokenImport, property) {
+function styleValue(node, vars, seen, tokenBindings, property) {
   node = unwrap(node);
   if (ts.isCallExpression(node)) {
-    const token = tokenCall(node, hasTokenImport);
+    const token = tokenCall(node, tokenBindings);
     return token?.startsWith("var(") ? [] : [`unsupported dynamic style value for ${property}`];
   }
   if (ts.isIdentifier(node)) {
     const alias = variable(node, vars, seen);
-    return alias ? styleValue(alias.value, vars, alias.seen, hasTokenImport, property) : [`unsupported dynamic style value for ${property}`];
+    return alias ? styleValue(alias.value, vars, alias.seen, tokenBindings, property) : [`unsupported dynamic style value for ${property}`];
   }
   const value = ts.isStringLiteralLike(node) ? node.text : undefined;
   if (value === undefined) return [`unsupported style value for ${property}`];
@@ -73,14 +94,14 @@ function styleValue(node, vars, seen, hasTokenImport, property) {
   return match && tokenNames.has(match[1]) || safeKeywords.has(value.toLowerCase()) ? [] : [`${property}: ${value}`];
 }
 
-function classValue(node, hasTokenImport) {
+function classValue(node, tokenBindings) {
   node = unwrap(node);
   if (ts.isStringLiteralLike(node)) return node.text;
-  return tokenCall(node, hasTokenImport);
+  return tokenCall(node, tokenBindings);
 }
 
-function classViolations(node, hasTokenImport) {
-  const value = classValue(node, hasTokenImport);
+function classViolations(node, tokenBindings) {
+  const value = classValue(node, tokenBindings);
   if (value === undefined) return ["unsupported dynamic className; use token() with a token name"];
   return value.split(/\s+/).filter(Boolean).flatMap((fullName) => {
     const base = fullName.split(":").at(-1);
@@ -89,17 +110,17 @@ function classViolations(node, hasTokenImport) {
   });
 }
 
-function styleObject(node, vars, seen, hasTokenImport) {
+function styleObject(node, vars, seen, tokenBindings) {
   node = unwrap(node);
   if (ts.isIdentifier(node)) {
     const alias = variable(node, vars, seen);
-    return alias ? styleObject(alias.value, vars, alias.seen, hasTokenImport) : ["unsupported dynamic style object"];
+    return alias ? styleObject(alias.value, vars, alias.seen, tokenBindings) : ["unsupported dynamic style object"];
   }
   if (!ts.isObjectLiteralExpression(node)) return ["unsupported dynamic style object"];
   const violations = [];
   for (const property of node.properties) {
     if (ts.isSpreadAssignment(property)) {
-      violations.push(...styleObject(property.expression, vars, new Set(seen), hasTokenImport));
+      violations.push(...styleObject(property.expression, vars, new Set(seen), tokenBindings));
       continue;
     }
     if ((!ts.isPropertyAssignment(property) && !ts.isShorthandPropertyAssignment(property)) || ts.isComputedPropertyName(property.name)) {
@@ -112,23 +133,23 @@ function styleObject(node, vars, seen, hasTokenImport) {
       continue;
     }
     const value = ts.isPropertyAssignment(property) ? property.initializer : property.name;
-    if (name === "className") violations.push(...classViolations(value, hasTokenImport));
-    else violations.push(...styleValue(value, vars, new Set(seen), hasTokenImport, name));
+    if (name === "className") violations.push(...classViolations(value, tokenBindings));
+    else violations.push(...styleValue(value, vars, new Set(seen), tokenBindings, name));
   }
   return violations;
 }
 
-function spreadViolations(node, vars, seen, hasTokenImport) {
+function spreadViolations(node, vars, seen, tokenBindings) {
   node = unwrap(node);
   if (ts.isIdentifier(node)) {
     const alias = variable(node, vars, seen);
-    return alias ? spreadViolations(alias.value, vars, alias.seen, hasTokenImport) : ["unsupported dynamic JSX spread"];
+    return alias ? spreadViolations(alias.value, vars, alias.seen, tokenBindings) : ["unsupported dynamic JSX spread"];
   }
   if (!ts.isObjectLiteralExpression(node)) return ["unsupported dynamic JSX spread"];
   const violations = [];
   for (const property of node.properties) {
     if (ts.isSpreadAssignment(property)) {
-      violations.push(...spreadViolations(property.expression, vars, new Set(seen), hasTokenImport));
+      violations.push(...spreadViolations(property.expression, vars, new Set(seen), tokenBindings));
       continue;
     }
     if ((!ts.isPropertyAssignment(property) && !ts.isShorthandPropertyAssignment(property)) || ts.isComputedPropertyName(property.name)) {
@@ -141,8 +162,8 @@ function spreadViolations(node, vars, seen, hasTokenImport) {
       continue;
     }
     const value = ts.isPropertyAssignment(property) ? property.initializer : property.name;
-    if (name === "style") violations.push(...styleObject(value, vars, new Set(seen), hasTokenImport));
-    if (name === "className") violations.push(...classViolations(value, hasTokenImport));
+    if (name === "style") violations.push(...styleObject(value, vars, new Set(seen), tokenBindings));
+    if (name === "className") violations.push(...classViolations(value, tokenBindings));
   }
   return violations;
 }
@@ -160,19 +181,19 @@ export function tokenStyleViolations(source, filename = resolve("web/src/registr
   }
   const sourceFile = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true, filename.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
   const vars = declarations(sourceFile);
-  const hasTokenImport = importedToken(sourceFile, filename);
+  const tokenBindings = importedTokenBindings(sourceFile, filename);
   const violations = [];
   const visit = (node) => {
     if (ts.isJsxAttribute(node) && node.initializer) {
       const name = node.name.getText(sourceFile);
       if (name === "style" && ts.isJsxExpression(node.initializer) && node.initializer.expression) {
-        violations.push(...styleObject(node.initializer.expression, vars, new Set(), hasTokenImport));
+        violations.push(...styleObject(node.initializer.expression, vars, new Set(), tokenBindings));
       } else if (name === "className") {
         const value = ts.isJsxExpression(node.initializer) ? node.initializer.expression : node.initializer;
-        if (value) violations.push(...classViolations(value, hasTokenImport));
+        if (value) violations.push(...classViolations(value, tokenBindings));
       }
     }
-    if (ts.isJsxSpreadAttribute(node)) violations.push(...spreadViolations(node.expression, vars, new Set(), hasTokenImport));
+    if (ts.isJsxSpreadAttribute(node)) violations.push(...spreadViolations(node.expression, vars, new Set(), tokenBindings));
     ts.forEachChild(node, visit);
   };
   visit(sourceFile);

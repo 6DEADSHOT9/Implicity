@@ -8,8 +8,8 @@ const components = import.meta.glob<Record<string, ComponentType<never>>>(["./*/
 const schemas = import.meta.glob<{ propsSchema: z.ZodObject<z.ZodRawShape>; slotsSchema: z.ZodObject<z.ZodRawShape> }>("./*/schema.ts", { eager: true });
 const eventModules = import.meta.glob<{ events: readonly string[] }>("./*/events.ts", { eager: true });
 const metaModules = import.meta.glob<{ meta: SkeletonEntry["meta"] }>("./*/meta.ts", { eager: true });
-const tests = import.meta.glob("./*/*.test.tsx");
-const modulePaths = [...Object.keys(components), ...Object.keys(schemas), ...Object.keys(eventModules), ...Object.keys(metaModules), ...Object.keys(tests)];
+const testPaths = Object.keys(import.meta.glob("./*/*.test.tsx"));
+const modulePaths = [...Object.keys(components), ...Object.keys(schemas), ...Object.keys(eventModules), ...Object.keys(metaModules), ...testPaths];
 const folders = [...new Set(modulePaths.map((path) => path.split("/")[1]))].sort();
 const discovered = discoverRegistryFolders(folders.map((id) => {
   const componentPath = `./${id}/${id}.tsx`;
