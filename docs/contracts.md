@@ -409,6 +409,10 @@ web/src/registry/DataTable/
 
 `meta.ts` also lists the states the gallery must show, such as empty, loading, long content and error. The registry is the list of these folders, and adding one raises the registry version.
 
+An entry is exactly these files: the component is the named export matching its folder, and `schema.ts`, `events.ts` and `meta.ts` provide the rest. Nothing else is exported for the registry. Generation and loading both fail, naming the folder, when a file or its expected export is missing.
+
+**Registry versions** are recorded in append-only snapshot files, `registry-v1.json`, `registry-v2.json` and so on, each listing that version's components. The check needs no git history: the current components must match the file for the current version, and the current version must be the highest file. Adding or removing a component adds a new snapshot file and raises the version. An existing snapshot file is never edited, which review enforces.
+
 **A look** is one file.
 
 ```jsonc

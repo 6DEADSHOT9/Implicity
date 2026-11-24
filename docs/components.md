@@ -100,7 +100,7 @@ Each registry entry carries four things beyond its code, and the rest of the sys
 
 1. **A schema** for its props and slots, so an invalid layout is rejected before it renders.
 2. **The events it emits**, including when it was actually shown. Capture comes from this, so a new component brings its own signals.
-3. **Token-only styling.** It uses the design tokens and has no styles of its own.
+3. **Token-only styling.** It uses the design tokens and has no styles of its own. A lint enforces this by allowing only known-good forms: a `style` value must be `var(--token)` or a safe keyword such as `inherit` or `auto`; colour, size, font, spacing, radius and shadow utilities in `className` must be names generated from the token set, while layout-only utilities such as `flex` and `items-center` are free; dynamic values in `style` or `className` are an error unless they go through the one helper that accepts only token names. The lint guarantees that no hard-coded colour, size, font, spacing, radius or shadow reaches a skeleton through `style` or `className`. Whether a skeleton looks right in every look, mode and screen size is checked in review and in the gallery, not by the lint.
 4. **Its limits**: minimum sizes and contrast that no adaptation may break.
 
 Widgets declare two more: where their data comes from, and how they refresh. That is what lets each one show its last update and its source.
@@ -140,7 +140,7 @@ A look is a named set of token values, and every component reads only tokens.
 - A few presets ship with the product. Hermes can generate a look from a request or a rule's suggestion, always as a proposal with a preview.
 - The later backend proposal gate must validate text contrast, minimum text and target sizes, a consistent spacing scale, a limited palette, comfortable line length and clear heading steps; it must also assess colour harmony before a proposed look is offered.
 - Judgment principles such as visual hierarchy, grouping and restraint are guidance inside Hermes's "propose a look" skill.
-- Settings on a scale move one step per change.
+- Automatic changes on a scale move one step at a time; the person can set any value directly.
 
 Each mode defines the per-look value for every shadcn/ui colour role, including charts and the canonical `sidebar` surface. The shared code and terminal palette is defined once per mode in `contracts/looks/tokens.json`, alongside derived CSS values for radius, density, text size, layout, media and headings. Preset tests check these roles and options, CSS units and scale completeness, spacing and heading order, local font assets, the 34-colour budget, WCAG AA text contrast and input boundary contrast. The future backend proposal gate must apply these checks to proposed looks and assess colour harmony; this ticket does not implement that gate.
 
