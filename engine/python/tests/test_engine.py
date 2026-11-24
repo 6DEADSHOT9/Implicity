@@ -112,16 +112,21 @@ def test_recomputes_belief_from_fake_source_and_retains_judged_scale_value(
     assert source.daily_count_calls == 8
     saved = Evidence.from_dict(first.evidence.to_dict())
     replay = dimension.gate.check(
-        "spacious",
+        saved.judged_value,
         "coding",
-        TODAY,
+        saved.evaluation_day,
         60,
         14,
         "session",
         saved.features,
         dimension.evidence["spacious"],
     )
+    assert saved.judged_value == "spacious"
     assert replay == first.gates["spacious"]
+    fresh_only = evaluate_belief(
+        dimension, source, "compact", "coding", TODAY, freshness_cutoff=TODAY
+    )
+    assert (fresh_only.judged_value, fresh_only.applied_value) == ("compact", "compact")
 
 
 def test_yaml_loaders_keep_documented_fields_and_reject_invalid_definitions(
@@ -153,6 +158,7 @@ def test_yaml_loaders_keep_documented_fields_and_reject_invalid_definitions(
         valid.replace("occasion: seen", "occasion: ''"),
         valid.replace("half_life_days: 14", "half_life_days: 0"),
         valid.replace("occasions: 20", "occasions: []"),
+        valid.replace("occasion: seen", "occasion: ''\noccasion: seen"),
     ):
         path.write_text(invalid)
         with pytest.raises(ValueError, match="dimension.yaml"):
@@ -299,6 +305,11 @@ def test_day_weights_and_window_boundary(tmp_path: Path) -> None:
     assert result.gates["open"].occasions == 1
     assert result.gates["open"].days == 1
     assert result.gates["open"].for_rate == pytest.approx(1 / 3)
+    assert all(
+        row.day > TODAY - timedelta(days=60)
+        for rows in result.evidence.features.values()
+        for row in rows
+    )
     wide_rows = {
         feature: source.daily_counts(feature, TODAY - timedelta(days=60), TODAY)
         for feature in ("seen", "expanded", "collapsed")
@@ -356,10 +367,47 @@ def test_lookup_order_and_undone_values_never_return_from_automatic_fallbacks() 
     )
     assert (
         lookup_value(
+            "writing",
+            "folded",
+            learned={"writing": "open"},
+            global_value="open",
+            undone={"writing": {"open"}},
+        )
+        == "folded"
+    )
+    assert (
+        lookup_value(
             "writing", "folded", learned={"coding": "learned"}, global_value="global"
         )
         == "global"
     )
+
+
+def test_undone_value_is_never_gated_or_selected(tmp_path: Path) -> None:
+    dimension = load_dimension(
+        dimension_file(
+            tmp_path,
+            "id: answer\nversion: 1\narea: layout\nvalues: [folded, open]\n"
+            "default: folded\nscope: kind\nchange_policy: automatic\noccasion: seen\n"
+            "evidence: {open: {for: expanded, against: collapsed}}\n"
+            "gate: {occasions: 1, conversations: 1, days: 1, "
+            "lead: {for: 0.7, against: 0.1}}\nwindow_days: 60\nhalf_life_days: 14\n",
+        )
+    )
+    source = FakeEventSource(
+        {
+            "seen": [fake_count(count(TODAY, 0, 20, "c1"))],
+            "expanded": [fake_count(count(TODAY, 18, 20))],
+            "collapsed": [fake_count(count(TODAY, 1, 20))],
+        },
+        [],
+    )
+    result = evaluate_belief(
+        dimension, source, "folded", "coding", TODAY, undone_values={"open"}
+    )
+    assert result.judged_value == "folded"
+    assert result.applied_value == "folded"
+    assert "open" not in result.gates
     assert (
         lookup_value(
             "writing", "folded", global_value="open", undone={"writing": {"open"}}
