@@ -162,7 +162,7 @@ Any setting on a scale moves one step per change, and the next step needs fresh 
 - **Judging it.** A change is judged by whether it was kept, whether the manual action it replaced stops, and whether the person works against it. A change that is fought reverts itself with a notice. Judging and self-reverting arrive with Stage 2; until then the engine reverts only through session exclusion.
 - **Locks.** Look, layout, answer style and Home can each be locked, and one master switch freezes everything.
 - **Manual control.** Every learned setting has a control in Settings. Setting it by hand is recorded as explicit and stops inference for it, and "return to automatic" hands it back.
-- **Said in chat.** "Keep answers short from now on" sets the setting directly, with a chip offering Undo.
+- **Said in chat.** "Keep answers short from now on" sets the setting directly, as an explicit setting through the arbiter, with a chip offering Undo.
 
 ## Know: memory, answer style and drafts
 
