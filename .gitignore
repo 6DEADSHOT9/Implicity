@@ -8,3 +8,5 @@ __pycache__/
 dist/
 /contracts/python/implicity_contracts.egg-info/
 *.egg-info/
+/data/implicity.db*
+/data/backups/

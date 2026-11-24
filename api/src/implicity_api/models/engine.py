@@ -9,7 +9,7 @@ class Base(DeclarativeBase):
 class OwnedRow:
     id: Mapped[str] = mapped_column(String, primary_key=True)
     session_id: Mapped[str | None] = mapped_column(String, nullable=True)
-    data: Mapped[dict] = mapped_column(JSON, default=dict)
+    data: Mapped[dict] = mapped_column(JSON)
 
 
 class Decision(OwnedRow, Base):

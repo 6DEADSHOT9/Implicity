@@ -1,46 +1,30 @@
 import os
+from pathlib import Path
 
-from sqlalchemy import create_engine, event
-from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.sql import visitors
-from sqlalchemy.sql.elements import TextClause
-from sqlalchemy.sql.schema import Table
+from sqlalchemy import create_engine
+from sqlalchemy.engine import make_url
 
-from implicity_api.models import METADATA
-
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./implicity.db")
-engine = create_engine(DATABASE_URL)
-TABLE_OWNERS = {
-    table.name: owner
-    for owner, metadata in zip(("engine", "memory", "app", "agent"), METADATA)
-    for table in metadata.tables.values()
-}
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
-class OwnedSession(Session):
-    @property
-    def owner(self) -> str:
-        return self.info["owner"]
-
-    def execute(self, statement, *args, **kwargs):
-        if isinstance(statement, (str, TextClause)):
-            raise PermissionError("Raw SQL bypasses module table ownership")
-        return super().execute(statement, *args, **kwargs)
-
-
-@event.listens_for(OwnedSession, "do_orm_execute")
-def enforce_table_ownership(execute_state) -> None:
-    for table in visitors.iterate(execute_state.statement):
-        if not isinstance(table, Table):
-            continue
-        owner = TABLE_OWNERS.get(table.name)
-        if owner is not None and owner != execute_state.session.owner:
-            raise PermissionError(
-                f"{execute_state.session.owner} cannot read {owner}.{table.name}"
-            )
+def database_url() -> str:
+    configured_url = os.getenv("DATABASE_URL")
+    url = (
+        make_url(configured_url)
+        if configured_url
+        else make_url(f"sqlite:///{PROJECT_ROOT / 'data' / 'implicity.db'}")
+    )
+    if url.get_backend_name() == "sqlite" and url.database not in (
+        None,
+        "",
+        ":memory:",
+    ):
+        path = Path(url.database)
+        if not path.is_absolute():
+            path = PROJECT_ROOT / path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        url = url.set(database=str(path.resolve()))
+    return url.render_as_string(hide_password=False)
 
 
-def session_for(owner: str, bind=engine) -> Session:
-    if owner not in {"engine", "memory", "app", "agent"}:
-        raise ValueError(f"Unknown module: {owner}")
-    return sessionmaker(bind=bind, class_=OwnedSession, info={"owner": owner})()
+engine = create_engine(database_url())

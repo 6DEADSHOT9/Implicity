@@ -3,9 +3,9 @@ from implicity_api.models.app import Base as AppBase
 from implicity_api.models.engine import Base as EngineBase
 from implicity_api.models.memory import Base as MemoryBase
 
-METADATA = (
-    EngineBase.metadata,
-    MemoryBase.metadata,
-    AppBase.metadata,
-    AgentBase.metadata,
-)
+METADATA = {
+    "engine": EngineBase.metadata,
+    "memory": MemoryBase.metadata,
+    "app": AppBase.metadata,
+    "agent": AgentBase.metadata,
+}

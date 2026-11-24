@@ -8,42 +8,52 @@ down_revision = None
 branch_labels = None
 depends_on = None
 
-TABLES = (
-    "decisions",
-    "explicit_settings",
-    "locks",
-    "excluded_sessions",
-    "layout_revisions",
-    "memory_items",
-    "projects",
-    "drafts",
-    "inferences",
-    "typing_profiles",
-    "guest_patterns",
-    "conversations",
-    "messages",
-    "message_specs",
-    "kinds",
-    "looks",
-    "widgets",
-    "schedules",
-    "workflows",
-    "files",
-    "agent_sessions",
-    "quota_log",
-)
+TABLES_BY_OWNER = {
+    "engine": (
+        "decisions",
+        "explicit_settings",
+        "locks",
+        "excluded_sessions",
+        "layout_revisions",
+    ),
+    "memory": (
+        "memory_items",
+        "projects",
+        "drafts",
+        "inferences",
+        "typing_profiles",
+        "guest_patterns",
+    ),
+    "app": (
+        "conversations",
+        "messages",
+        "message_specs",
+        "kinds",
+        "looks",
+        "widgets",
+        "schedules",
+        "workflows",
+        "files",
+    ),
+    "agent": ("agent_sessions", "quota_log"),
+}
+SESSION_REQUIRED = {"messages", "message_specs", "agent_sessions"}
 
 
 def upgrade() -> None:
-    for table in TABLES:
-        op.create_table(
-            table,
-            sa.Column("id", sa.String(), primary_key=True),
-            sa.Column("session_id", sa.String(), nullable=True),
-            sa.Column("data", sa.JSON(), nullable=False),
-        )
+    for tables in TABLES_BY_OWNER.values():
+        for table in tables:
+            op.create_table(
+                table,
+                sa.Column("id", sa.String(), primary_key=True),
+                sa.Column(
+                    "session_id", sa.String(), nullable=table not in SESSION_REQUIRED
+                ),
+                sa.Column("data", sa.JSON(), nullable=False),
+            )
 
 
 def downgrade() -> None:
-    for table in reversed(TABLES):
-        op.drop_table(table)
+    for tables in reversed(tuple(TABLES_BY_OWNER.values())):
+        for table in reversed(tables):
+            op.drop_table(table)

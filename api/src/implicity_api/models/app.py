@@ -9,7 +9,7 @@ class Base(DeclarativeBase):
 class OwnedRow:
     id: Mapped[str] = mapped_column(String, primary_key=True)
     session_id: Mapped[str | None] = mapped_column(String, nullable=True)
-    data: Mapped[dict] = mapped_column(JSON, default=dict)
+    data: Mapped[dict] = mapped_column(JSON)
 
 
 class Conversation(OwnedRow, Base):
@@ -18,10 +18,12 @@ class Conversation(OwnedRow, Base):
 
 class Message(OwnedRow, Base):
     __tablename__ = "messages"
+    session_id: Mapped[str] = mapped_column(String, nullable=False)
 
 
 class MessageSpec(OwnedRow, Base):
     __tablename__ = "message_specs"
+    session_id: Mapped[str] = mapped_column(String, nullable=False)
 
 
 class Kind(OwnedRow, Base):
