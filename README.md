@@ -56,4 +56,10 @@ secure cookies are disabled for this local-only endpoint. The capture proxy rout
 SDK requests to the pinned capture service. PostHog data services use a private
 network separate from Hermes and the app scaffolds. The single-node ClickHouse
 configuration and PostgreSQL init script under `deploy/` follow the PostHog
-revision used by the S2/S3 findings.
+revision used by the S2/S3 findings. The app and ingestion images are a matched
+build from revision `524bb3f2faa1b2869eefa432575fd144fabd20b4` (2026-11-24):
+`posthog/posthog@sha256:e83432bf0072817cf30f90bc1d05c3974a9694bc3fa2e2a27b1505be9f1ed519`
+and
+`ghcr.io/posthog/posthog-node@sha256:fb496e55708308c9e4cd324e301d0f665c8a4b2403131481c55f2f31b897afc6`.
+The closest matching image pair found on or after the S2/S3 spike revision
+`be0a6f2a4cb4f9614a7954e01032ca3223bfdbaf` (2026-11-17) was this revision.

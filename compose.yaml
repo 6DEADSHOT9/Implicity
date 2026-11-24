@@ -196,7 +196,7 @@ services:
 
   posthog:
     profiles: [development, production]
-    image: posthog/posthog:be0a6f2a4cb4f9614a7954e01032ca3223bfdbaf
+    image: posthog/posthog@sha256:e83432bf0072817cf30f90bc1d05c3974a9694bc3fa2e2a27b1505be9f1ed519
     networks: [app, posthog-internal]
     command: [bash, -c, "./bin/migrate && ./bin/docker-server"]
     depends_on:
@@ -242,7 +242,7 @@ services:
 
   posthog-worker:
     profiles: [development, production]
-    image: posthog/posthog:be0a6f2a4cb4f9614a7954e01032ca3223bfdbaf
+    image: posthog/posthog@sha256:e83432bf0072817cf30f90bc1d05c3974a9694bc3fa2e2a27b1505be9f1ed519
     networks: [posthog-internal]
     restart: unless-stopped
     command: [./bin/docker-worker-celery, --with-embedded-scheduler]
@@ -304,7 +304,7 @@ services:
 
   posthog-ingestion-general:
     profiles: [development, production]
-    image: ghcr.io/posthog/posthog-node:master@sha256:fb496e55708308c9e4cd324e301d0f665c8a4b2403131481c55f2f31b897afc6
+    image: ghcr.io/posthog/posthog-node@sha256:fb496e55708308c9e4cd324e301d0f665c8a4b2403131481c55f2f31b897afc6
     command: [node, nodejs/dist/index.js]
     networks: [posthog-internal]
     restart: on-failure
