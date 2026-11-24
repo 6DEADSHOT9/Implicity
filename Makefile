@@ -1,7 +1,7 @@
 .PHONY: install lint lint-python lint-typescript test test-python test-typescript contracts-generate contracts-check contracts-runtime-check registry-generate registry-check token-styles-check
 
 PNPM = npx --yes pnpm@12.23.0
-NODE = node --experimental-strip-types
+NODE = node
 
 install:
 	uv sync --all-packages --locked

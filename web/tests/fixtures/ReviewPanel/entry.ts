@@ -1,7 +1,5 @@
 import { defineSkeleton } from "../../../src/registry/define-skeleton";
 import { ReviewPanel } from "./ReviewPanel";
-import { events } from "./events";
-import { meta } from "./meta";
-import { propsSchema, slotsSchema } from "./schema";
+import { definition } from "./schema";
 
-export const ReviewPanelEntry = defineSkeleton({ id: "ReviewPanel", props: propsSchema, slots: slotsSchema, events, meta, Component: ReviewPanel });
+export const ReviewPanelEntry = defineSkeleton(definition, ReviewPanel);

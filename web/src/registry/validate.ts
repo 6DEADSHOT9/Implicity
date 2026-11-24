@@ -15,6 +15,14 @@ const specValid = ajv.compile({
   $defs: definitions,
   $ref: "#/$defs/Spec",
 });
+const envelopeDefinition = structuredClone(definitions.Spec) as { properties: { elements: { additionalProperties: unknown } } };
+envelopeDefinition.properties.elements.additionalProperties = true;
+const specEnvelopeValid = ajv.compile({
+  $schema: contracts.$schema,
+  $id: "https://implicity.local/contracts/t6-spec-envelope.json",
+  $defs: { ...definitions, T6SpecEnvelope: envelopeDefinition },
+  $ref: "#/$defs/T6SpecEnvelope",
+});
 const commandValid = ajv.compile({
   $schema: contracts.$schema,
   $id: "https://implicity.local/contracts/t6-command.json",
@@ -50,10 +58,9 @@ export function validateRegistryDefinitions(entries: readonly SkeletonDefinition
     const metadataSlots = [...meta.data.slots].sort();
     if (declaredSlots.join("\0") !== metadataSlots.join("\0")) throw new Error(`${entry.id} slot metadata does not match its schema`);
     if (meta.data.slots.some((slot) => !slotIdValid(slot))) throw new Error(`${entry.id} declares a slot id not in T3`);
-    const emptySlots = Object.fromEntries(declaredSlots.map((slot) => [slot, []]));
-    if (!entry.slotsSchema.safeParse(emptySlots).success) throw new Error(`${entry.id} slot schema must allow empty declared slots`);
-    if (entry.slotsSchema.safeParse(Object.fromEntries(declaredSlots.map((slot) => [slot, ["Upper"]]))).success) {
-      throw new Error(`${entry.id} slot schema does not enforce T3 child ids`);
+    if (declaredSlots.length) {
+      const invalidChildren = Object.fromEntries(declaredSlots.map((slot) => [slot, ["Upper"]]));
+      if (entry.slotsSchema.safeParse(invalidChildren).success) throw new Error(`${entry.id} slot schema does not enforce T3 child ids`);
     }
     if (meta.data.defaultStates.some((state) => !stateIdValid(state))) throw new Error(`${entry.id} declares a default state id not in T3`);
     if (meta.data.galleryStates.some((state) => !stateIdValid(state))) throw new Error(`${entry.id} declares a gallery state id not in T3`);
@@ -74,4 +81,8 @@ export function isT3SpecElement(value: unknown): boolean {
 
 export function isT3Spec(value: unknown): boolean {
   return specValid(value) as boolean;
+}
+
+export function isT3SpecEnvelope(value: unknown): boolean {
+  return specEnvelopeValid(value) as boolean;
 }

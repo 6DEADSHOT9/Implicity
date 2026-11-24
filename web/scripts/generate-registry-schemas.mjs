@@ -3,14 +3,12 @@ import { dirname, join, resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { registryVersion } from "../src/registry/version.ts";
-import { createSkeletonSchema } from "../src/registry/define-skeleton.ts";
 import { validateRegistryDefinitions } from "../src/registry/validate.ts";
 import { checkGeneratedFileSet, checkRegistryVersion } from "../src/registry/snapshot.ts";
 
 const check = process.argv.includes("--check");
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const directory = resolve(root, "contracts/generated/components");
-const manifestPath = resolve(directory, "registry.json");
 const sourceDirectory = resolve(root, "web/src/registry");
 const folderNames = (await readdir(sourceDirectory, { withFileTypes: true }))
   .filter((item) => item.isDirectory())
@@ -19,32 +17,22 @@ const folderNames = (await readdir(sourceDirectory, { withFileTypes: true }))
 const entries = [];
 for (const id of folderNames) {
   const folder = resolve(sourceDirectory, id);
-  const expected = ["component.tsx", `${id}.test.tsx`, "schema.ts", "events.ts", "meta.ts"];
+  const expected = [`${id}.tsx`, `${id}.test.tsx`, "schema.ts", "events.ts", "meta.ts"];
   const files = await readdir(folder);
   const missing = expected.filter((file) => !files.includes(file));
   if (missing.length) throw new Error(`${id} registry entry is missing: ${missing.join(", ")}`);
-  const [schemas, events, meta] = await Promise.all([
-    import(join(folder, "schema.ts")),
-    import(join(folder, "events.ts")),
-    import(join(folder, "meta.ts")),
-  ]);
-  entries.push({
-    id,
-    propsSchema: schemas.propsSchema,
-    slotsSchema: schemas.slotsSchema,
-    schema: createSkeletonSchema(schemas.propsSchema, schemas.slotsSchema),
-    events: events.events,
-    meta: meta.meta,
-  });
+  const { definition } = await import(join(folder, "schema.ts"));
+  if (definition.id !== id) throw new Error(`${id} schema declaration has a different id`);
+  entries.push(definition);
 }
 const snapshot = { registry_version: registryVersion, components: entries.map(({ id }) => id).sort() };
 validateRegistryDefinitions(entries);
 
 let previous;
-try {
-  previous = JSON.parse(await readFile(manifestPath, "utf8"));
-} catch (error) {
-  if (error.code !== "ENOENT") throw error;
+const { execFileSync } = await import("node:child_process");
+const committedManifest = execFileSync("git", ["ls-tree", "-r", "--name-only", "HEAD", "contracts/generated/components/registry.json"], { cwd: root, encoding: "utf8" }).trim();
+if (committedManifest) {
+  previous = JSON.parse(execFileSync("git", ["show", "HEAD:contracts/generated/components/registry.json"], { cwd: root, encoding: "utf8" }));
 }
 checkRegistryVersion(previous, snapshot);
 

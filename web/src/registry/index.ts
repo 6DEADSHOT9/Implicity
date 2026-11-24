@@ -4,7 +4,7 @@ import type { SkeletonEntry } from "./define-skeleton.ts";
 import { registryVersion } from "./version";
 
 export type { SkeletonEntry } from "./define-skeleton";
-export { defineSkeleton, skeletonMetaSchema } from "./define-skeleton";
+export { defineSkeleton, defineSkeletonDefinition, skeletonMetaSchema } from "./define-skeleton";
 export { registryVersion };
 
 export function createRegistry(entries: readonly SkeletonEntry[], version: number) {

@@ -35,35 +35,45 @@ export type SkeletonEntry = {
 type ComponentProps<P extends z.ZodObject<z.ZodRawShape>, S extends z.ZodObject<z.ZodRawShape>> = z.infer<P> & {
   slots?: Partial<Record<Extract<keyof z.infer<S>, string>, ReactNode[]>>;
 };
+export type SkeletonDefinition<P extends z.ZodObject<z.ZodRawShape> = z.ZodObject<z.ZodRawShape>, S extends z.ZodObject<z.ZodRawShape> = z.ZodObject<z.ZodRawShape>> = {
+  id: string;
+  propsSchema: P;
+  slotsSchema: S;
+  schema: ReturnType<typeof createSkeletonSchema<P, S>>;
+  events: readonly string[];
+  meta: SkeletonMeta;
+};
 
 export function createSkeletonSchema<P extends z.ZodObject<z.ZodRawShape>, S extends z.ZodObject<z.ZodRawShape>>(props: P, slots: S) {
   return z.object({ props: props.strict(), slots: slots.strict() }).strict();
 }
 
-export function defineSkeleton<P extends z.ZodObject<z.ZodRawShape>, S extends z.ZodObject<z.ZodRawShape>>(entry: {
+export function defineSkeletonDefinition<P extends z.ZodObject<z.ZodRawShape>, S extends z.ZodObject<z.ZodRawShape>>(entry: {
   id: string;
   props: P;
   slots: S;
   events: readonly string[];
   meta: SkeletonMeta;
-  Component: ComponentType<ComponentProps<P, S>>;
-}) {
-  const propsSchema = entry.props.strict();
-  const slotsSchema = entry.slots.strict();
+}): SkeletonDefinition<P, S> {
+  const propsSchema = entry.props.strict() as P;
+  const slotsSchema = entry.slots.strict() as S;
   const schema = createSkeletonSchema(propsSchema, slotsSchema);
+  return { id: entry.id, propsSchema, slotsSchema, schema, events: entry.events, meta: entry.meta };
+}
+
+export function defineSkeleton<P extends z.ZodObject<z.ZodRawShape>, S extends z.ZodObject<z.ZodRawShape>>(
+  definition: SkeletonDefinition<P, S>,
+  Skeleton: ComponentType<never>,
+) {
   function Component({ props, slots }: { props: unknown; slots: Record<string, ReactNode> }) {
+    const propsSchema = definition.propsSchema;
     const parsed = propsSchema.safeParse(props);
     if (!parsed.success) throw new Error("Skeleton props failed runtime validation");
     const slotArrays = Object.fromEntries(Object.entries(slots).map(([name, children]) => [name, Array.isArray(children) ? children : [children]]));
-    return createElement(entry.Component, { ...(parsed.data as ComponentProps<P, S>), slots: slotArrays as ComponentProps<P, S>["slots"] });
+    return createElement(Skeleton as ComponentType<ComponentProps<P, S>>, { ...(parsed.data as ComponentProps<P, S>), slots: slotArrays as ComponentProps<P, S>["slots"] });
   }
   return {
-    id: entry.id,
-    propsSchema,
-    slotsSchema,
-    schema,
-    events: entry.events,
-    meta: entry.meta,
+    ...definition,
     Component,
   } satisfies SkeletonEntry;
 }

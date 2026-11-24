@@ -1,9 +1,9 @@
 import { Renderer, JSONUIProvider } from "@json-render/react";
 import type { ComponentRegistry, Spec as JsonRenderSpec } from "@json-render/react";
-import { Component, createContext, useContext, useState, type ErrorInfo, type ReactElement, type ReactNode } from "react";
+import { Component, createContext, useContext, useRef, useState, type ErrorInfo, type ReactElement, type ReactNode } from "react";
 import type { Spec } from "./contracts/generated";
 import { createRegistry, registry, registryVersion } from "./registry";
-import { isT3Spec, isT3SpecElement } from "./registry/validate";
+import { isT3Spec, isT3SpecElement, isT3SpecEnvelope } from "./registry/validate";
 
 const PlainTextFallback = "PlainTextFallback";
 const recoveryText = "Workspace unavailable. Showing the default workspace.";
@@ -50,16 +50,41 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function getEnvelope(value: unknown): RawSpec | undefined {
-  if (!isRecord(value) || !Number.isInteger(value.registry_version) || typeof value.root !== "string" || !isRecord(value.elements)) return undefined;
+  if (!isT3SpecEnvelope(value) || !isRecord(value) || typeof value.root !== "string" || !isRecord(value.elements)) return undefined;
   if (!Object.hasOwn(value.elements, value.root)) return undefined;
   return value as RawSpec;
+}
+
+function cyclicElements(elements: Record<string, unknown>): Set<string> {
+  const complete = new Set<string>();
+  const active: string[] = [];
+  const cyclic = new Set<string>();
+  const visit = (id: string) => {
+    const at = active.indexOf(id);
+    if (at >= 0) {
+      for (const member of active.slice(at)) cyclic.add(member);
+      return;
+    }
+    if (complete.has(id)) return;
+    active.push(id);
+    const element = elements[id];
+    if (isRecord(element) && isRecord(element.slots)) {
+      for (const child of Object.values(element.slots).flatMap((value) => Array.isArray(value) ? value : [])) {
+        if (typeof child === "string" && Object.hasOwn(elements, child)) visit(child);
+      }
+    }
+    active.pop();
+    complete.add(id);
+  };
+  for (const id of Object.keys(elements)) visit(id);
+  return cyclic;
 }
 
 function isRenderableSpec(value: unknown, current: Registry): value is Spec {
   if (!isT3Spec(value)) return false;
   const spec = value as Spec;
   if (spec.registry_version > current.version || !Object.hasOwn(spec.elements, spec.root)) return false;
-  return Object.values(spec.elements).every((element) => {
+  const valid = Object.values(spec.elements).every((element) => {
     const entry = current.getSkeleton(element.type);
     const slots = element.slots ?? {};
     return !!entry
@@ -67,6 +92,7 @@ function isRenderableSpec(value: unknown, current: Registry): value is Spec {
       && Object.keys(slots).every((slot) => Object.hasOwn(entry.slotsSchema.shape, slot))
       && Object.values(slots).flat().every((child) => Object.hasOwn(spec.elements, child));
   });
+  return valid && cyclicElements(spec.elements).size === 0;
 }
 
 function shellBaseline(current: Registry): Spec | undefined {
@@ -101,6 +127,7 @@ function messageSpec(value: unknown, current: Registry): Spec | undefined {
       && refsExist;
     return [id, componentValid ? element : { type: PlainTextFallback, props: {} }];
   }));
+  for (const id of cyclicElements(elements)) elements[id] = { type: PlainTextFallback, props: {} };
   const normalized = { registry_version: envelope.registry_version, root: envelope.root, elements };
   return isT3Spec(normalized) ? normalized as Spec : undefined;
 }
@@ -153,18 +180,29 @@ function layoutChoices(candidate: unknown, lastGood: unknown, current: Registry)
   return choices;
 }
 
-function LayoutRenderer({ choices, current }: { choices: (Spec | undefined)[]; current: Registry }): ReactElement {
-  const [attempt, setAttempt] = useState(0);
+function LayoutRenderer({ candidate, lastGood, current }: { candidate: unknown; lastGood: unknown; current: Registry }): ReactElement {
+  const [state, setState] = useState({ candidate, lastGood, current, attempt: 0 });
+  const failedAttempt = useRef<number | undefined>(undefined);
+  if (state.candidate !== candidate || state.lastGood !== lastGood || state.current !== current) {
+    setState({ candidate, lastGood, current, attempt: 0 });
+    failedAttempt.current = undefined;
+  }
+  const { attempt } = state;
+  const choices = layoutChoices(candidate, lastGood, current);
   const spec = choices[Math.min(attempt, choices.length - 1)];
   if (!spec) return <BaselineRecovery />;
-  const onFailure = () => setAttempt((value) => Math.min(value + 1, choices.length - 1));
+  const onFailure = () => {
+    if (failedAttempt.current === attempt) return;
+    failedAttempt.current = attempt;
+    setState((value) => ({ ...value, attempt: Math.min(value.attempt + 1, choices.length - 1) }));
+  };
   return <LayoutFailureContext.Provider value={onFailure}>
     <JsonRenderView spec={spec} current={current} plainText={recoveryText} onError={onFailure} />
   </LayoutFailureContext.Provider>;
 }
 
 export function renderLayout(candidate: unknown, lastGood: unknown, current: Registry = registry): ReactElement {
-  return <LayoutRenderer choices={layoutChoices(candidate, lastGood, current)} current={current} />;
+  return <LayoutRenderer candidate={candidate} lastGood={lastGood} current={current} />;
 }
 
 export { baselineLayout };
