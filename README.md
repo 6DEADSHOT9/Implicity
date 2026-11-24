@@ -41,3 +41,6 @@ Hermes keeps its configuration in a named volume. After the first start, run
 subscription sign-in yourself inside the container. Keep that volume to retain the
 sign-in. The web and API services currently only keep the scaffold runtimes alive;
 T14 and T16 add the applications.
+
+The single-node ClickHouse configuration and PostgreSQL init script under
+`deploy/` are pinned to the PostHog revision used by the S2/S3 findings.

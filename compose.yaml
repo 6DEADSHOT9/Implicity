@@ -86,6 +86,7 @@ services:
       POSTGRES_PASSWORD: ${POSTHOG_DB_PASSWORD:?Set POSTHOG_DB_PASSWORD in .env}
     volumes:
       - posthog-db:/var/lib/postgresql/data
+      - ./deploy/postgres/create-persons-db.sh:/docker-entrypoint-initdb.d/create-persons-db.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U posthog -h 127.0.0.1"]
       interval: 5s
@@ -104,14 +105,45 @@ services:
       timeout: 3s
       retries: 10
 
+  posthog-zookeeper:
+    profiles: [development, production]
+    image: zookeeper:3.9.3
+    environment:
+      ZOO_4LW_COMMANDS_WHITELIST: ruok
+    volumes:
+      - posthog-zookeeper:/data
+    networks:
+      default:
+        aliases: [zookeeper]
+    healthcheck:
+      test: ["CMD-SHELL", "echo ruok | nc -w 2 127.0.0.1 2181 | grep imok"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
   posthog-clickhouse:
     profiles: [development, production]
     image: ghcr.io/posthog/clickhouse-posthog:26.9.5.2-posthog-aca5bdabb92f
+    depends_on:
+      posthog-zookeeper:
+        condition: service_healthy
+      posthog-kafka:
+        condition: service_healthy
     environment:
       CLICKHOUSE_SKIP_USER_SETUP: "1"
       KAFKA_HOSTS: posthog-kafka:9092
     volumes:
       - posthog-clickhouse:/var/lib/clickhouse
+      - ./deploy/posthog/config.xml:/etc/clickhouse-server/config.xml:ro
+      - ./deploy/posthog/config.d/default.xml:/etc/clickhouse-server/config.d/default.xml:ro
+      - ./deploy/posthog/config.d/hobby.xml:/etc/clickhouse-server/config.d/hobby.xml:ro
+      - ./deploy/posthog/users.xml:/etc/clickhouse-server/users.xml:ro
+      - ./deploy/posthog/user_defined_function.xml:/etc/clickhouse-server/user_defined_function.xml:ro
+      - ./deploy/posthog/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d:ro
+      - ./deploy/posthog/idl:/idl:ro
+    networks:
+      default:
+        aliases: [clickhouse]
     healthcheck:
       test: ["CMD-SHELL", "clickhouse-client --query 'SELECT 1' >/dev/null"]
       interval: 10s
@@ -124,6 +156,9 @@ services:
     command: [redpanda, start, --mode, dev-container, --smp, "1", --memory, 1G, --reserve-memory, 0M, --overprovisioned, --kafka-addr, 0.0.0.0:9092, --advertise-kafka-addr, posthog-kafka:9092]
     volumes:
       - posthog-kafka:/var/lib/redpanda/data
+    networks:
+      default:
+        aliases: [kafka]
     healthcheck:
       test: ["CMD", "rpk", "cluster", "health"]
       interval: 10s
@@ -156,6 +191,8 @@ services:
       KAFKA_HOSTS: posthog-kafka:9092
       PERSONS_DATABASE_URL: postgres://posthog:${POSTHOG_DB_PASSWORD}@posthog-db:5432/posthog
       BEHAVIORAL_COHORTS_DATABASE_URL: postgres://posthog:${POSTHOG_DB_PASSWORD}@posthog-db:5432/posthog
+      PERSONS_DB_WRITER_URL: postgres://posthog:${POSTHOG_DB_PASSWORD}@posthog-db:5432/posthog_persons
+      PERSONS_DB_READER_URL: postgres://posthog:${POSTHOG_DB_PASSWORD}@posthog-db:5432/posthog_persons
       SITE_URL: http://localhost:${POSTHOG_PORT:-18000}
       DEPLOYMENT: hobby
       GRANIAN_WORKERS: 2
@@ -168,7 +205,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 30
-      start_period: 15m
+      start_period: 20m
     volumes:
       - posthog-data:/var/lib/posthog
 
@@ -192,6 +229,8 @@ services:
       KAFKA_HOSTS: posthog-kafka:9092
       PERSONS_DATABASE_URL: postgres://posthog:${POSTHOG_DB_PASSWORD}@posthog-db:5432/posthog
       BEHAVIORAL_COHORTS_DATABASE_URL: postgres://posthog:${POSTHOG_DB_PASSWORD}@posthog-db:5432/posthog
+      PERSONS_DB_WRITER_URL: postgres://posthog:${POSTHOG_DB_PASSWORD}@posthog-db:5432/posthog_persons
+      PERSONS_DB_READER_URL: postgres://posthog:${POSTHOG_DB_PASSWORD}@posthog-db:5432/posthog_persons
       DEPLOYMENT: hobby
       WEB_CONCURRENCY: 2
       CELERY_MAX_TASKS_PER_CHILD: 1000
@@ -208,4 +247,5 @@ volumes:
   posthog-redis:
   posthog-clickhouse:
   posthog-kafka:
+  posthog-zookeeper:
   posthog-data:
