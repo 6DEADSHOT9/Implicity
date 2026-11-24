@@ -2,7 +2,12 @@ import json
 from pathlib import Path
 
 import pytest
-from implicity_contracts import decode_contract, encode_contract, generated
+from implicity_contracts import (
+    decode_contract,
+    decode_proposal_request,
+    encode_contract,
+    generated,
+)
 from implicity_contracts.freshness import schema_fingerprint
 from jsonschema import Draft202012Validator, FormatChecker
 from jsonschema.exceptions import ValidationError
@@ -20,6 +25,40 @@ SHARED = {
     "registry_version": 1,
     "device_class": "desktop",
     "input_type": "mouse",
+}
+TURN_SUMMARY = {
+    **SHARED,
+    "name": "turn_summary",
+    "typing": {
+        "composing_time": 1,
+        "mean_key_gap": 0.1,
+        "key_gap_spread": 0.01,
+        "burst_count": 1,
+        "pause_count": 0,
+        "backspace_rate": 0,
+    },
+    "reading": {
+        "time_on_answer": 1,
+        "furthest_point": 0.5,
+        "scroll_backs": 0,
+        "time_before_next_action": 1,
+    },
+    "pointer": {
+        "distance_travelled": 1,
+        "hesitations": 0,
+        "misses_on_small_targets": 0,
+    },
+}
+SESSION_SUMMARY = {
+    **SHARED,
+    "name": "session_summary",
+    "duration": 10,
+    "active_time": 5,
+    "turns": 1,
+    "kinds": ["coding"],
+    "local_hour_bucket": "night",
+    "day_type": "weekday",
+    "typing": TURN_SUMMARY["typing"],
 }
 
 
@@ -77,8 +116,6 @@ def valid_event(definition):
     result = {}
     for field in definition["required"]:
         result[field] = valid_value(definition["properties"][field], field)
-    if definition["properties"]["name"]["const"] == "representation_switched":
-        result.update(dimension="data_form", **{"from": "table", "to": "chart"})
     return result
 
 
@@ -184,6 +221,93 @@ def test_every_event_variant_is_valid_and_round_trips_through_the_codec():
         assert json.loads(encode_contract(decode_contract(json.dumps(event)))) == event
 
 
+EXPECTED_REQUIRED = {
+    "session_started": {"mode", "text_scale", "local_hour_bucket"},
+    "session_ended": {"mode", "text_scale", "local_hour_bucket"},
+    "conversation_started": {"conversation_id"},
+    "conversation_ended": {"conversation_id"},
+    "message_sent": {"length_bucket", "attachment_count"},
+    "answer_shown": {"length_bucket", "has_code", "has_table", "has_reasoning"},
+    "component_shown": {"component", "default_state"},
+    "component_seen": {"component", "default_state", "seconds_visible"},
+    "section_expanded": {"component", "slot"},
+    "section_collapsed": {"component", "slot"},
+    "representation_switched": {"dimension", "from", "to"},
+    "panel_opened": {"component"},
+    "panel_closed": {"component"},
+    "panel_docked": {"component"},
+    "panel_undocked": {"component"},
+    "answer_copied": {"share_bucket"},
+    "code_copied": {"share_bucket"},
+    "answer_regenerated": {"seconds_since_answer"},
+    "generation_stopped": {"seconds_since_answer"},
+    "message_edited": {"seconds_since_answer"},
+    "shortcut_used": {"command"},
+    "search_used": set(),
+    "attachment_added": {"type"},
+    "draft_deleted": {"length_bucket"},
+    "change_shown": {"decision_id"},
+    "change_kept": {"decision_id"},
+    "change_undone": {"decision_id"},
+    "proposal_shown": {"proposal_id", "proposal_type"},
+    "proposal_kept": {"proposal_id", "proposal_type"},
+    "proposal_dismissed": {"proposal_id", "proposal_type"},
+    "turn_summary": {"typing", "reading", "pointer"},
+    "session_summary": {
+        "duration",
+        "active_time",
+        "turns",
+        "kinds",
+        "local_hour_bucket",
+        "day_type",
+        "typing",
+    },
+}
+EVENT_ENVELOPE_FIELDS = {
+    "event_id",
+    "name",
+    "timestamp",
+    "contracts_version",
+    "session_id",
+    "layout_version",
+    "registry_version",
+    "device_class",
+    "input_type",
+}
+
+
+def test_independent_action_requirements_reject_each_missing_field():
+    for ref in SCHEMA["$defs"]["Event"]["oneOf"]:
+        definition = SCHEMA["$defs"][ref["$ref"].split("/")[-1]]
+        name = definition["properties"]["name"]["const"]
+        required = set(definition["required"])
+        expected = set(EXPECTED_REQUIRED.get(name, {"dimension", "value"}))
+        if (
+            name == "setting_changed"
+            and definition["properties"]["dimension"]["const"] == "shortcut_chips"
+        ):
+            expected.add("command")
+        assert required == EVENT_ENVELOPE_FIELDS | expected, name
+        event = valid_event(definition)
+        VALIDATOR.validate(event)
+        for field in expected:
+            missing = dict(event)
+            missing.pop(field)
+            with pytest.raises(ValidationError):
+                VALIDATOR.validate(missing)
+
+
+def test_private_typing_payload_is_rejected_in_both_summary_variants():
+    for fixture in (TURN_SUMMARY, SESSION_SUMMARY):
+        VALIDATOR.validate(fixture)
+        probe = json.loads(json.dumps(fixture))
+        probe["typing"]["key_identity"] = "synthetic-key"
+        with pytest.raises(ValidationError):
+            VALIDATOR.validate(probe)
+        with pytest.raises(ValidationError):
+            decode_contract(json.dumps(probe))
+
+
 def test_closed_event_vocabularies_and_component_identity_rules():
     VALIDATOR.validate(action("search_used"))
     with pytest.raises(ValidationError):
@@ -216,6 +340,16 @@ def test_event_specific_vocabularies_and_command_key():
     VALIDATOR.validate(
         action("shortcut_used", command="cmd_550e8400-e29b-41d4-a716-446655440004")
     )
+    VALIDATOR.validate(action("shortcut_used", command="copy_answer"))
+    with pytest.raises(ValidationError):
+        VALIDATOR.validate(action("shortcut_used", command="cmd_workflow_title"))
+    with pytest.raises(ValidationError):
+        decode_contract(
+            json.dumps(action("shortcut_used", command="cmd_workflow_title"))
+        )
+    assert generated.Command.model_validate("cmd_550e8400-e29b-41d4-a716-446655440004")
+    with pytest.raises(PydanticValidationError):
+        generated.Command.model_validate("cmd_workflow_title")
     with pytest.raises(ValidationError):
         VALIDATOR.validate(action("shortcut_used", shortcut_name="copy_answer"))
     with pytest.raises(ValidationError):
@@ -235,7 +369,6 @@ def test_event_specific_vocabularies_and_command_key():
             mode="dark",
             text_scale=3,
             local_hour_bucket="night",
-            day_type="weekday",
         )
     )
     with pytest.raises(ValidationError):
@@ -245,7 +378,6 @@ def test_event_specific_vocabularies_and_command_key():
                 mode="dark",
                 text_scale=3,
                 local_hour_bucket=3,
-                day_type="weekday",
             )
         )
 
@@ -328,6 +460,14 @@ def test_specs_and_records_round_trip_with_app_minted_ids():
         "evidence": {"features": [{"open": True}]},
         "payload": {},
     }
+    decoded_request = decode_proposal_request(json.dumps(request))
+    assert decoded_request.model_dump(mode="json", by_alias=True)["type"] == "dimension"
+    with pytest.raises(ValidationError):
+        decode_proposal_request(json.dumps({**request, "id": proposal_id}))
+    with pytest.raises(ValidationError):
+        decode_proposal_request(
+            json.dumps({key: value for key, value in request.items() if key != "type"})
+        )
     with pytest.raises(ValidationError):
         Draft202012Validator(
             {
@@ -426,9 +566,55 @@ def test_encoder_rejects_nonfinite_values_and_timestamp_offsets():
     )
     with pytest.raises(ValueError):
         encode_contract(model)
+    summary = generated.SessionSummary.model_construct(duration=float("inf"))
+    with pytest.raises(ValueError):
+        encode_contract(summary)
     for timestamp in ("2026-11-24T00:00:00.000+00:00", "2026-11-24T00:00:00Z"):
         with pytest.raises(ValidationError):
             decode_contract(json.dumps(action("search_used", timestamp=timestamp)))
+
+
+def test_wire_datetime_precision_and_opaque_timestamp_properties_round_trip():
+    event = action("search_used", timestamp="2026-11-24T00:00:00.123Z")
+    assert json.loads(encode_contract(decode_contract(json.dumps(event)))) == event
+    spec = {
+        "registry_version": 1,
+        "root": "shell",
+        "elements": {"shell": {"type": "AppShell", "props": {"timestamp": "DraftZ"}}},
+    }
+    assert json.loads(encode_contract(decode_contract(json.dumps(spec)))) == spec
+    request = {
+        "source": "hermes",
+        "dimension": "long_answers",
+        "kind": None,
+        "to": "open",
+        "change_policy": "proposed",
+        "type": "dimension",
+        "reason": "evidence",
+        "evidence": {"timestamp": "DraftZ"},
+        "payload": {"timestamp": "DraftZ"},
+    }
+    decoded_request = decode_proposal_request(json.dumps(request))
+    assert json.loads(encode_contract(decoded_request)) == request
+
+
+def test_representation_variants_reject_other_dimension_values_and_extra_fields():
+    definition = SCHEMA["$defs"]["Action_RepresentationSwitched_DataForm"]
+    data_form = valid_event(definition)
+    VALIDATOR.validate(data_form)
+    assert generated.ActionRepresentationSwitchedDataForm.model_validate_json(
+        json.dumps(data_form)
+    )
+    for invalid in (
+        {**data_form, "to": "prose"},
+        {**data_form, "message_text": "private"},
+    ):
+        with pytest.raises(ValidationError):
+            VALIDATOR.validate(invalid)
+        with pytest.raises(PydanticValidationError):
+            generated.ActionRepresentationSwitchedDataForm.model_validate_json(
+                json.dumps(invalid)
+            )
 
 
 def test_codec_rejects_non_json_numbers_and_generated_variants_are_importable():
@@ -439,6 +625,11 @@ def test_codec_rejects_non_json_numbers_and_generated_variants_are_importable():
     }
     with pytest.raises(ValueError):
         decode_contract(json.dumps(spec).replace("null", "NaN"))
+    overflow = json.dumps(SESSION_SUMMARY).replace(
+        '"duration": 10', '"duration": 1e400'
+    )
+    with pytest.raises(ValueError):
+        decode_contract(overflow)
     assert generated.Proposal and generated.Decision and generated.SessionSummary
 
 

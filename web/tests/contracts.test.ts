@@ -1,4 +1,8 @@
-import type { Event, SettingChanged_Density } from "../src/contracts/generated";
+import type {
+  Action_RepresentationSwitched_DataForm,
+  Event,
+  SettingChanged_Density,
+} from "../src/contracts/generated";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import schema from "../../contracts/schemas/index.json";
@@ -38,6 +42,20 @@ const validSetting: SettingChanged_Density = {
 // @ts-expect-error dimension values come from the dimension contract
 const invalidSetting: SettingChanged_Density = { ...validSetting, value: "KeyA" };
 
+const validRepresentation: Action_RepresentationSwitched_DataForm = {
+  ...sharedFields,
+  name: "representation_switched",
+  dimension: "data_form",
+  from: "table",
+  to: "chart",
+};
+
+// @ts-expect-error data_form cannot switch to an answer form
+const invalidRepresentation: Event = { ...validRepresentation, to: "prose" };
+
+// @ts-expect-error representation events reject private fields
+const privateRepresentation: Event = { ...validRepresentation, message_text: "private" };
+
 const ajv = new Ajv2020({ allErrors: true, strict: false });
 addFormats(ajv);
 const validateContract = ajv.compile(schema);
@@ -52,7 +70,8 @@ describe("generated contract types", () => {
     expect(validateContract({ ...validEvent, input_type: "trackpad" })).toBe(false);
     expect(validateContract({ ...validEvent, session_flag: "normal" })).toBe(false);
     expect(validateContract({ ...validEvent, timestamp: "2026-11-24T00:00:00Z" })).toBe(false);
+    expect(validateContract(validRepresentation)).toBe(true);
   });
 });
 
-void [invalidEvent, incompleteEvent, invalidSetting];
+void [invalidEvent, incompleteEvent, invalidSetting, invalidRepresentation, privateRepresentation];

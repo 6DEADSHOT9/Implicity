@@ -1,5 +1,5 @@
 // Generated from contracts/schemas; run make contracts-generate.
-// schema-sha256: 271985a2ed03c96c1988fa4be1fb2314940c2ff7f8c4cb73ef8572090495c1ee
+// schema-sha256: f8826138fc72ea352a776a935fff4699a57c9b773e054eb465fb41834d0ccf8a
 export type HttpsImplicityLocalContracts = Event | Proposal | Decision | Spec | ProposalRequest;
 export type Event =
   | Action_SessionStarted
@@ -12,7 +12,6 @@ export type Event =
   | Action_ComponentSeen
   | Action_SectionExpanded
   | Action_SectionCollapsed
-  | Action_RepresentationSwitched
   | Action_PanelOpened
   | Action_PanelClosed
   | Action_PanelDocked
@@ -44,28 +43,10 @@ export type Event =
   | SettingChanged_AnswerForm
   | SettingChanged_AnswerTone
   | TurnSummary
-  | SessionSummary;
+  | SessionSummary
+  | Action_RepresentationSwitched_DataForm
+  | Action_RepresentationSwitched_AnswerForm;
 export type Command = string;
-export type Action_RepresentationSwitched = {
-  [k: string]: unknown;
-} & {
-  event_id: string;
-  timestamp: string;
-  contracts_version: number;
-  session_id: string;
-  conversation_id?: string;
-  kind?: ("casual" | "coding" | "writing" | "analysis" | "other") | string;
-  component?: string;
-  slot?: string;
-  layout_version: number;
-  registry_version: number;
-  device_class: "desktop" | "tablet";
-  input_type: "mouse" | "touch" | "pen" | "none";
-  name: "representation_switched";
-  dimension: "data_form" | "answer_form";
-  from: string;
-  to: string;
-};
 export type DecisionId = string;
 export type ProposalId = string;
 
@@ -86,7 +67,6 @@ export interface Action_SessionStarted {
   mode: "light" | "dark";
   text_scale: number;
   local_hour_bucket: "night" | "morning" | "afternoon" | "evening";
-  day_type: "weekday" | "weekend";
 }
 export interface Action_SessionEnded {
   event_id: string;
@@ -105,14 +85,13 @@ export interface Action_SessionEnded {
   mode: "light" | "dark";
   text_scale: number;
   local_hour_bucket: "night" | "morning" | "afternoon" | "evening";
-  day_type: "weekday" | "weekend";
 }
 export interface Action_ConversationStarted {
   event_id: string;
   timestamp: string;
   contracts_version: number;
   session_id: string;
-  conversation_id?: string;
+  conversation_id: string;
   kind?: ("casual" | "coding" | "writing" | "analysis" | "other") | string;
   component?: string;
   slot?: string;
@@ -127,7 +106,7 @@ export interface Action_ConversationEnded {
   timestamp: string;
   contracts_version: number;
   session_id: string;
-  conversation_id?: string;
+  conversation_id: string;
   kind?: ("casual" | "coding" | "writing" | "analysis" | "other") | string;
   component?: string;
   slot?: string;
@@ -783,6 +762,42 @@ export interface SessionSummary {
   local_hour_bucket: "night" | "morning" | "afternoon" | "evening";
   day_type: "weekday" | "weekend";
   typing: Typing;
+}
+export interface Action_RepresentationSwitched_DataForm {
+  event_id: string;
+  timestamp: string;
+  contracts_version: number;
+  session_id: string;
+  conversation_id?: string;
+  kind?: ("casual" | "coding" | "writing" | "analysis" | "other") | string;
+  component?: string;
+  slot?: string;
+  layout_version: number;
+  registry_version: number;
+  device_class: "desktop" | "tablet";
+  input_type: "mouse" | "touch" | "pen" | "none";
+  name: "representation_switched";
+  dimension: "data_form";
+  from: "table" | "chart";
+  to: "table" | "chart";
+}
+export interface Action_RepresentationSwitched_AnswerForm {
+  event_id: string;
+  timestamp: string;
+  contracts_version: number;
+  session_id: string;
+  conversation_id?: string;
+  kind?: ("casual" | "coding" | "writing" | "analysis" | "other") | string;
+  component?: string;
+  slot?: string;
+  layout_version: number;
+  registry_version: number;
+  device_class: "desktop" | "tablet";
+  input_type: "mouse" | "touch" | "pen" | "none";
+  name: "representation_switched";
+  dimension: "answer_form";
+  from: "prose" | "list" | "table";
+  to: "prose" | "list" | "table";
 }
 export interface Proposal {
   id: ProposalId;
