@@ -30,3 +30,20 @@ Stage 1, foundation. Three spikes run before any other work: see `docs/spikes`.
 Install the pinned workspaces with `make install`; run `make lint` and `make test`.
 The TypeScript workspace uses the Node.js version in `.node-version` and npm;
 the Python workspace uses uv 0.11.25 with the version in `.python-version`.
+
+Backend commands run from the repository root and use `data/implicity.db` by
+default:
+
+```sh
+uv run --locked alembic -c api/alembic.ini upgrade head
+uv run --locked uvicorn implicity_api.app:app --app-dir api/src
+uv run --locked implicity-backup
+```
+
+The API saves today's dated backup at startup when it is missing, then once each
+day. It retains the seven newest dated copies in `data/backups/implicity.db/`.
+Set an absolute `DATABASE_URL` before migration, API startup and backup commands
+to use another file; its dated copies live in `backups/<database-filename>/` beside it.
+To restore, stop the API and replace `data/implicity.db` with the selected
+backup before starting it again. Databases and backup snapshots created before
+this pre-release must be rebuilt; they cannot be upgraded.
