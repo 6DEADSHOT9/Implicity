@@ -1,0 +1,26 @@
+Hermes cancellation route follow-up — 2026-11-24
+Installed Hermes: 0.22.5 (2026.9.24)
+
+Responses SSE disconnect
+- POST /v1/responses with stream=true and the long-sailor prompt; a direct HTTP client closed after 1,028 output characters at 7.071s.
+- Hermes did not stop then. Its agent finished a 17,099-character answer after 70.9s total. The log recorded `response ready` and only then `SSE client disconnected; interrupted agent task resp_9a4310a966c44b06b54c88072602`.
+- While the stream was closed, `_ResponsesStream._batch_flush_after` logged repeated `ClientConnectionResetError: Cannot write to closing transport` exceptions. Cancellation-to-completion was about 63.8s.
+
+Explicit route probes with that Responses ID
+- POST /v1/responses/resp_9a4310a966c44b06b54c88072602/cancel -> HTTP 404, `404: Not Found`.
+- POST /v1/runs/resp_9a4310a966c44b06b54c88072602/stop with {} -> HTTP 404, code `run_not_found`.
+
+Separate Runs API stop
+- POST /v1/runs with the same long-sailor input -> HTTP 202 and run_id `run_0c9cf3209b084fcaaf22001725b055b4`.
+- GET /v1/runs/{run_id}/events; after 1,003 streamed characters, POST /v1/runs/{run_id}/stop with {} -> HTTP 200, status `stopping`.
+- The event stream ended with `run.cancelled`; GET /v1/runs/{run_id} reported `cancelled` 214ms after the stop request.
+- Partial run stream evidence: [runs-cancel.sse](runs-cancel.sse).
+
+Reasoning in Runs events
+- Source has a `reasoning.available` event mapping. Its text originates in `_relay_thinking` and is capped to 500 characters; it is a preview, not incremental reasoning deltas.
+- A run requested with `model_options.reasoning.enabled=true` and `effort=high` emitted `tool.started`, `tool.completed`, `message.delta`, and `run.completed`, but no `reasoning.available` event. See [runs-reasoning-observation.txt](runs-reasoning-observation.txt).
+
+Chat Completions disconnect
+- POST /v1/chat/completions with stream=true and the same long-sailor prompt; client closed after 1,000 output characters at 8.189s.
+- Hermes logged `SSE client disconnected; interrupted agent task chatcmpl-e0c8547782fb4c17a51d0c8b03063` by 17:17:12.698. GET /v1/runs/chatcmpl-e0c8547782fb4c17a51d0c8b03063 reported `cancelled`.
+- Partial stream evidence: [chat-completions-cancel.sse](chat-completions-cancel.sse).

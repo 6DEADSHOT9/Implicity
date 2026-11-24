@@ -8,4 +8,4 @@ Run from the repository root:
 cd spikes/s1-ai-sdk-stream && ./run.sh
 ```
 
-Open the Vite URL printed by the command. Use the Cancel button to stop a reply. This prototype is not production code.
+Open the Vite URL printed by the command. Use Cancel to close the browser stream. The `/v1/responses` route tested in this spike does not stop Hermes promptly on disconnect. This prototype is not production code.

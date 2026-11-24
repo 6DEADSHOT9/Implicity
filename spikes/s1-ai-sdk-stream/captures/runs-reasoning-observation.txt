@@ -1,0 +1,4 @@
+run_id=run_c4f997d2da26451b85b49afcad89fd2f
+request=model_options.reasoning.enabled=true, effort=high
+events=tool.started,tool.completed,message.delta,run.completed
+reasoning.available preview characters=0
