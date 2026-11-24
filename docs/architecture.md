@@ -154,7 +154,7 @@ Everything Implicity adapts is a piece of state, and every change to it passes t
 | Proposals | One per session | |
 | Nudges | One a day | At session start |
 
-Any setting on a scale moves one step per change, and the next step needs fresh evidence gathered after the last one.
+Any automatic change on a scale moves one step, and the next step needs fresh evidence gathered after the last one. The person can set any value directly.
 
 **After a change.**
 

@@ -239,7 +239,7 @@ Later stages add session exclusion, offers on ProposalCards with Dismiss, custom
 
 **The arbiter's checks.**
 
-1. The value is one of the dimension's values.
+1. The value is one of the dimension's values, is not a value the person undid, and, for an automatic change on a scale, is adjacent to the current value.
 2. Nothing is frozen, and the area is not locked.
 3. The dimension is not explicit, and the change was not undone before.
 4. The gate is met.
@@ -254,7 +254,7 @@ Every change goes through the arbiter. In Stage 1 there are two paths:
 
 On the automatic path a missing session boundary defers before any other check runs. Otherwise the first failing check gives the verdict.
 
-**Store.** The host supplies the store. Each transition is written by one atomic operation, all or nothing: the value, its decision, the pace reservation and the freshness cutoff. The write is conditional: it fails, and the arbiter defers, if the pace slot or the value changed since the arbiter read them, so two admissions can never take the same slot (ADR 0022). Tests use an in-memory store.
+**Store.** The host supplies the store. Each transition is written by one atomic operation, all or nothing: the value, its decision, the pace reservation and the freshness cutoff. The write is conditional: it fails, and the arbiter defers, if anything the arbiter checked changed since it read it (the value, the pace slot, a lock, freeze, or an explicit setting), so a check can never be bypassed by a change in between and two admissions can never take the same slot (ADR 0022). Tests use an in-memory store.
 
 ## Engine rules
 
@@ -262,27 +262,27 @@ These rules fix what the Stage 1 engine does in every case the prose above leave
 
 **Counting evidence.**
 
-1. **Conversations.** Each `DailyCount` carries the `conversation_ids` that had at least one occasion that day. The gate counts distinct ids across the window. *Example: one conversation with occasions on three days counts once, and the gate's 3 is not met; three conversations, one a day, meet it.*
+1. **Conversations.** Each `DailyCount` carries the `conversation_ids` that had at least one occasion that day. The gate's occasions, conversations and days all come from the occasion feature's rows; the evidence features supply only the lead rates. The gate counts distinct ids across the window. *Example: one conversation with occasions on three days counts once, and the gate's 3 is not met; three conversations, one a day, meet it.*
 2. **Occasions.** A dimension names one `occasion` feature, and its occasions are that feature's `could_have`. The loader rejects a dimension without one. *Example: `long_answers` uses `long_answer_seen`; 20 long answers seen folded and 20 seen open on a day are 40 occasions, counted once.*
 3. **Lead.** *For* is the weighted rate (happened ÷ could_have) of the evidence feature toward the value, at least `gate.lead.for`. *Against* is the weighted rate of the evidence feature away from it, at most `gate.lead.against`. Each uses its own denominator. A feature with no sample (could_have of 0) does not meet the lead, and a rate above 1 is invalid input and rejected. Counting each happened at most once per occasion belongs to the feature's capture ticket. *Example: 18 expansions of 20 folded (0.90) and 1 collapse of 20 open (0.05) is a clear lead toward open. 18 of 20 folded with no open long answers at all is not. 2 of 1 is rejected.*
-4. **Weight and window.** A day's counts weigh `0.5 ^ (age_in_days / half_life_days)`, where age is measured from the evaluation day. The window is the evaluation day and the `window_days − 1` days before it. A day counts toward the gate's days only if it had at least one occasion. *Example: with a 60-day window and 14-day half-life, today weighs 1, 14 days ago weighs 0.5, and 60 days ago is outside the window.*
+4. **Weight and window.** A day's counts weigh `0.5 ^ (age_in_days / half_life_days)`, where age is measured from the evaluation day. The window is the evaluation day and the `window_days − 1` days before it. A day counts toward the gate's days only if the occasion feature had at least one occasion that day. *Example: with a 60-day window and 14-day half-life, today weighs 1, 14 days ago weighs 0.5, and 60 days ago is outside the window.*
 5. **Choosing a value.** Among the values whose gate is met, the one with the highest *for* rate wins; a tie keeps the current value. On a scale, an automatic change only moves to the adjacent value. *Example: `answer_length` currently medium, with short at 0.80 and long at 0.80, stays medium. `density` at compact with evidence for spacious moves to comfortable.*
 
 **Values per kind.**
 
-6. **Lookup order.** A kind's value is its own explicit setting, then its own learned value, then the global value, then the dimension's default. *Example: with coding learned as open and no global value, writing shows the default folded.*
+6. **Lookup order.** A kind's value is its own explicit setting, then its own learned value, then the global value, then the dimension's default. A value the person undid is never learned or proposed again, so return to automatic can never bring it back (ADR 0017). *Example: with coding learned as open and no global value, writing shows the default folded. After the person undoes folded to open, evidence for open is ignored, and returning to automatic keeps folded.*
 
 **Who decides.**
 
 7. **Paths.** Each change uses its path's checks in the table above. The person's control is not bound by the one-step rule for scales. *Example: the person changes an explicit density from compact to spacious: accepted. The same change while everything is frozen: rejected.*
-8. **Automatic changes.** A dimension with `change_policy: automatic` admits a rule decision directly and shows it as a ChangeNotice. Stage 1 has no proposed dimensions. *Example: a qualifying `long_answers` evaluation admits folded to open, and `pending_notices` returns its ChangeNotice.*
+8. **Automatic changes.** A dimension with `change_policy: automatic` admits a rule decision directly and shows it as a ChangeNotice. Stage 1 has no proposed dimensions. *Example: `evaluate` returns a proposal for open from qualifying `long_answers` counts; `submit` admits folded to open; `pending_notices` returns its ChangeNotice.*
 9. **Keep.** Keep on a decision is accepted only after it was acknowledged as shown. Keep records that the person agreed and changes nothing else. *Example: Keep on a decision still pending is rejected; after `acknowledge`, it is accepted.*
 10. **A change nobody answers** stays in effect, with its decision `shown`, and Undo stays available while it is the active decision. *Example: a ChangeNotice ignored for a week leaves the change in place.*
 
 **Pace.**
 
 11. **One automatic change a day.** Admission reserves the day's slot in the same conditional write as the value. Each engine call reads the clock once, so the date and the timestamp agree. *Example: an admission at 23:59:59 is charged to that day, and a second admission at 00:00:01 is charged to the next. Two admissions racing for the same day's slot: one is admitted, the other deferred.*
-12. **Session boundary.** On the automatic path, a missing boundary defers before any other check. *Example: an evaluation mid-task while layout is locked is deferred, not rejected.*
+12. **Session boundary.** On the automatic path, a missing boundary defers before any other check. *Example: `submit` of an automatic proposal mid-task while layout is locked returns deferred, not rejected.*
 
 **Scales.**
 
@@ -290,11 +290,11 @@ These rules fix what the Stage 1 engine does in every case the prose above leave
 
 **Undo.**
 
-14. **Undo** works only on the decision currently in effect for that dimension and kind; an older, superseded decision is rejected. Undo restores its `from` value as an explicit setting and blocks its `to` value for good (ADR 0017). *Example: after open, folded, open, undoing the first decision is rejected and undoing the third sets folded as explicit.*
+14. **Undo** works only on the decision currently in effect for that dimension and kind; an older, superseded decision is rejected. Undo restores its `from` value as an explicit setting and blocks its `to` value for good (ADR 0017). *Example: after open, folded, open, undoing the first decision is rejected and undoing the third sets folded as explicit; `evaluate` never proposes open again for that kind.*
 
 **Records.**
 
-15. **Evidence.** A decision stores the gate's inputs: each feature's per-day rows with their `conversation_ids`, the freshness cutoff and the evaluation day. T20a defines the evidence entry shape and T20b stores it. *Example: re-running the gate on a decision's stored rows gives the same result.*
+15. **Evidence.** A decision stores the gate's inputs: the value the gate judged (which, on a scale, can be beyond the adjacent step applied), each feature's per-day rows with their `conversation_ids`, the freshness cutoff and the evaluation day. T20a defines the evidence entry shape and T20b stores it. *Example: a density decision from compact to comfortable records spacious as the judged value; re-running the gate for spacious on its stored rows gives the same result.*
 
 **Determinism.** Given all of its inputs (the dimensions, the counts, the store's contents, the proposal, the session context and the clock), `evaluate` and `submit` always give the same result.
 
@@ -367,7 +367,7 @@ Every offer to the person, including a dimension change under `change_policy: pr
 
 The request and response bodies of these calls are designed, and added to `contracts`, by the ticket that builds each endpoint.
 
-A change counts as made only after `shown` is reported. Until then it is pending and can be withdrawn.
+In Stage 1, admission applies the value and reserves the day's slot; `shown` records that its ChangeNotice was displayed. Withdrawing a pending change before it is shown belongs to a later stage.
 
 ## Specs, registry entries and looks
 
