@@ -27,13 +27,12 @@ trap cleanup EXIT
 docker compose --profile development config --format json | python3 -c '
 import json, sys
 config = json.load(sys.stdin)
-images = [service.get("image", "") for service in config["services"].values()]
+images = [service["image"] for service in config["services"].values() if service.get("image")]
 app_pin = "posthog/posthog@sha256:e83432bf0072817cf30f90bc1d05c3974a9694bc3fa2e2a27b1505be9f1ed519"
 node_pin = "ghcr.io/posthog/posthog-node@sha256:fb496e55708308c9e4cd324e301d0f665c8a4b2403131481c55f2f31b897afc6"
 assert sum(image == app_pin for image in images) == 2, images
 assert sum(image == node_pin for image in images) == 1, images
 assert any(image.startswith("ghcr.io/posthog/posthog/capture:") and "@sha256:" in image for image in images), images
-assert any(image.startswith("ghcr.io/posthog/posthog-node:") and "@sha256:" in image for image in images), images
 assert all(config["services"][name]["environment"].get(key) for name, key in [("hermes", "API_SERVER_KEY"), ("posthog-db", "POSTGRES_PASSWORD"), ("posthog", "SECRET_KEY"), ("posthog-clickhouse", "CLICKHOUSE_PASSWORD"), ("posthog-ingestion-general", "ENCRYPTION_SALT_KEYS")])
 print("Compose pins and required secrets: PASS")
 '
@@ -86,14 +85,14 @@ curl -fsSL "http://127.0.0.1:${posthog_port}/" -o /dev/null
 echo "Published PostHog UI request: HTTP 200"
 
 cat >"$bootstrap" <<'PY'
-import json
+import json, time
 from posthog.models import User
 from posthog.models.personal_api_key import PersonalAPIKey
 from posthog.models.utils import generate_random_token_personal, hash_key_value, mask_key_value
 
 _, team, user = User.objects.bootstrap(
     organization_name="Compose smoke",
-    email="compose-smoke@example.invalid",
+    email=f"compose-smoke-{time.time_ns()}@example.invalid",
     password="compose-smoke-password-123",
     first_name="Compose smoke",
     is_staff=True,
@@ -135,7 +134,7 @@ for _ in range(60):
     try:
         with urllib.request.urlopen(request, timeout=15) as response:
             result = json.load(response)
-        if any(row.get("event") == event for row in result.get("results", [])):
+        if any(row and row[0] == event for row in result.get("results", [])):
             print(f"SDK-shaped capture to PostHog query API: PASS after {time.monotonic() - sent_at:.2f}s")
             break
     except urllib.error.HTTPError:
@@ -145,11 +144,11 @@ else:
     raise SystemExit("captured event did not reach the query API within 120 seconds")
 PY
 
-node="/implicity-compose-smoke"
+node="/implicity-compose-smoke-${RANDOM}"
 COMPOSE_PROJECT_NAME="$project" docker compose exec -T posthog-zookeeper sh -c "printf 'create $node persistent\nquit\n' | zkCli.sh" >/dev/null
 COMPOSE_PROJECT_NAME="$project" make down
 COMPOSE_PROJECT_NAME="$project" make up-development
-COMPOSE_PROJECT_NAME="$project" docker compose exec -T posthog-zookeeper sh -c "printf 'get $node\nquit\n' | zkCli.sh" | grep -q persistent
+COMPOSE_PROJECT_NAME="$project" docker compose exec -T posthog-zookeeper sh -c "printf 'get $node\nquit\n' | zkCli.sh" | grep persistent >/dev/null
 echo "ZooKeeper transaction data after make down/up: PASS"
 
 docker stats --no-stream --format '{{.MemUsage}}' $(COMPOSE_PROJECT_NAME="$project" docker compose ps -q) | python3 -c '
