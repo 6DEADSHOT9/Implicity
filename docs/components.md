@@ -128,7 +128,7 @@ A look is a named set of token values, and every component reads only tokens.
 
 | Token group | Values |
 | --- | --- |
-| shadcn/ui theming variables | Background, foreground, primary, secondary, muted, accent, destructive, border, ring, chart colours, sidebar colours, radius |
+| shadcn/ui theming variables | Background, foreground, primary, secondary, muted, accent, destructive, border, ring, chart colours, sidebar colours |
 | Typeface | Sans, mono, serif, and one informal face. Bundled and served locally, with no remote loading |
 | Text size | Five steps, from 87.5% to 125% |
 | Density | Compact, comfortable, spacious |
@@ -138,9 +138,13 @@ A look is a named set of token values, and every component reads only tokens.
 
 - Every look has a light and a dark variant. The mode follows the system, at onboarding and afterwards, unless the person has saved a choice.
 - A few presets ship with the product. Hermes can generate a look from a request or a rule's suggestion, always as a proposal with a preview.
-- A look is offered only if it passes every automatic check: text contrast, minimum text and target sizes, a consistent spacing scale, a limited palette, comfortable line length, clear heading steps, and colour harmony.
+- The later backend proposal gate must validate text contrast, minimum text and target sizes, a consistent spacing scale, a limited palette, comfortable line length and clear heading steps; it must also assess colour harmony before a proposed look is offered.
 - Judgment principles such as visual hierarchy, grouping and restraint are guidance inside Hermes's "propose a look" skill.
 - Settings on a scale move one step per change.
+
+Each mode defines the per-look value for every shadcn/ui colour role, including charts and the canonical `sidebar` surface. The shared code and terminal palette is defined once per mode in `contracts/looks/tokens.json`, alongside derived CSS values for radius, density, text size, layout, media and headings. Preset tests check these roles and options, CSS units and scale completeness, spacing and heading order, local font assets, the 34-colour budget, WCAG AA text contrast and input boundary contrast. The future backend proposal gate must apply these checks to proposed looks and assess colour harmony; this ticket does not implement that gate.
+
+The bundled typefaces are Inter (sans), IBM Plex Mono (mono), Source Serif 4 (serif), and Caveat (informal). Their licensed files are served from `web/public/fonts`; no font CDN is used. Default uses comfortable density and medium radius, focused uses compact density and square corners, and notebook uses spacious density, a softer radius and paper grain. Text size is a five-step setting on the look root; spacing, heading, control, sidebar, panel and media CSS values derive centrally from the shared token definition.
 
 ## Adding components later
 
@@ -171,4 +175,4 @@ Before adding, check whether the need is a new component or a new arrangement of
 - [x] Item works as a general row
 - [ ] Spike: confirm the AI SDK's stream format works from the Python backend relaying Hermes. If not, return to assistant-ui
 - [ ] Check whether shadcn/ui's Message ships its own markdown renderer; otherwise use react-markdown with GitHub-flavoured extensions
-- [ ] Choose the four bundled typefaces
+- [x] Choose the four bundled typefaces: Inter, IBM Plex Mono, Source Serif 4, and Caveat

@@ -343,5 +343,5 @@ Four stages, each usable on its own.
 - [ ] Spike: how quickly new events become queryable in self-hosted PostHog. Fallback: a longer evaluation delay
 - [ ] Spike: whether PostHog Endpoints exists in the self-hosted build. Fallback: the query API
 - [ ] Whether shadcn/ui's Message ships a markdown renderer
-- [ ] Choose the four bundled typefaces
+- [x] Choose the four bundled typefaces: Inter, IBM Plex Mono, Source Serif 4, and Caveat
 - [ ] Review the Codex subscription's terms before any multi-user hosting
