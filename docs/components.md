@@ -26,7 +26,7 @@ These never move. Only additions, such as a new shortcut chip, are allowed.
 | ConversationNavigation | Sidebar with Home, New chat, Search, chat list, recent work, projects, and the quota indicator in its footer | Sidebar, Item, Kbd, Avatar | Composed |
 | Composer | Input with attachments and shortcut chips | Prompt Input | Direct |
 | ChatHeader | Title, kind-of-chat badge, settings | Badge, Button, Dropdown Menu | Composed |
-| Search | Search across chats, also the command palette | Command | Direct |
+| Search | Search across chats, also the command palette | Command (the shadcn/ui component) | Direct |
 | Settings | Preferences, locks, "What Implicity notices", change history, quota detail | Dialog or Sheet, Tabs, Field, Switch, Table | Composed |
 
 ### Conversation
@@ -40,7 +40,7 @@ These never move. Only additions, such as a new shortcut chip, are allowed.
 | AttachmentTray | Files and photos attached to a message | Attachment | Direct |
 | Citation | A source chip, including links to the person's own memory | Inline Citation | Direct |
 | ContextChip | What shaped this answer, with a one-tap correction. Variants: "Remembered", "Noticed", "Set" | Marker, Button | Composed |
-| ShortcutChips | Quick actions and workflow chips | Suggestion | Direct |
+| ShortcutChips | Chips for Commands, including workflow chips | Suggestion | Direct |
 | ApprovalRequest | Approve, edit or deny before anything is run or changed | Confirmation | Direct |
 
 ### Content
@@ -49,7 +49,7 @@ These never move. Only additions, such as a new shortcut chip, are allowed.
 | --- | --- | --- | --- |
 | DataTable | Table, with a switch to other forms | Data Table | Direct |
 | DataChart | Line, bar and similar charts | Chart | Direct |
-| CodeBlock | Code and diffs, with variants for stack traces and terminal output | Code Block, Stack Trace, Terminal | Direct |
+| CodeBlock | Code, with variants for diffs, stack traces and terminal output | Code Block, Stack Trace, Terminal | Direct |
 | MediaPlayer | Inline video and audio from YouTube and attached files, open to more sources | None; Aspect Ratio and Slider help | Written by us |
 | ArtifactWorkspace | A document-style card, such as a recipe or a draft | Card, Scroll Area, Typography | Composed |
 | Checklist | Items with done and open states | Checkbox, Item | Composed |

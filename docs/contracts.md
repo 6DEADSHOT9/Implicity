@@ -45,17 +45,18 @@ Every event has the same shared fields and one of three shapes: an action, a tur
 
 | Field | Meaning |
 | --- | --- |
-| `event_id` | Unique id, for deduplication |
+| `event_id` | Unique id, for deduplication: a UUID minted in the browser |
 | `name` | The event name |
-| `timestamp` | When it happened, from the browser |
-| `contracts_version` | Version of the contracts it was built against |
-| `session_id` | The session it belongs to |
-| `conversation_id` | The conversation, when there is one |
-| `kind` | The kind of chat, when known |
+| `timestamp` | When it happened, from the browser: UTC, RFC 3339, to the millisecond |
+| `contracts_version` | Version of the contracts it was built against: an integer |
+| `session_id` | The session it belongs to: a UUID minted by the app |
+| `conversation_id` | The conversation, when there is one: a UUID minted by the app |
+| `kind` | The kind of chat, when known: a predefined kind name or the opaque id of an accepted custom kind, never its label |
 | `component`, `slot` | The registry component and slot it concerns, when relevant |
-| `layout_version`, `registry_version` | The workspace the person was looking at |
+| `layout_version`, `registry_version` | The workspace the person was looking at: integers |
 | `device_class`, `input_type` | Desktop or tablet; mouse, trackpad or touch |
-| `session_flag` | `normal` or `guest_suspected` |
+
+A field that does not apply to an event is left out, never sent as null. A suspected guest is not marked on events: the mark is kept in SQLite with the module that owns it, and the event source excludes those sessions by id (ADR 0016, ADR 0020).
 
 **Actions, sent as they happen.**
 
@@ -78,7 +79,7 @@ Every event has the same shared fields and one of three shapes: an action, a tur
 | `draft_deleted` | A draft of meaningful length is cleared before sending | Length bucket only. The text goes to the backend, never to PostHog |
 | `setting_changed` | The person sets something by hand | Dimension, value, and the Command for `shortcut_chips` |
 | `change_shown`, `change_kept`, `change_undone` | An admitted change is displayed, kept or undone | Decision id |
-| `proposal_shown`, `proposal_kept`, `proposal_dismissed` | A proposal is displayed and answered | Proposal id, type |
+| `proposal_shown`, `proposal_kept`, `proposal_dismissed` | A proposal is displayed and answered | Proposal id, proposal type: `look`, `widget`, `workflow`, `kind` or `schedule` |
 | `widget_seen`, `widget_used`, `widget_pinned`, `widget_dismissed` | Home widgets (Stage 4; schema added in Stage 4) | Widget id |
 | `media_played`, `media_paused`, `media_seeked`, `media_replayed` | Media playback (Stage 4; schema added in Stage 4) | Position bucket |
 
@@ -87,12 +88,15 @@ Every event has the same shared fields and one of three shapes: an action, a tur
 | Field | Values |
 | --- | --- |
 | Mode | `light` or `dark`: the variant of the look actually displayed |
-| Text scale | The look's `text_size` step in effect, 1 to 5 |
-| Local hour bucket | `night` (0–6), `morning` (6–12), `afternoon` (12–18), `evening` (18–24), in local time |
+| Text scale | The look's `text_size` step displayed, 1 to 5 |
+| Local hour bucket | `night` [0, 6), `morning` [6, 12), `afternoon` [12, 18), `evening` [18, 24), in local time, taken when the session began, for both `session_started` and `session_summary` |
 | Length bucket | `short`, `medium` or `long`, for messages, answers and drafts alike. The character cut-offs are a data file in `contracts`, starting at 80 and 400 for messages and drafts, 600 and 2,500 for answers |
 | Share copied | `some` (under half), `most` (half or more, not all), `all` |
 | Attachment type | `image`, `document`, `audio`, `video`, `other`, from the file's media type in the browser |
-| Component, slot, default state, Command | Declared by the registry. The schema checks the form of the identifier; the capture wrapper rejects any value the registry does not declare |
+| Component, slot, default state, built-in Command | Fixed, reviewed ids declared by the registry. The schema checks the form of the identifier; the capture wrapper rejects any value the registry does not declare. A slot named in a message spec from Hermes is checked against the registry, never taken on trust |
+| Workflow Command, custom kind, proposal id, decision id | Opaque ids minted by the app, never derived from a label, a title or content |
+| Command key | Always `command`, on `message_sent`, `shortcut_used` and `setting_changed`. Never the key binding |
+| Measurements | Units, thresholds and rules belong to the capture tickets (T18 for actions, T19 for summaries). A value that could not be measured is null, never 0 |
 
 **Turn summary.** `turn_summary` is sent once per turn and covers the message being written and the answer being read.
 
@@ -132,7 +136,7 @@ area: layout              # layout | look | answer_style | home | workflow
 values: [folded, open]
 default: folded
 scope: kind               # kind, with a global fallback
-mode: automatic           # automatic | proposed
+change_policy: automatic  # automatic | proposed
 occasion: A long answer shown and seen on screen
 evidence:
   open:   { for: long_answer_expanded,  against: long_answer_collapsed }
@@ -232,20 +236,20 @@ A proposal asks for a change, a decision records one that was admitted, and the 
 ```jsonc
 // Proposal
 {
-  "id": "prop_…",
+  "id": "prop_…",               // minted by the app when it stores the proposal
   "source": "rule" | "hermes" | "person",
   "dimension": "long_answers",
   "kind": "coding",            // or null for global
   "to": "open",
-  "mode": "automatic" | "proposed",
+  "change_policy": "automatic" | "proposed",
   "reason": "You opened long answers in 18 of the last 21 coding chats.",
   "evidence": { "features": […], "occasions": 21, "conversations": 6, "days": 5 },
-  "payload": { }               // a look, widget, workflow or kind, for proposed changes
+  "payload": { }               // a look, widget, workflow, kind or schedule, for proposed changes
 }
 
 // Decision
 {
-  "id": "dec_…",
+  "id": "dec_…",                // minted when the proposal is admitted
   "proposal_id": "prop_…",
   "dimension": "long_answers", "kind": "coding",
   "from": "folded", "to": "open",
@@ -256,6 +260,8 @@ A proposal asks for a change, a decision records one that was admitted, and the 
   "created_at": "…", "shown_at": "…"
 }
 ```
+
+The contracts define the envelope above. The shape of each `evidence.features` entry belongs to the engine ticket (T20), and each `payload` belongs to the ticket that builds that kind of proposal. `to` is checked against the dimension's values at runtime.
 
 **State API.** The browser fetches state at session start and when a conversation ends. There is no push channel for adaptation.
 
@@ -357,7 +363,7 @@ class Agent(Protocol):
 | --- | --- | --- |
 | `catalogue` | Optional role filter | Each component's name, props schema, slots and limits |
 | `render` | A message spec | An id the frontend renders, or a validation error |
-| `propose` | A proposal with `source: hermes` | The arbiter's verdict |
+| `propose` | A proposal request with `source: hermes` and no id; the app mints the id | The arbiter's verdict |
 | `memory_save` | Item type, text, scope, sensitive flag | Saved, or queued for the person's confirmation |
 | `label_kind` | Conversation id, kind | Recorded |
 | `set_preference` | Dimension, value, the person's own words | Set as explicit, with a chip offering Undo |

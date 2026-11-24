@@ -23,7 +23,7 @@ Stage 1 builds the foundation: everything that later stages adapt, capture or bu
 - The component registry, all 35 skeletons, and the gallery.
 - The backend skeleton with its module boundaries and tables.
 - The agent module, chat through Hermes, and the MCP server with `catalogue` and `render`.
-- Capture of all nine signal families.
+- Capture of the eight signal families Stage 1 produces. Media playback is captured in Stage 4 (ADR 0021).
 - The adaptive engine as a library, with its React package and demo app.
 - Onboarding, temporary chat, and the passcode for other devices.
 
@@ -55,7 +55,7 @@ Stage 1 is 24 tickets after the spikes. Each becomes one GitHub issue with its b
 | --- | --- | --- | --- |
 | T1 | Repository scaffold | The five folders, pnpm and uv, linting, test runners, `CONTEXT.md` and `CLAUDE.md` | S1, S2, S3 |
 | T2 | Compose file | Web, backend, Hermes and the PostHog stack in one file, with development and production profiles | T1 |
-| T3 | Contracts and generation | JSON Schemas for events, proposals, decisions, specs and API payloads. Generated TypeScript types and Pydantic models. Build fails when they are stale | T1 |
+| T3 | Contracts and generation | JSON Schemas for Stage 1 events, proposals, decisions and specs, with the vocabularies in ADR 0020. API bodies are added by the ticket that builds each endpoint. Generated TypeScript types and Pydantic models. Build fails when they are stale | T1 |
 | T4 | Setup command | Memory check, containers up, PostHog project and key, feature registration, Codex sign-in, migrations. Safe to re-run | T2, T3 |
 
 ### Interface
@@ -85,7 +85,7 @@ Stage 1 is 24 tickets after the spikes. Each becomes one GitHub issue with its b
 
 | # | Ticket | Delivers | Blocked by |
 | --- | --- | --- | --- |
-| T18 | Capture wrapper and actions | The wrapper around the PostHog SDK, schema validation, shared fields, every action event, shown and seen tracking | T3, T2, T8 |
+| T18 | Capture wrapper and actions | The wrapper around the PostHog SDK, schema validation, shared fields, every Stage 1 action event, shown and seen tracking, registry checks on every identifier | T3, T2, T8 |
 | T19 | Turn and session summaries | Typing, reading and pointer statistics computed in the browser. A test proving no raw keystrokes, key identities or message text leave the page | T18 |
 
 ### Engine

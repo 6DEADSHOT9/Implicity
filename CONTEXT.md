@@ -35,7 +35,7 @@ One moment where a choice was really available to the person and seen on screen.
 _Avoid_: Opportunity, impression, episode
 
 **Command**:
-Something the person can do in the interface, such as copy an answer, regenerate or search, which a shortcut chip or key can trigger. Events name the Command, never the key.
+An operation the person can perform in the interface, such as copy an answer, regenerate or search, with one stable id however it is triggered: a button, a shortcut chip or a key. Events name the Command, never the key.
 _Avoid_: Action (an action is an event sent as it happens), shortcut
 
 **Event source**:
@@ -104,7 +104,7 @@ _Avoid_: Theme, skin
 
 **Mode**:
 Whether the light or the dark variant of a look is in effect.
-_Avoid_: Using "mode" for temporary chat, for CodeBlock variants, or for how a dimension changes
+_Avoid_: Using "mode" for temporary chat, for CodeBlock variants, or for a dimension's change policy
 
 **Token**:
 A named design value that components read, such as a colour, radius or density.

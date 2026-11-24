@@ -73,7 +73,7 @@ Implicity is five modules that meet only through small interfaces, so any one ca
 
 - Each module owns its tables. No module reads another module's data.
 - The engine is generic. The app defines the dimensions (layout, look, answer style, Home, workflows), and features such as Home and nudges ask the engine for admission.
-- PostHog is named in one file, the event source implementation. Codex is named only in Hermes's configuration.
+- PostHog is named only in the event source implementation and the capture wrapper. Codex is named only in Hermes's configuration.
 - The component registry belongs to the app. Another project can reuse the engine with its own components and rules.
 - A small demo app in the repository uses the engine with no chat, which proves it can be lifted out.
 
@@ -81,11 +81,11 @@ Implicity is five modules that meet only through small interfaces, so any one ca
 
 The browser turns behaviour into summaries, PostHog stores them, and SQLite stores everything else.
 
-**What is captured.** All nine signal families are captured from the start: typing rhythm, pointer effort, reading, deleted drafts, what was shown, what was used, media playback, rhythm of day, and device context.
+**What is captured.** Nine signal families are captured, all but media playback from Stage 1 and media playback in Stage 4: typing rhythm, pointer effort, reading, deleted drafts, what was shown, what was used, media playback, rhythm of day, and device context.
 
 - The browser computes summaries. Raw keystrokes and pointer paths never leave the page, and which keys were pressed is never recorded.
 - Password and secret fields are never captured.
-- Every event carries a session id, the kind of chat, the component and slot it concerns, and the layout it happened in.
+- Every event carries a session id, and, when they apply, the kind of chat, the component and slot it concerns, and the layout it happened in.
 - What was shown is logged as well as what was done, so not using something can be told apart from never seeing it.
 - A thin wrapper around the PostHog SDK is the only way to record behaviour. Components never call PostHog directly.
 
@@ -128,7 +128,7 @@ Everything Implicity adapts is a piece of state, and every change to it passes t
 3. Data shown as a table or a chart.
 4. Sources panel docked.
 5. Project panel docked.
-6. Shortcut chips for repeated actions.
+6. Shortcut chips for repeated Commands.
 7. Density.
 8. Answer style.
 
@@ -136,7 +136,7 @@ Everything Implicity adapts is a piece of state, and every change to it passes t
 
 **Evidence gates.** An automatic change needs about 20 occasions, across 3 separate conversations and 2 days, with a clear lead (roughly 70% one way against 10% the other). Fast learning exists only as a developer flag.
 
-**Scope.** A learned preference attaches to a kind of chat, with a global fallback. Device context (dark mode, text size, touch) is read live from the browser and never learned. Projects scope memory, not interface preferences.
+**Scope.** A learned preference attaches to a kind of chat, with a global fallback. Device context (dark mode, text size, touch) is read live from the browser and never learned. It sets the starting look; after that, mode and text size are part of the look, so saved choices and accepted looks go through the arbiter, and events report what is displayed. Projects scope memory, not interface preferences.
 
 **Kinds of chat.**
 
@@ -144,7 +144,7 @@ Everything Implicity adapts is a piece of state, and every change to it passes t
 - New kinds appear per person. A rule flags a recurring task that fits none, Hermes proposes a named kind, and the person accepts or renames it.
 - Each custom kind has a predefined parent and inherits its learned defaults until it has evidence of its own.
 - At most 20 per person. A kind unused for 60 days is retired.
-- Hermes labels each chat. The behaviour pipeline only ever receives the label, never the text.
+- Hermes labels each chat. The behaviour pipeline receives only the kind's id: a predefined kind name, or an opaque id for a custom kind that survives renames. Never the label, never the text.
 
 **Pace.**
 
@@ -226,7 +226,7 @@ Implicity infers momentary states, lasting traits and whether a guest is using i
 
 - Learning pauses for that session, and the owner's memory is neither used nor shown.
 - A quiet banner says the session is not being learned from, with "It's me" to restore everything.
-- The session is marked either way, so the owner can exclude it later even if the guest tapped "It's me".
+- The session is marked either way, in SQLite and never on events, so the owner can exclude it later even if the guest tapped "It's me".
 - Set-aside data is kept seven days, then deleted unless the owner claims it.
 - An optional setting, off by default, keeps a guest's typing pattern as an unnamed "Guest A" to recognise them next time. The owner can name them. The banner tells the guest that returning guests are recognised.
 
@@ -259,7 +259,7 @@ The Act layer lets Implicity do things for the person, always by proposal and al
 
 **Workbenches.** An arrangement of components for a recognised situation, such as a pasted stack trace. It is offered the first two times, then opens automatically, and can be undone like any change.
 
-**Media.** YouTube and attached files, with the player open to more sources. Play, pause, seek, replay and progress are captured. Implicity can answer about the moment being watched, dock a related card beside the video, and step a list in time with it.
+**Media.** YouTube and attached files, with the player open to more sources. Play, pause, seek, replay and progress are captured, with their event schemas added in Stage 4. Implicity can answer about the moment being watched, dock a related card beside the video, and step a list in time with it.
 
 **Approvals.** Running commands, changing or deleting the person's files, sending anything outside the machine, and changing their saved data always ask first. "Always allow" exists only for read-only actions inside a specific workflow. Personalization never grants permissions.
 
@@ -330,7 +330,7 @@ Hermes is the agent, and it can draft and request but never apply.
 
 Four stages, each usable on its own.
 
-1. **Foundation.** Three spikes first. Then the shell, all 35 component skeletons with a gallery and three hand-written looks, chat through Hermes, onboarding, capture of all signals into PostHog, and the adaptive engine with its demo app.
+1. **Foundation.** Three spikes first. Then the shell, all 35 component skeletons with a gallery and three hand-written looks, chat through Hermes, onboarding, capture of every Stage 1 signal into PostHog, and the adaptive engine with its demo app.
 2. **Shape.** The eight automatic adaptations, looks, Undo, locks, Settings.
 3. **Know.** Memory, projects, answer style, kinds of chat, deleted drafts, states, traits, guest detection.
 4. **Act, first part.** Home, widgets, schedules, media.
