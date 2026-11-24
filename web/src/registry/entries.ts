@@ -1,7 +1,12 @@
-import { events as textBlockEvents } from "./TextBlock/events.ts";
-import { meta as textBlockMeta } from "./TextBlock/meta.ts";
-import { schema as textBlockSchema } from "./TextBlock/schema.ts";
+import type { SkeletonEntry } from "./define-skeleton.ts";
 
-export const entries = {
-  TextBlock: { schema: textBlockSchema, events: textBlockEvents, meta: textBlockMeta },
-};
+const modules = import.meta.glob<{ entry: SkeletonEntry }>("./*/component.tsx", { eager: true });
+
+export const entries = Object.entries(modules)
+  .map(([path, module]) => {
+    const [, folder] = path.match(/^\.\/([^/]+)\/component\.tsx$/)!;
+    if (module.entry.id !== folder) {
+      throw new Error(`Skeleton folder, file and id must match: ${path}`);
+    }
+    return module.entry;
+  });

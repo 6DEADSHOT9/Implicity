@@ -5,6 +5,8 @@
     "moduleResolution": "Bundler",
     "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
+    "allowJs": true,
+    "types": ["vite/client"],
     "jsx": "react-jsx",
     "strict": true,
     "noEmit": true,

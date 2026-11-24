@@ -1,18 +1,22 @@
-import type { ComponentType } from "react";
-import { TextBlock } from "./TextBlock/TextBlock";
 import { entries } from "./entries";
+import { validateRegistryEntries } from "./validate";
+import type { SkeletonEntry } from "./define-skeleton.ts";
+import { registryVersion } from "./version";
 
-export const registryVersion = 1;
-export const registry = {
-  TextBlock: { ...entries.TextBlock, Component: TextBlock },
-} satisfies Record<string, typeof entries[keyof typeof entries] & { Component: ComponentType<{ text: string }> }>;
+export type { SkeletonEntry } from "./define-skeleton";
+export { defineSkeleton, skeletonMetaSchema } from "./define-skeleton";
+export { registryVersion };
 
-export const baselineLayout = {
-  registry_version: registryVersion,
-  root: "baseline",
-  elements: { baseline: { type: "TextBlock", props: { text: "" } } },
-};
-
-export function getSkeleton(id: string) {
-  return registry[id as keyof typeof registry];
+export function createRegistry(entries: readonly SkeletonEntry[], version: number) {
+  if (!Number.isInteger(version) || version < 1) throw new Error("Registry version must be a positive integer");
+  validateRegistryEntries(entries);
+  const byId = new Map(entries.map((entry) => [entry.id, entry]));
+  return {
+    version,
+    entries: byId as ReadonlyMap<string, SkeletonEntry>,
+    getSkeleton: (id: string) => byId.get(id),
+  };
 }
+
+export const registry = createRegistry(entries, registryVersion);
+export const getSkeleton = (id: string) => registry.getSkeleton(id);
