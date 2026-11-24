@@ -210,7 +210,9 @@ class Gate:
             and lead_against is not None
             and lead_against <= self.lead_against
         )
-        return GateResult(value, met, occasions, conversations, days, lead_for, lead_against)
+        return GateResult(
+            value, met, occasions, conversations, days, lead_for, lead_against
+        )
 
 
 def load_dimension(path: str | Path) -> Dimension:
