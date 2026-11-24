@@ -202,6 +202,7 @@ class EventSource(Protocol):
         exclude_sessions: Sequence[str] = (),
     ) -> list[DailyCount]: ...
     # DailyCount: day, kind, happened, could_have, conversation_ids (distinct, with at least one occasion that day)
+    # An occasion-only feature (no happened selector) reports happened = 0.
 
     def session_summaries(
         self, start: date, end: date,
@@ -239,10 +240,10 @@ Later stages add session exclusion, offers on ProposalCards with Dismiss, custom
 
 **The arbiter's checks.**
 
-1. The value is one of the dimension's values, is not a value the person undid, and, for an automatic change on a scale, is adjacent to the current value.
+1. The value is one of the dimension's values. For an automatic change, it is also not a value the person undid, it is adjacent to the current value on a scale, and the proposal's `change_policy` matches the dimension's. The person may always set an undone value back by hand (ADR 0017).
 2. Nothing is frozen, and the area is not locked.
 3. The dimension is not explicit, and the change was not undone before.
-4. The gate is met.
+4. The gate is met for the judged value: the value with the winning lead (rule 5). On a scale the value applied is the adjacent step toward it, and that step needs no gate of its own.
 5. The pace budget has room, and it is a session boundary.
 
 Every change goes through the arbiter. In Stage 1 there are two paths:
@@ -270,7 +271,7 @@ These rules fix what the Stage 1 engine does in every case the prose above leave
 
 **Values per kind.**
 
-6. **Lookup order.** A kind's value is its own explicit setting, then its own learned value, then the global value, then the dimension's default. A value the person undid is never learned or proposed again, so return to automatic can never bring it back (ADR 0017). *Example: with coding learned as open and no global value, writing shows the default folded. After the person undoes folded to open, evidence for open is ignored, and returning to automatic keeps folded.*
+6. **Lookup order.** A kind's value is its own explicit setting, then its own learned value, then the global value, then the dimension's default. A value the person undid is never learned or proposed again, so return to automatic can never bring it back; only the person can set it again by hand (ADR 0017). *Example: with coding learned as open and no global value, writing shows the default folded. After the person undoes folded to open, evidence for open is ignored, and returning to automatic keeps folded.*
 
 **Who decides.**
 
