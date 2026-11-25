@@ -45,11 +45,10 @@ test-typescript: lint-typescript
 	$(PNPM) test
 
 up-development:
-	docker compose --profile development up --build -d --wait --wait-timeout 1800
+	docker compose --profile development up --build -d --wait --wait-timeout 2700
 
 up-production:
-	docker compose --profile production up --build -d --wait --wait-timeout 1800
-
+	docker compose --profile production up --build -d --wait --wait-timeout 2700
 
 setup:
 	uv run --no-project python scripts/setup.py --check-memory

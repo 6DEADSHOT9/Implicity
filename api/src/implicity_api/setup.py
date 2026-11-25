@@ -6,10 +6,14 @@ import secrets
 import subprocess
 import sys
 import tempfile
-import urllib.error
-import urllib.request
 import webbrowser
 from pathlib import Path
+
+from implicity_api.modules.event_source.posthog import (
+    PostHog,
+    ensure_project,
+    register_features,
+)
 
 ROOT = Path(__file__).resolve().parents[3]
 SECRET_BYTES = {
@@ -38,8 +42,15 @@ def _env_lines(path: Path) -> tuple[list[str], dict[str, str]]:
     lines = path.read_text().splitlines() if path.exists() else []
     values = {}
     for line in lines:
-        key, separator, value = line.partition("=")
-        if separator and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key):
+        match = re.fullmatch(
+            r"\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*", line
+        )
+        if match:
+            key, value = match.groups()
+            if value.startswith(("'", '"')) and value.endswith(value[0]):
+                value = value[1:-1]
+            else:
+                value = re.sub(r"\s+#.*$", "", value).strip()
             values[key] = value
     return lines, values
 
@@ -59,11 +70,21 @@ def _write_env(path: Path, lines: list[str]) -> None:
 
 def set_env_value(path: Path, key: str, value: str) -> None:
     lines, values = _env_lines(path)
-    if key in values:
-        lines = [
-            f"{key}={value}" if line.startswith(f"{key}=") else line for line in lines
-        ]
-    else:
+    if values.get(key):
+        if values[key] != value:
+            raise RuntimeError(
+                f"{key} in .env does not match the project returned by PostHog; "
+                "reconcile it and rerun setup"
+            )
+        return
+    found = False
+    for index in range(len(lines) - 1, -1, -1):
+        line = lines[index]
+        if re.fullmatch(rf"\s*(?:export\s+)?{re.escape(key)}\s*=.*", line):
+            lines[index] = f"{key}={value}"
+            found = True
+            break
+    if not found:
         lines.append(f"{key}={value}")
     _write_env(path, lines)
 
@@ -82,160 +103,34 @@ def ensure_env(
             if not path.exists():
                 lines.append(line)
             continue
-        if key not in values:
+        if not values.get(key):
             generated = value
             if key in SECRET_BYTES:
                 generated = token_hex(SECRET_BYTES[key])
             elif value.startswith("replace-with-"):
                 generated = token_hex(32)
-            lines.append(f"{key}={generated}")
+            existing = next(
+                (
+                    i
+                    for i in range(len(lines) - 1, -1, -1)
+                    if re.fullmatch(
+                        rf"\s*(?:export\s+)?{re.escape(key)}\s*=.*", lines[i]
+                    )
+                ),
+                None,
+            )
+            if existing is not None:
+                lines[existing] = f"{key}={generated}"
+            else:
+                lines.append(f"{key}={generated}")
             values[key] = generated
-        elif values[key].startswith("replace-with-") and key in SECRET_BYTES:
-            value = token_hex(SECRET_BYTES[key])
-            lines = [
-                f"{key}={value}" if item.startswith(f"{key}=") else item
-                for item in lines
-            ]
-            values[key] = value
+        else:
+            continue
     if not existed or lines != path.read_text().splitlines():
         _write_env(path, lines)
     else:
         os.chmod(path, 0o600)
     return values
-
-
-class PostHog:
-    def __init__(self, base_url: str, personal_key: str):
-        self.base_url = base_url.rstrip("/")
-        self.personal_key = personal_key
-
-    def request(self, method: str, path: str, body=None):
-        data = None if body is None else json.dumps(body).encode()
-        request = urllib.request.Request(
-            self.base_url + path,
-            data=data,
-            method=method,
-            headers={
-                "Authorization": f"Bearer {self.personal_key}",
-                "Content-Type": "application/json",
-            },
-        )
-        try:
-            with urllib.request.urlopen(request, timeout=20) as response:
-                return json.load(response)
-        except urllib.error.HTTPError as error:
-            if error.code == 404:
-                return None
-            raise RuntimeError(
-                f"PostHog API {method} {path} returned HTTP {error.code}"
-            ) from error
-
-    def list_projects(self):
-        page = "/api/projects/"
-        results = []
-        while page:
-            response = self.request("GET", page)
-            results.extend(response.get("results", []))
-            page = response.get("next") or ""
-            if page.startswith(self.base_url):
-                page = page[len(self.base_url) :]
-        return results
-
-    def create_project(self, name: str):
-        return self.request("POST", "/api/projects/", {"name": name})
-
-    def get_endpoint(self, project_id: int, name: str):
-        return self.request("GET", f"/api/environments/{project_id}/endpoints/{name}/")
-
-    def create_endpoint(self, project_id: int, name: str, query: str):
-        return self.request(
-            "POST",
-            f"/api/environments/{project_id}/endpoints/",
-            {"name": name, "query": query},
-        )
-
-    def update_endpoint(self, project_id: int, name: str, query: str):
-        return self.request(
-            "PATCH",
-            f"/api/environments/{project_id}/endpoints/{name}/",
-            {"query": query},
-        )
-
-
-def ensure_project(client, name: str) -> tuple[dict, bool]:
-    existing = next(
-        (item for item in client.list_projects() if item["name"] == name), None
-    )
-    return (existing, False) if existing else (client.create_project(name), True)
-
-
-def ensure_feature(client, project_id: int, name: str, query: str) -> bool:
-    existing = client.get_endpoint(project_id, name)
-    if existing is None:
-        client.create_endpoint(project_id, name, query)
-        return True
-    if existing.get("query") == query:
-        return False
-    client.update_endpoint(project_id, name, query)
-    return True
-
-
-def _identifier(value: str) -> str:
-    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", value):
-        raise ValueError(f"invalid Feature identifier: {value}")
-    return value
-
-
-def _literal(value) -> str:
-    if isinstance(value, bool):
-        return "true" if value else "false"
-    if isinstance(value, (int, float)):
-        return str(value)
-    return "'" + str(value).replace("\\", "\\\\").replace("'", "\\'") + "'"
-
-
-def _where_clause(where: dict) -> str:
-    return (
-        " AND ".join(
-            f"properties.{_identifier(key)} = {_literal(value)}"
-            for key, value in sorted(where.items())
-        )
-        or "1"
-    )
-
-
-def feature_query(feature: dict) -> str:
-    _identifier(feature["id"])
-    happened = feature.get("happened")
-    chance = feature["could_have"]
-    chance_event = _literal(chance["event"])
-    chance_where = _where_clause(chance.get("where", {}))
-    happened_clause = "0"
-    if happened:
-        happened_event = _literal(happened["event"])
-        happened_where = _where_clause(happened.get("where", {}))
-        happened_clause = f"countIf(event = {happened_event} AND ({happened_where}))"
-    return (
-        "SELECT toDate(timestamp) AS day, properties.kind AS kind, "
-        "groupUniqArrayIf(properties.conversation_id, "
-        f"event = {chance_event} AND ({chance_where})) AS conversation_ids, "
-        f"{happened_clause} AS happened, "
-        f"countIf(event = {chance_event} AND ({chance_where})) AS could_have "
-        "FROM events WHERE event IN ("
-        + ", ".join(
-            _literal(condition["event"])
-            for condition in ([happened] if happened else []) + [chance]
-        )
-        + ") GROUP BY day, kind ORDER BY day, kind"
-    )
-
-
-def load_features(directory: Path) -> list[dict]:
-    import yaml
-
-    return [
-        yaml.safe_load(path.read_text()) for path in sorted(directory.glob("*.yaml"))
-    ]
 
 
 def _run(args: list[str], *, capture=False) -> subprocess.CompletedProcess:
@@ -275,8 +170,8 @@ def _container_ids() -> tuple[str, ...]:
     return tuple(sorted(result.stdout.splitlines()))
 
 
-def _codex_signed_in() -> bool:
-    result = _run(
+def _codex_auth_status() -> str:
+    result = subprocess.run(
         [
             "docker",
             "compose",
@@ -288,25 +183,23 @@ def _codex_signed_in() -> bool:
             "status",
             "openai-codex",
         ],
-        capture=True,
+        check=False,
+        text=True,
+        capture_output=True,
     )
-    return hermes_codex_signed_in(result.stdout + result.stderr)
+    if result.returncode:
+        return "unknown"
+    status = result.stdout + result.stderr
+    if hermes_codex_signed_in(status):
+        return "signed-in"
+    if re.search(r"(?im)^openai-codex:\s*logged out\b", status):
+        return "logged-out"
+    return "unknown"
 
 
 def hermes_codex_signed_in(status: str) -> bool:
-    status = status.lower()
-    return not any(
-        text in status
-        for text in (
-            "no credential",
-            "no codex credentials",
-            "not configured",
-            "not signed in",
-            "logged out",
-            "unauthenticated",
-            "expired",
-            "re-auth",
-        )
+    return bool(
+        re.search(r"(?im)^openai-codex:\s*(?:authenticated|logged in)\b", status)
     )
 
 
@@ -315,13 +208,13 @@ def open_posthog_if_interactive(url: str) -> bool:
         sys.stdin.isatty()
         and sys.stdout.isatty()
         and os.getenv("IMPLICITY_SETUP_NO_BROWSER") != "1"
-        and os.getenv("CI") != "1"
+        and os.getenv("CI", "").strip().lower() not in {"1", "true", "yes"}
     ):
         return webbrowser.open(url)
     return False
 
 
-def main() -> int:
+def _setup() -> int:
     if not memory_sufficient(total_memory()):
         print(
             "Setup requires at least 16 GB of RAM; this machine has less.",
@@ -352,13 +245,40 @@ def main() -> int:
         else "Compose: started or updated; healthy"
     )
 
+    try:
+        _run(
+            [
+                "docker",
+                "compose",
+                "exec",
+                "-T",
+                "api-development",
+                "uv",
+                "run",
+                "--locked",
+                "alembic",
+                "-c",
+                "api/alembic.ini",
+                "upgrade",
+                "head",
+            ],
+            capture=True,
+        )
+    except subprocess.CalledProcessError as error:
+        diagnostic = (
+            error.stderr or error.stdout or "Alembic migration failed"
+        ).strip()
+        print(diagnostic, file=sys.stderr)
+        return error.returncode or 1
+    print("Alembic: at head")
+
     posthog_port = os.environ.get("POSTHOG_PORT", values.get("POSTHOG_PORT", "18000"))
     posthog_url = f"http://127.0.0.1:{posthog_port}"
     personal_key = values.get("POSTHOG_PERSONAL_API_KEY", "")
     if not personal_key:
         print(
             f"PostHog needs one-time setup at {posthog_url}: create your account and "
-            "an Implicity project, then create a personal API key with project:read, "
+            "then create a personal API key with project:read, "
             "project:write, endpoint:read and endpoint:write scopes."
         )
         open_posthog_if_interactive(posthog_url)
@@ -372,7 +292,14 @@ def main() -> int:
     project, project_created = ensure_project(client, "Implicity")
     project_id = int(project["id"])
     print(f"PostHog project: {'created' if project_created else 'found (skipped)'}")
-    project_id_changed = values.get("POSTHOG_PROJECT_ID") != str(project_id)
+    if values.get("POSTHOG_PROJECT_ID") and values["POSTHOG_PROJECT_ID"] != str(
+        project_id
+    ):
+        raise RuntimeError(
+            "POSTHOG_PROJECT_ID in .env does not match the project returned by "
+            "PostHog; reconcile it and rerun setup"
+        )
+    project_id_changed = not values.get("POSTHOG_PROJECT_ID")
     if project_id_changed:
         set_env_value(env_path, "POSTHOG_PROJECT_ID", str(project_id))
     print(
@@ -383,7 +310,15 @@ def main() -> int:
     project_key = project.get("api_token")
     if not project_key:
         raise RuntimeError("PostHog returned a project without an API key")
-    project_key_changed = values.get("VITE_POSTHOG_API_KEY") != project_key
+    if (
+        values.get("VITE_POSTHOG_API_KEY")
+        and values["VITE_POSTHOG_API_KEY"] != project_key
+    ):
+        raise RuntimeError(
+            "VITE_POSTHOG_API_KEY in .env does not match the project returned by "
+            "PostHog; reconcile it and rerun setup"
+        )
+    project_key_changed = not values.get("VITE_POSTHOG_API_KEY")
     if project_key_changed:
         set_env_value(env_path, "VITE_POSTHOG_API_KEY", project_key)
         values["VITE_POSTHOG_API_KEY"] = project_key
@@ -396,6 +331,7 @@ def main() -> int:
                 "up",
                 "-d",
                 "--no-deps",
+                "--wait",
                 "web-development",
             ]
         )
@@ -405,44 +341,30 @@ def main() -> int:
         else "PostHog project key: already present (skipped)"
     )
 
-    features = load_features(ROOT / "contracts" / "features")
-    changed = sum(
-        ensure_feature(client, project_id, item["id"], feature_query(item))
-        for item in features
+    changed, unchanged = register_features(
+        client, project_id, ROOT / "contracts" / "features"
     )
     print(
-        f"Feature queries: {changed} created or updated, "
-        f"{len(features) - changed} unchanged"
-        if features
+        f"Feature queries: {changed} created or updated, {unchanged} unchanged"
+        if changed + unchanged
         else "Feature queries: skipped (no Feature definitions yet)"
     )
 
-    _run(
-        [
-            "docker",
-            "compose",
-            "exec",
-            "-T",
-            "api-development",
-            "uv",
-            "run",
-            "--locked",
-            "alembic",
-            "-c",
-            "api/alembic.ini",
-            "upgrade",
-            "head",
-        ],
-        capture=True,
-    )
-    print("Alembic: at head")
-    if not _codex_signed_in():
+    auth_status = _codex_auth_status()
+    if auth_status == "logged-out":
         print(
             "Hermes Codex sign-in is required. Inside the Hermes container run "
             "`hermes auth add openai-codex`, finish sign-in, then "
             "run `make setup` again."
         )
         return 2
+    if auth_status != "signed-in":
+        print(
+            "Hermes Codex sign-in check failed; run "
+            "`hermes auth status openai-codex` inside the Hermes container and retry.",
+            file=sys.stderr,
+        )
+        return 1
     print("Hermes Codex sign-in: present")
     return 0
 
@@ -456,6 +378,14 @@ def memory_check() -> int:
         return 1
     print("Memory: OK (at least 16 GB)")
     return 0
+
+
+def main() -> int:
+    try:
+        return _setup()
+    except RuntimeError as error:
+        print(str(error), file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":

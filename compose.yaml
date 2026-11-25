@@ -258,7 +258,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 30
-      start_period: 20m
+      start_period: 30m
     volumes:
       - posthog-data:/var/lib/posthog
 
@@ -295,7 +295,7 @@ services:
       interval: 3s
       timeout: 5s
       retries: 3
-      start_period: 60s
+      start_period: 30m
 
   posthog-capture:
     profiles: [development, production]
