@@ -339,9 +339,15 @@ test("fits short and tall content by sizing iframes from their document", async 
   await page.goto("/tests/browser/gallery.html");
   for (const [state, comparison] of [["busy", (height: number) => height < 900], ["tall", (height: number) => height > 900]] as const) {
     const frame = page.locator(`iframe[title='ReviewPanel · ${state}']`);
+    await expect(frame.contentFrame().locator("html")).toHaveAttribute("data-text-size", "3");
+    await expect(frame.contentFrame().locator(".review-panel")).toBeVisible();
     await expect.poll(() => frame.evaluate((element) => {
       const iframe = element as HTMLIFrameElement;
-      return Math.abs(Number(iframe.height) - (iframe.contentDocument?.getElementById("root")?.getBoundingClientRect().height ?? 0)) <= 1;
+      const root = iframe.contentDocument?.getElementById("root");
+      if (!root || Math.abs(Number(iframe.height) - root.getBoundingClientRect().height) > 1) return false;
+      return new Promise<boolean>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(
+        Math.abs(Number(iframe.height) - root.getBoundingClientRect().height) <= 1,
+      ))));
     })).toBe(true);
     const dimensions = await frame.evaluate((element) => {
       const iframe = element as HTMLIFrameElement;
@@ -357,15 +363,22 @@ test("fits short and tall content by sizing iframes from their document", async 
 test("iframe height shrinks after text size changes from 5 to 1", async ({ page }) => {
   await page.goto("/tests/browser/gallery.html");
   const frame = page.locator("iframe[title='ReviewPanel · plain']");
+  const frameRoot = frame.contentFrame().locator("html");
+  await expect(frame.contentFrame().locator(".review-panel")).toBeVisible();
   const matchesContent = () => frame.evaluate((element) => {
     const iframe = element as HTMLIFrameElement;
-    const contentHeight = iframe.contentDocument?.getElementById("root")?.getBoundingClientRect().height ?? 0;
-    return Math.abs(Number(iframe.height) - contentHeight) <= 1;
+    const root = iframe.contentDocument?.getElementById("root");
+    if (!root || Math.abs(Number(iframe.height) - root.getBoundingClientRect().height) > 1) return false;
+    return new Promise<boolean>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(
+      Math.abs(Number(iframe.height) - root.getBoundingClientRect().height) <= 1,
+    ))));
   });
   await page.getByLabel("Text size").selectOption("5");
+  await expect(frameRoot).toHaveAttribute("data-text-size", "5");
   await expect.poll(matchesContent).toBe(true);
   const largeHeight = await frame.evaluate((element) => Number((element as HTMLIFrameElement).height));
   await page.getByLabel("Text size").selectOption("1");
+  await expect(frameRoot).toHaveAttribute("data-text-size", "1");
   await expect.poll(matchesContent).toBe(true);
   const smallHeight = await frame.evaluate((element) => Number((element as HTMLIFrameElement).height));
   expect(smallHeight).toBeLessThan(largeHeight);
@@ -374,9 +387,15 @@ test("iframe height shrinks after text size changes from 5 to 1", async ({ page 
 test("ignores forged preview height messages from the parent window", async ({ page }) => {
   await page.goto("/tests/browser/gallery.html");
   const frame = page.locator("iframe[title='ReviewPanel · plain']");
+  await expect(frame.contentFrame().locator("html")).toHaveAttribute("data-text-size", "3");
+  await expect(frame.contentFrame().locator(".review-panel")).toBeVisible();
   await expect.poll(() => frame.evaluate((element) => {
     const iframe = element as HTMLIFrameElement;
-    return Math.abs(Number(iframe.height) - (iframe.contentDocument?.getElementById("root")?.getBoundingClientRect().height ?? 0)) <= 1;
+    const root = iframe.contentDocument?.getElementById("root");
+    if (!root || Math.abs(Number(iframe.height) - root.getBoundingClientRect().height) > 1) return false;
+    return new Promise<boolean>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(
+      Math.abs(Number(iframe.height) - root.getBoundingClientRect().height) <= 1,
+    ))));
   })).toBe(true);
   const height = await frame.evaluate((element) => Number((element as HTMLIFrameElement).height));
   await page.evaluate(() => window.postMessage({ type: "preview-height", height: 9999 }, location.origin));
@@ -387,7 +406,7 @@ test("production build includes and serves the preview page", async ({ page }) =
   const port = Number((globalThis as typeof globalThis & { process?: { env?: Record<string, string | undefined> } }).process?.env?.GALLERY_PREVIEW_PORT ?? 4174);
   const response = await page.goto(`http://127.0.0.1:${port}/preview.html?entry=missing&state=plain`);
   expect(response?.status()).toBe(200);
-  await page.evaluate(() => window.postMessage({ styles: "", texture: "none" }, location.origin));
+  await page.evaluate(() => window.postMessage({ styles: "", texture: "none", look: "default", mode: "light", density: "comfortable", textSize: "3", deviceClass: "desktop" }, location.origin));
   await expect(page.getByRole("alert")).toHaveText("Preview unavailable");
 });
 

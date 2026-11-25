@@ -10,12 +10,12 @@ import "./gallery.css";
 const availableLooks = [looks, focused, notebook];
 type Registry = typeof defaultRegistry;
 
-function SkeletonPreview({ entry, state, deviceClass, tokenStyles, texture, previewPath }: { entry: SkeletonEntry; state: SkeletonEntry["meta"]["galleryStates"][number]; deviceClass: string; tokenStyles: string; texture: string; previewPath: string }) {
+function SkeletonPreview({ entry, state, deviceClass, tokenStyles, texture, look, mode, density, textSize, previewPath }: { entry: SkeletonEntry; state: SkeletonEntry["meta"]["galleryStates"][number]; deviceClass: string; tokenStyles: string; texture: string; look: string; mode: string; density: string; textSize: string; previewPath: string }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const viewportWidth = deviceClass === "desktop" ? 1440 : 800;
-  const previewConfig = useRef({ styles: tokenStyles, texture });
-  previewConfig.current = { styles: tokenStyles, texture };
+  const previewConfig = useRef({ styles: tokenStyles, texture, look, mode, density, textSize, deviceClass });
+  previewConfig.current = { styles: tokenStyles, texture, look, mode, density, textSize, deviceClass };
   const frameHeight = useRef(1);
   const animationFrame = useRef<number | undefined>(undefined);
 
@@ -25,7 +25,7 @@ function SkeletonPreview({ entry, state, deviceClass, tokenStyles, texture, prev
 
   useEffect(() => {
     updatePreview();
-  }, [tokenStyles, texture]);
+  }, [tokenStyles, texture, look, mode, density, textSize, deviceClass]);
 
   useEffect(() => {
     const container = stage.current;
@@ -129,7 +129,7 @@ export function Gallery({ registry = defaultRegistry, previewPath = "/preview.ht
       {[...registry.entries.values()].flatMap((entry) => entry.meta.galleryStates.map((state) => {
         return <article className="gallery-card" data-skeleton={entry.id} data-gallery-state={state.id} key={`${entry.id}-${state.id}`}>
           <header><h2>{entry.id}</h2><span>{state.id}</span></header>
-          <div className="gallery-preview"><SkeletonPreview entry={entry} state={state} deviceClass={deviceClass} tokenStyles={tokenStyles} texture={look.texture} previewPath={previewPath} /></div>
+          <div className="gallery-preview"><SkeletonPreview entry={entry} state={state} deviceClass={deviceClass} tokenStyles={tokenStyles} texture={look.texture} look={look.id} mode={mode} density={density} textSize={textSize} previewPath={previewPath} /></div>
         </article>;
       }))}
     </section>
