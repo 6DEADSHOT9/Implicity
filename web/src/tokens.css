@@ -1,4 +1,5 @@
-@import "tailwindcss";
+@import "tailwindcss/theme.css";
+@import "tailwindcss/utilities.css";
 
 @custom-variant dark (&:where([data-mode="dark"], [data-mode="dark"] *));
 
@@ -57,7 +58,30 @@
   --font-body: var(--font-body);
   --font-heading: var(--font-heading);
   --font-sans: var(--font-body);
+  --font-serif: var(--font-serif);
+  --font-informal: var(--font-informal);
   --font-mono: var(--font-mono);
+  --spacing: var(--space-1);
+  /* CSS query thresholds cannot use var(), so keep these aligned with tokens.json. */
+  --breakpoint-sm: 40rem;
+  --breakpoint-md: 48rem;
+  --breakpoint-lg: 64rem;
+  --breakpoint-xl: 80rem;
+  /* CSS container conditions cannot use var(), so keep these aligned with tokens.json. */
+  --container-sm: 24rem;
+  --container-md: 28rem;
+  --container-lg: 32rem;
+  --container-xl: 36rem;
+  --z-index-10: var(--layer-10);
+  --z-index-20: var(--layer-20);
+  --z-index-50: var(--layer-50);
+  --transition-duration-fast: var(--motion-fast);
+  --transition-duration-normal: var(--motion-normal);
+  --transition-duration-slow: var(--motion-slow);
+  --transition-duration-slower: var(--motion-slower);
+  --ease-in-out: var(--motion-easing);
+  --animate-spin: var(--motion-spin);
+  --animate-pulse: var(--motion-pulse);
   --font-weight-normal: var(--font-weight-normal);
   --font-weight-medium: var(--font-weight-medium);
   --font-weight-semibold: var(--font-weight-semibold);
@@ -73,12 +97,12 @@
   --text-heading-4: var(--heading-4);
   --text-heading-5: var(--heading-5);
   --text-heading-6: var(--heading-6);
-  --text-preview-heading-1: calc(var(--text-base) * 2);
-  --text-preview-heading-2: calc(var(--text-base) * 1.5);
-  --text-preview-heading-3: calc(var(--text-base) * 1.17);
-  --text-preview-heading-4: var(--text-base);
-  --text-preview-heading-5: calc(var(--text-base) * 0.83);
-  --text-preview-heading-6: calc(var(--text-base) * 0.67);
+  --text-preview-heading-1: var(--heading-1);
+  --text-preview-heading-2: var(--heading-2);
+  --text-preview-heading-3: var(--heading-3);
+  --text-preview-heading-4: var(--heading-4);
+  --text-preview-heading-5: var(--heading-5);
+  --text-preview-heading-6: var(--heading-6);
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius-md);
   --radius-lg: var(--radius-lg);
@@ -120,6 +144,8 @@
   --default-ring-color: var(--ring);
 }
 
+@import "tw-animate-css";
+
 @utility border-token { border-style: var(--tw-border-style); border-width: var(--border-width); }
 @utility border-x-token { border-inline-style: var(--tw-border-style); border-inline-width: var(--border-width); }
 @utility border-y-token { border-block-style: var(--tw-border-style); border-block-width: var(--border-width); }
@@ -130,8 +156,21 @@
 @utility border-s-token { border-inline-start-style: var(--tw-border-style); border-inline-start-width: var(--border-width); }
 @utility border-e-token { border-inline-end-style: var(--tw-border-style); border-inline-end-width: var(--border-width); }
 @utility ring-token { outline: var(--focus-ring-width) solid var(--tw-ring-color, var(--ring)); outline-offset: var(--space-2); }
+@utility outline-token-hidden { outline: var(--focus-ring-width) solid transparent; outline-offset: var(--space-2); }
+@utility visually-hidden { position: absolute; width: var(--border-width); height: var(--border-width); padding: 0; margin: calc(var(--border-width) * -1); overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; }
 @utility size-icon { width: var(--icon-size); height: var(--icon-size); }
 @utility grid-cols-icon-content { grid-template-columns: var(--icon-size) minmax(0, 1fr); }
+@utility rotate-arrow { rotate: var(--motion-arrow-rotation); }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse { 50% { opacity: 0.5; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
+}
+
+html { font-family: var(--font-body); }
+:where(button, input, select, textarea) { font: inherit; }
 
 @font-face {
   font-family: Inter;

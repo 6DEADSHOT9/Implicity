@@ -9,6 +9,17 @@ globalThis.ResizeObserver ??= class {
   disconnect() {}
 };
 
+globalThis.IntersectionObserver ??= class {
+  root = null;
+  rootMargin = "0px";
+  scrollMargin = "0px";
+  thresholds = [0];
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+  takeRecords() { return []; }
+};
+
 if (typeof window !== "undefined") {
   window.matchMedia ??= (media) => ({
     matches: false,

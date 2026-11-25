@@ -57,14 +57,14 @@ const fieldVariants = cva(
   {
     variants: {
       orientation: {
-        vertical: ["flex-col [&>*]:w-full [&>.sr-only]:w-auto"],
+        vertical: ["flex-col [&>*]:w-full [&>.visually-hidden]:w-auto"],
         horizontal: [
           "flex-row items-center",
           "[&>[data-slot=field-label]]:flex-auto",
           "has-[>[data-slot=field-content]]:items-start ",
         ],
         responsive: [
-          "flex-col flex-row items-center [&>*]:w-full [&>*]:w-auto [&>.sr-only]:w-auto",
+          "flex-col flex-row items-center [&>*]:w-full [&>*]:w-auto [&>.visually-hidden]:w-auto",
           "[&>[data-slot=field-label]]:flex-auto",
           "has-[>[data-slot=field-content]]:items-start ",
         ],

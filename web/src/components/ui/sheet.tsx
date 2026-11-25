@@ -33,7 +33,7 @@ function SheetOverlay({
     <SheetPrimitive.Overlay
       data-slot="sheet-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-background data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
+        "fixed inset-0 z-50 bg-foreground/20 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
         className
       )}
       {...props}
@@ -57,7 +57,7 @@ function SheetContent({
       <SheetPrimitive.Content
         data-slot="sheet-content"
         className={cn(
-          "fixed z-50 flex flex-col gap-space-4 bg-background  transition ease-in-out data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:animate-in data-[state=open]:duration-500",
+          "fixed z-50 flex flex-col gap-space-4 bg-background  transition ease-in-out data-[state=closed]:animate-out data-[state=closed]:duration-slow data-[state=open]:animate-in data-[state=open]:duration-slower",
           side === "right" &&
             "inset-y-0 right-0 h-full w-3/4 border-l-token data-[state=closed]:slide-out-to-right  sm:max-w-content",
           side === "left" &&
@@ -72,9 +72,9 @@ function SheetContent({
       >
         {children}
         {showCloseButton && (
-          <SheetPrimitive.Close className="absolute top-space-4 right-space-4 rounded-sm   transition-opacity  focus:ring-token focus:ring-ring  focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-secondary">
+          <SheetPrimitive.Close className="absolute top-space-4 right-space-4 rounded-sm   transition-opacity  focus:ring-token focus:ring-ring  focus:outline-token-hidden disabled:pointer-events-none data-[state=open]:bg-secondary">
             <XIcon className="size-icon" />
-            <span className="sr-only">Close</span>
+            <span className="visually-hidden">Close</span>
           </SheetPrimitive.Close>
         )}
       </SheetPrimitive.Content>

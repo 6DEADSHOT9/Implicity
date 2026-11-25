@@ -28,6 +28,7 @@ for (const name of Object.keys(tokens.typefaces)) utilityNames.add(`font-${name}
 for (const name of ["body", "heading"]) utilityNames.add(`font-${name}`);
 for (const name of Object.keys(tokens.derivedTokens.fontWeights)) utilityNames.add(name.replace(/^--font-weight-/, "font-"));
 for (const name of Object.keys(tokens.derivedTokens.lineHeights)) utilityNames.add(name.replace(/^--line-height-/, "leading-"));
+for (const name of Object.keys(tokens.derivedTokens.motionDurations)) utilityNames.add(name.replace(/^--motion-/, "duration-"));
 for (const choice of Object.values(tokens.derivedTokens.radius)) {
   for (const name of Object.keys(choice)) if (name.startsWith("--radius-")) {
     const radius = name.replace(/^--radius-/, "");
@@ -51,6 +52,9 @@ utilityNames.add("size-icon");
 utilityNames.add("grid-cols-icon-content");
 for (const prefix of ["border", "border-x", "border-y", "border-t", "border-r", "border-b", "border-l", "border-s", "border-e"]) utilityNames.add(`${prefix}-token`);
 utilityNames.add("ring-token");
+utilityNames.add("outline-token-hidden");
+utilityNames.add("visually-hidden");
+utilityNames.add("rotate-arrow");
 for (const name of Object.keys(tokens.derivedTokens.dimensions)) {
   const key = name.replace(/^--/, "");
   const responsive = key.match(/^(.*?)-(width|height)-(.+)$/);

@@ -5,6 +5,8 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import postcss from "postcss";
+import { compile } from "tailwindcss";
+import { createRequire } from "node:module";
 import { tokenNames, tokenUtilities } from "../src/registry/token-values.mjs";
 
 const safeKeywords = new Set(["inherit", "initial", "unset", "currentcolor", "transparent", "normal", "auto", "none"]);
@@ -16,6 +18,8 @@ const layoutKeywords = new Map([
   ["justify-content", new Set(["space-between"])],
 ]);
 const tokenReference = /^var\(\s*(--[\w-]+)\s*\)$/i;
+const staticCandidates = new Set();
+const hardCodedUtilities = /^(?:border(?:-[0-9]+)?|ring-[0-9]+|z-(?!auto|10|20|50)[0-9]+|duration-[0-9]+|rotate-45|(?:-?)(?:top|right|bottom|left)-(?!0$)[0-9]+|(?:h|w)-px)$/;
 const layoutUtility = /^(?:block|inline|inline-block|flex|inline-flex|grid|inline-grid|hidden|contents|flow-root|sr-only|not-sr-only|flex-(?:row|row-reverse|col|col-reverse|wrap|wrap-reverse|nowrap|1|auto|initial|none|grow|shrink)|(?:grow|shrink)(?:-0)?|basis-(?:auto|full|\d+\/\d+)|grid-flow-(?:row|col|dense)|grid-cols-(?:\d+|icon-content)|grid-rows-\d+|auto-rows-(?:auto|min|max|fr)|items-(?:start|end|center|baseline|stretch)|justify-(?:normal|start|end|center|between|around|evenly|stretch)|justify-(?:items|self)-(?:start|end|center|end|stretch)|self-(?:auto|start|end|center|stretch|baseline)|content-(?:normal|center|start|end|between|around|evenly|baseline|stretch)|place-(?:content|items|self)-(?:start|end|center|stretch|between|around|evenly|baseline)|col-(?:span|start|end)-(?:full|\d+)|row-(?:span|start|end)-(?:full|\d+)|order-(?:first|last|none|\d+)|relative|absolute|fixed|sticky|static|inset(?:-[xyse])?(?:-(?:0|y-0|space-\d+|y-space-\d+))?|(?:top|right|bottom|left|start|end|inset-[xyse])-(?:0|auto|full|1\/2|space-\d+)|-?(?:top|right|bottom|left)-(?:space-\d+|12)|overflow(?:-[xy])?-(?:auto|hidden|clip|visible|scroll)|z-(?:auto|\d+)|w-(?:auto|full|fit|max|screen|svw|\d+\/\d+)|h-(?:auto|full|fit|screen|svh|dvh)|size-full|min-[wh]-(?:0|full|svh)|max-[wh]-(?:none|full)|aspect-(?:auto|square|video)|object-(?:contain|cover|fill|none|scale-down)|cursor-(?:auto|default|pointer|wait|text|move|not-allowed|grab|grabbing|e-resize|w-resize)|pointer-events-(?:none|auto)|select-(?:none|text|all|auto)|touch-(?:auto|none|pan-[xy])|overscroll-(?:auto|contain|none)|whitespace-(?:normal|nowrap|pre|pre-wrap|pre-line|break-spaces)|break-(?:normal|words|all|keep)|truncate|text-(?:left|center|right|justify|start|end)|text-(?:ellipsis|clip|balance|pretty)|italic|not-italic|uppercase|lowercase|capitalize|normal-case|align-(?:baseline|top|middle|bottom|text-top|text-bottom|sub|super)|list-(?:none|disc|decimal)|line-clamp-\d+|underline|no-underline|outline-(?:none|hidden)|ring-(?:0|transparent)|border-(?:solid|dashed|dotted|double|hidden|none)|opacity-0|rotate-[-\w]+|translate-[xy]-[-\w./]+|origin-\(--radix-[\w-]+-transform-origin\)|transition(?:-[\w\],-]+)?|duration-\d+|ease-[\w-]+|animate-(?:in|out|pulse|spin)|fade-(?:in|out)-\d+|zoom-(?:in|out)-\d+|slide-(?:in|out)-to-[\w-]+|will-change-[\w-]+|contain-[\w-]+|@container(?:\/[\w-]+)?|@(?:sm|md|lg|xl)(?:\/[\w-]+)?|peer(?:\/[\w-]+)?|group(?:\/[\w-]+)?|is-(?:user|assistant)|caption-bottom|not-prose|ml-auto|mt-auto|mx-auto|resize-none)$/;
 const approvedTokenModule = resolve(dirname(fileURLToPath(import.meta.url)), "../src/registry/token.ts");
 const gallerySource = resolve(dirname(fileURLToPath(import.meta.url)), "../src/gallery.tsx");
@@ -178,9 +182,11 @@ function classExpression(node, vars, variants, tokenBindings, cnBindings, seen =
 function classStringViolations(value, allowedClasses) {
   return value.split(/\s+/).filter(Boolean).flatMap((fullName) => {
     const base = utilityBase(fullName);
+    if (!/^(?:group|peer)(?:\/.*)?$/.test(base) && !/^is-(?:user|assistant)$/.test(base) && !allowedClasses.has(base)) staticCandidates.add(fullName);
     if (base.includes("[")) return [`arbitrary style utility is not allowed: ${fullName}`];
     const utility = base.endsWith("!") ? base.slice(0, -1) : base;
     const alphaBase = utility.replace(/\/\d{1,3}$/, "");
+    if (hardCodedUtilities.test(utility)) return [`hard-coded style utility is not allowed: ${fullName}`];
     if (layoutUtility.test(utility) || tokenUtilities.has(utility) || tokenUtilities.has(alphaBase) || allowedClasses.has(utility) || /^(?:bg|text|border|ring)-(?:transparent|current)$/.test(utility)) return [];
     return [`unknown or non-token style utility: ${fullName}`];
   });
@@ -375,4 +381,43 @@ for (const path of paths) {
     for (const violation of violations) process.stderr.write(`${path}: ${violation}\n`);
   }
 }
+const require = createRequire(import.meta.url);
+const tokenCssPath = resolve(root, "web/src/tokens.css");
+const tailwind = await compile(await readFile(tokenCssPath, "utf8"), {
+  base: dirname(tokenCssPath), from: tokenCssPath,
+  loadStylesheet: async (id, base) => {
+    const path = id.startsWith("tailwindcss/") ? require.resolve(id) : id === "tw-animate-css" ? resolve(root, "web/node_modules/tw-animate-css/dist/tw-animate.css") : resolve(base, id);
+    return { path, base: dirname(path), content: await readFile(path, "utf8") };
+  },
+});
+export function missingTailwindRules(classes) {
+  const output = tailwind.build(classes);
+  const generated = new Set();
+  postcss.parse(output).walkRules((rule) => {
+    for (const candidate of classes) {
+      const escaped = candidate.replace(/[^a-zA-Z0-9_-]/g, "\\$&");
+      if (rule.selector.includes(`.${escaped}`)) generated.add(candidate);
+    }
+  });
+  return classes.filter((candidate) => !generated.has(candidate));
+}
+const utilityCandidates = [...staticCandidates].filter((name) => !/^(?:group|peer|is-(?:user|assistant))$/.test(name));
+const missing = missingTailwindRules(utilityCandidates);
+for (const candidate of missing) {
+  failed = true;
+  process.stderr.write(`${candidate}: Tailwind generated no rule from tokens.css\n`);
+}
+const output = tailwind.build(utilityCandidates);
+postcss.parse(output).walkRules((rule) => {
+  for (const candidate of utilityCandidates) {
+    const escaped = candidate.replace(/[^a-zA-Z0-9_-]/g, "\\$&");
+    if (!rule.selector.includes(`.${escaped}`)) continue;
+    rule.walkDecls((declaration) => {
+      if (/(?:#[\da-f]{3,8}\b|(?:[1-9]\d*(?:\.\d+)?|0?\.\d*[1-9]\d*)(?:px|rem)\b)/i.test(declaration.value)) {
+        failed = true;
+        process.stderr.write(`${candidate}: generated ${declaration.prop}: ${declaration.value} contains a hard-coded size or colour\n`);
+      }
+    });
+  }
+});
 if (failed) process.exitCode = 1;

@@ -106,10 +106,11 @@ function sourceUrls(value) {
 
 function parseFontStylesheet(css) {
   const stylesheet = postcss.parse(css, { from: "tokens.css" });
-  expect(stylesheet.nodes.filter((node) => node.type === "atrule" && node.name.toLowerCase() === "import")
-    .every((node) => node.params === '"tailwindcss"')).toBe(true);
+  expect(stylesheet.nodes.filter((node) => node.type === "atrule" && node.name.toLowerCase() === "import").map((node) => node.params))
+    .toEqual(['"tailwindcss/theme.css"', '"tailwindcss/utilities.css"', '"tw-animate-css"']);
   expect(stylesheet.nodes.every((node) => node.type === "comment" ||
-    (node.type === "atrule" && ["import", "custom-variant", "theme", "utility", "font-face"].includes(node.name.toLowerCase())))).toBe(true);
+    (node.type === "atrule" && ["import", "custom-variant", "theme", "utility", "font-face", "keyframes", "media"].includes(node.name.toLowerCase())) ||
+    (node.type === "rule" && ["html", ":where(button, input, select, textarea)"].includes(node.selector)))).toBe(true);
   const nodes = stylesheet.nodes.filter((node) => node.type === "atrule" && node.name.toLowerCase() === "font-face");
   expect(nodes).toHaveLength(4);
   const faces = [];
@@ -259,11 +260,12 @@ describe("look contracts", () => {
       cssLength(density["--row-gap"], ["rem"]);
       cssLength(density["--section-gap"], ["rem"]);
     }
-    const dimensionKeys = ["--attachment-preview-size", "--attachment-thumbnail-size", "--border-width", "--content-max-height", "--content-max-width", "--content-min-height", "--focus-ring-width", "--icon-size", "--media-control-gap", "--media-control-size", "--media-track-height", "--panel-max-width", "--panel-min-width", "--panel-width", "--sheet-width", "--sidebar-width", "--sidebar-width-icon", "--sidebar-width-mobile"].sort();
+    const dimensionKeys = ["--attachment-preview-size", "--attachment-thumbnail-size", "--border-width", "--container-size-lg", "--container-size-md", "--container-size-sm", "--container-size-xl", "--content-max-height", "--content-max-width", "--content-min-height", "--focus-ring-width", "--icon-size", "--layer-10", "--layer-20", "--layer-50", "--media-control-gap", "--media-control-size", "--media-track-height", "--panel-max-width", "--panel-min-width", "--panel-width", "--screen-lg", "--screen-md", "--screen-sm", "--screen-xl", "--sheet-width", "--sidebar-width", "--sidebar-width-icon", "--sidebar-width-mobile"].sort();
     const dimensions = tokenSet.derivedTokens.dimensions;
     expect(Object.keys(dimensions).sort()).toEqual(dimensionKeys);
     for (const key of dimensionKeys) {
-      cssLength(dimensions[key], [key === "--sheet-width" ? "vw" : key === "--content-max-width" ? "ch" : "rem", "px"]);
+      if (key.startsWith("--layer-")) expect(dimensions[key]).toMatch(/^\d+$/);
+      else cssLength(dimensions[key], [key === "--sheet-width" ? "vw" : key === "--content-max-width" ? "ch" : "rem", "px"]);
     }
     expect(cssLength(dimensions["--panel-min-width"]).pixels)
       .toBeLessThanOrEqual(cssLength(dimensions["--panel-width"]).pixels);

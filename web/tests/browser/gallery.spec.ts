@@ -37,6 +37,124 @@ test("base primitives stay in the gallery across token selections", async ({ pag
   }
 });
 
+test("desktop Sidebar responds to the token breakpoint", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/tests/browser/gallery.html");
+  const sidebar = page.locator('[data-slot="sidebar-container"]');
+  await expect(sidebar).toHaveCSS("display", "flex");
+  const bounds = await sidebar.boundingBox();
+  expect(bounds).not.toBeNull();
+  expect(bounds!.width).toBeGreaterThan(0);
+  expect(bounds!.x).toBeGreaterThanOrEqual(0);
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(1280);
+});
+
+test("screen and container breakpoint variants match token thresholds", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/tests/browser/gallery.html");
+  const screen = page.locator("[data-screen-breakpoint]");
+  const container = page.locator("[data-container-breakpoint]");
+  await expect(screen).toHaveCSS("display", "grid");
+  await expect(container).toHaveCSS("display", "flex");
+  await page.setViewportSize({ width: 900, height: 900 });
+  await expect(screen).toHaveCSS("display", "block");
+  await page.setViewportSize({ width: 700, height: 900 });
+  await expect(screen).toHaveCSS("display", "flex");
+  await page.setViewportSize({ width: 400, height: 900 });
+  await expect(screen).toHaveCSS("display", "none");
+  await expect(container).toHaveCSS("display", "none");
+});
+
+test("Resizable handles change panel sizes with keyboard input", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/tests/browser/gallery.html");
+  const separator = page.locator('[data-slot="resizable-handle"]');
+  const before = await separator.getAttribute("aria-valuenow");
+  await separator.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(separator).not.toHaveAttribute("aria-valuenow", before ?? "");
+});
+
+test("token animation utilities honor reduced motion", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/tests/browser/gallery.html");
+  const duration = await page.evaluate(() => {
+    const spinner = document.createElement("span");
+    spinner.className = "animate-spin";
+    document.body.append(spinner);
+    return getComputedStyle(spinner).animationDuration.split(",").map((value) => {
+      const time = Number.parseFloat(value);
+      return value.trim().endsWith("ms") ? time : time * 1000;
+    });
+  });
+  expect(Math.max(...duration)).toBeLessThanOrEqual(0.01);
+});
+
+test("all portaled overlays inherit the dark notebook look and stay onscreen", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/tests/browser/gallery.html");
+  await page.getByLabel("Look").selectOption("notebook");
+  await page.getByLabel("Mode").selectOption("dark");
+  await expect(page.locator("html")).toHaveAttribute("data-mode", "dark");
+  await expect(page.locator("html")).toHaveAttribute("data-texture", "paper-grain");
+
+  const overlays = [
+    { trigger: () => page.getByRole("button", { name: "Open dialog" }).click(), content: '[data-slot="dialog-content"]' },
+    { trigger: () => page.getByRole("button", { name: "Open sheet" }).click(), content: '[data-slot="sheet-content"]' },
+    { trigger: () => page.getByRole("button", { name: "Popover" }).click(), content: '[data-slot="popover-content"]' },
+    { trigger: () => page.getByRole("button", { name: "More" }).click(), content: '[data-slot="dropdown-menu-content"]' },
+    { trigger: () => page.getByRole("combobox", { name: "Theme" }).click(), content: '[data-slot="select-content"]' },
+    { trigger: () => page.getByRole("button", { name: "Help" }).hover(), content: '[data-slot="tooltip-content"]' },
+  ];
+  for (const { trigger, content } of overlays) {
+    await trigger();
+    const overlay = page.locator(content);
+    await expect(overlay).toBeVisible();
+    const style = await overlay.evaluate((element) => {
+      const { backgroundColor, fontFamily } = getComputedStyle(element);
+      const { x, y, right, bottom, width, height } = element.getBoundingClientRect();
+      return { backgroundColor, fontFamily, x, y, right, bottom, width, height };
+    });
+    expect(style.backgroundColor).not.toBe("rgba(0, 0, 0, 0)");
+    expect(style.fontFamily).toContain("Source Serif 4");
+    expect(style.width).toBeGreaterThan(0);
+    expect(style.height).toBeGreaterThan(0);
+    expect(style.x).toBeGreaterThanOrEqual(0);
+    expect(style.y).toBeGreaterThanOrEqual(0);
+    expect(style.right).toBeLessThanOrEqual(1280);
+    expect(style.bottom).toBeLessThanOrEqual(900);
+    await page.keyboard.press("Escape");
+    await page.mouse.move(1270, 890);
+  }
+});
+
+test("primitive surfaces and controls follow token selections", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/tests/browser/gallery.html");
+  const styles = () => page.evaluate(() => {
+    const card = document.querySelector('[data-slot="card"]')!;
+    const input = document.querySelector('[data-slot="input"]')!;
+    const button = document.querySelector('[data-slot="button"]')!;
+    const ratio = document.querySelector('[data-slot="aspect-ratio"]')!;
+    const cardStyle = getComputedStyle(card);
+    const inputStyle = getComputedStyle(input);
+    const buttonStyle = getComputedStyle(button);
+    const { width, height } = ratio.getBoundingClientRect();
+    return { card: cardStyle.backgroundColor, inputBorder: inputStyle.borderColor, inputFont: inputStyle.fontFamily, button: buttonStyle.backgroundColor, ratio: width / height };
+  });
+  const light = await styles();
+  expect(light.card).not.toBe("rgba(0, 0, 0, 0)");
+  expect(light.inputBorder).not.toBe("rgba(0, 0, 0, 0)");
+  expect(light.button).not.toBe("rgba(0, 0, 0, 0)");
+  expect(light.ratio).toBeCloseTo(16 / 9, 1);
+  await page.getByLabel("Look").selectOption("notebook");
+  await page.getByLabel("Mode").selectOption("dark");
+  const dark = await styles();
+  expect(dark.card).not.toBe(light.card);
+  expect(dark.button).not.toBe(light.button);
+  expect(dark.inputFont).toContain("Source Serif 4");
+});
+
 test("tablet changes the viewport and media-query layout seen by Skeletons", async ({ page }) => {
   await page.goto("/tests/browser/gallery.html");
   const previewFrame = page.locator("iframe[title='ReviewPanel · plain']");
@@ -182,7 +300,7 @@ test("Notebook applies its bundled body font, paper texture, and both mode palet
   const previewHeading = page.frameLocator("iframe[title='ReviewPanel · plain']").locator("[data-preview-heading]");
   const previewBodyFont = await page.frameLocator("iframe[title='ReviewPanel · plain']").locator("body").evaluate((element) => getComputedStyle(element).fontFamily);
   expect(await previewHeading.evaluate((element) => getComputedStyle(element).fontFamily)).toBe(previewBodyFont);
-  expect(await previewHeading.evaluate((element) => getComputedStyle(element).fontSize)).toBe("27px");
+  expect(await previewHeading.evaluate((element) => getComputedStyle(element).fontSize)).toBe("30px");
   expect(await root.evaluate((element) => getComputedStyle(element).backgroundImage)).toContain("paper-grain.svg");
   const textureDetails = async () => page.frameLocator("iframe[title='ReviewPanel · plain']").locator("html").evaluate(async (element) => {
     const url = getComputedStyle(element).backgroundImage.match(/url\(["']?(.*?)["']?\)/)?.[1];

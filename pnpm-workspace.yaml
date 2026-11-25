@@ -2,7 +2,4 @@ packages:
   - web
   - engine/react
   - engine/demo
-minimumReleaseAgeExclude:
-  - lucide-react@1.80.0
-  - react-resizable-panels@4.24.2
 saveExact: true

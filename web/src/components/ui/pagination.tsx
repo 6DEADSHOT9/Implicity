@@ -111,7 +111,7 @@ function PaginationEllipsis({
       {...props}
     >
       <MoreHorizontalIcon className="size-icon" />
-      <span className="sr-only">More pages</span>
+      <span className="visually-hidden">More pages</span>
     </span>
   )
 }

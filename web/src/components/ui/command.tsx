@@ -44,7 +44,7 @@ function CommandDialog({
 }) {
   return (
     <Dialog {...props}>
-      <DialogHeader className="sr-only">
+      <DialogHeader className="visually-hidden">
         <DialogTitle>{title}</DialogTitle>
         <DialogDescription>{description}</DialogDescription>
       </DialogHeader>
@@ -73,7 +73,7 @@ function CommandInput({
       <CommandPrimitive.Input
         data-slot="command-input"
         className={cn(
-          "flex h-control w-full rounded-md bg-transparent py-space-3 text-sm outline-hidden placeholder:text-muted-foreground disabled:cursor-not-allowed ",
+          "flex h-control w-full rounded-md bg-transparent py-space-3 text-sm outline-token-hidden placeholder:text-muted-foreground disabled:cursor-not-allowed ",
           className
         )}
         {...props}
@@ -147,7 +147,7 @@ function CommandItem({
     <CommandPrimitive.Item
       data-slot="command-item"
       className={cn(
-        "relative flex cursor-default items-center gap-space-2 rounded-sm px-space-2 py-space-1 text-sm outline-hidden select-none data-[disabled=true]:pointer-events-none  data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-icon [&_svg:not([class*='text-'])]:text-muted-foreground",
+        "relative flex cursor-default items-center gap-space-2 rounded-sm px-space-2 py-space-1 text-sm outline-token-hidden select-none data-[disabled=true]:pointer-events-none  data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-icon [&_svg:not([class*='text-'])]:text-muted-foreground",
         className
       )}
       {...props}

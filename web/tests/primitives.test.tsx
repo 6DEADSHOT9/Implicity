@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { toast } from "sonner";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext } from "../src/components/ui/carousel";
 import { Alert, AlertDescription, AlertTitle } from "../src/components/ui/alert";
 import { AspectRatio } from "../src/components/ui/aspect-ratio";
 import { Avatar, AvatarFallback } from "../src/components/ui/avatar";
@@ -17,26 +19,33 @@ import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "../src/compon
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../src/components/ui/dropdown-menu";
 import { Empty, EmptyTitle } from "../src/components/ui/empty";
 import { Field, FieldLabel } from "../src/components/ui/field";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "../src/components/ui/hover-card";
 import { Input } from "../src/components/ui/input";
+import { InputGroup, InputGroupAddon } from "../src/components/ui/input-group";
 import { Item, ItemTitle } from "../src/components/ui/item";
 import { Kbd } from "../src/components/ui/kbd";
+import { Label } from "../src/components/ui/label";
 import { Pagination } from "../src/components/ui/pagination";
 import { Popover, PopoverContent, PopoverTrigger } from "../src/components/ui/popover";
 import { Progress } from "../src/components/ui/progress";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "../src/components/ui/resizable";
 import { ScrollArea } from "../src/components/ui/scroll-area";
+import { Separator } from "../src/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../src/components/ui/select";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "../src/components/ui/sheet";
 import { SidebarMenuButton, SidebarProvider } from "../src/components/ui/sidebar";
 import { Slider } from "../src/components/ui/slider";
+import { Skeleton } from "../src/components/ui/skeleton";
+import { Spinner } from "../src/components/ui/spinner";
 import { Switch } from "../src/components/ui/switch";
 import { Table, TableBody, TableCell, TableRow } from "../src/components/ui/table";
+import { Textarea } from "../src/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../src/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../src/components/ui/tooltip";
 import { Attachment, AttachmentInfo, AttachmentRemove, Attachments } from "../src/components/ai-elements/attachments";
 import { ConfirmationAction } from "../src/components/ai-elements/confirmation";
 import { InlineCitation, InlineCitationText } from "../src/components/ai-elements/inline-citation";
-import { Message, MessageContent } from "../src/components/ai-elements/message";
+import { Message, MessageContent, MessageResponse } from "../src/components/ai-elements/message";
 import { PromptInput, PromptInputSubmit, PromptInputTextarea } from "../src/components/ai-elements/prompt-input";
 import { Reasoning, ReasoningContent, ReasoningTrigger } from "../src/components/ai-elements/reasoning";
 import { Source, Sources, SourcesContent, SourcesTrigger } from "../src/components/ai-elements/sources";
@@ -45,30 +54,31 @@ import { Suggestion } from "../src/components/ai-elements/suggestion";
 import { Task, TaskContent, TaskTrigger } from "../src/components/ai-elements/task";
 import { Terminal, TerminalContent, TerminalCopyButton } from "../src/components/ai-elements/terminal";
 import { Tool, ToolContent, ToolHeader } from "../src/components/ai-elements/tool";
+import { Toaster } from "../src/components/ui/sonner";
 
 describe("shadcn primitives", () => {
   it("Alert exposes the alert role and its heading", () => {
     render(<Alert><AlertTitle>Saved</AlertTitle><AlertDescription>Changes saved</AlertDescription></Alert>);
     expect(screen.getByRole("alert").textContent).toContain("Saved");
   });
-  it("AspectRatio renders its content", () => {
+  it("AspectRatio constrains the box to the requested ratio", () => {
     render(<AspectRatio ratio={16 / 9}><span>Preview</span></AspectRatio>);
-    expect(screen.getByText("Preview")).toBeTruthy();
+    expect(screen.getByText("Preview").closest('[data-slot="aspect-ratio"]')).toBeTruthy();
   });
-  it("Avatar announces its fallback as an image", () => {
+  it("Avatar renders its fallback in the avatar slot", () => {
     render(<Avatar><AvatarFallback>AB</AvatarFallback></Avatar>);
-    expect(screen.getByText("AB")).toBeTruthy();
+    expect(screen.getByText("AB").closest('[data-slot="avatar-fallback"]')).toBeTruthy();
   });
   it("Badge and Kbd retain their labels", () => {
     render(<><Badge>Ready</Badge><Kbd>⌘K</Kbd></>);
-    expect(screen.getByText("Ready")).toBeTruthy();
-    expect(screen.getByText("⌘K")).toBeTruthy();
+    expect(screen.getByText("Ready").getAttribute("data-slot")).toBe("badge");
+    expect(screen.getByText("⌘K").tagName).toBe("KBD");
   });
   it("Bubble and Card preserve their content semantics", () => {
     render(<><Bubble><BubbleContent>Answer</BubbleContent></Bubble><Card><CardTitle>Title</CardTitle><CardContent>Details</CardContent></Card></>);
-    expect(screen.getByText("Answer")).toBeTruthy();
-    expect(screen.getByText("Title")).toBeTruthy();
-    expect(screen.getByText("Details")).toBeTruthy();
+    expect(screen.getByText("Answer").closest('[data-slot="bubble-content"]')).toBeTruthy();
+    expect(screen.getByText("Title").getAttribute("data-slot")).toBe("card-title");
+    expect(screen.getByText("Details").closest('[data-slot="card"]')).toBeTruthy();
   });
   it("ButtonGroup exposes a group and Button receives keyboard focus", async () => {
     const user = userEvent.setup();
@@ -116,12 +126,48 @@ describe("shadcn primitives", () => {
   });
   it("Empty and Item expose their titles", () => {
     render(<><Empty><EmptyTitle>No results</EmptyTitle></Empty><Item><ItemTitle>Project</ItemTitle></Item></>);
-    expect(screen.getByText("No results")).toBeTruthy();
-    expect(screen.getByText("Project")).toBeTruthy();
+    expect(screen.getByText("No results").getAttribute("data-slot")).toBe("empty-title");
+    expect(screen.getByText("Project").closest('[data-slot="item"]')).toBeTruthy();
   });
   it("Field label is associated with its input", () => {
     render(<Field><FieldLabel htmlFor="email">Email</FieldLabel><Input id="email" /></Field>);
     expect(screen.getByLabelText("Email")).toBeTruthy();
+  });
+  it("Label and Textarea retain their form association", () => {
+    render(<><Label htmlFor="notes">Notes</Label><Textarea id="notes" /></>);
+    expect(screen.getByLabelText("Notes").tagName).toBe("TEXTAREA");
+  });
+  it("InputGroup exposes a labeled group and its input", () => {
+    render(<InputGroup aria-label="Search"><InputGroupAddon>Find</InputGroupAddon><Input aria-label="Search terms" /></InputGroup>);
+    expect(screen.getByRole("group", { name: "Search" }).contains(screen.getByRole("textbox", { name: "Search terms" }))).toBe(true);
+  });
+  it("Separator exposes its orientation", () => {
+    render(<Separator orientation="vertical" decorative={false} />);
+    expect(screen.getByRole("separator").getAttribute("aria-orientation")).toBe("vertical");
+  });
+  it("Carousel exposes its slides and next control", () => {
+    render(<Carousel><CarouselContent><CarouselItem>First slide</CarouselItem><CarouselItem>Second slide</CarouselItem></CarouselContent><CarouselNext aria-label="Next" /></Carousel>);
+    expect(screen.getByRole("region").getAttribute("aria-roledescription")).toBe("carousel");
+    expect(screen.getAllByRole("group")).toHaveLength(2);
+    expect(screen.getByText("First slide")).toBeTruthy();
+    expect(screen.getByText("Second slide")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Next" })).toBeTruthy();
+  });
+  it("Skeleton marks its placeholder and Spinner announces loading", () => {
+    render(<><Skeleton /><Spinner /></>);
+    expect(document.querySelector('[data-slot="skeleton"]')).toBeTruthy();
+    expect(screen.getByRole("status", { name: "Loading" })).toBeTruthy();
+  });
+  it("Sonner displays a toast without a theme provider", async () => {
+    render(<Toaster />);
+    toast("Saved");
+    expect(await screen.findByText("Saved")).toBeTruthy();
+  });
+  it("HoverCard opens on keyboard focus", async () => {
+    const user = userEvent.setup();
+    render(<HoverCard openDelay={0}><HoverCardTrigger href="#profile">Profile</HoverCardTrigger><HoverCardContent>Profile details</HoverCardContent></HoverCard>);
+    await user.hover(screen.getByRole("link", { name: "Profile" }));
+    expect(await screen.findByText("Profile details")).toBeTruthy();
   });
   it("Pagination has a named navigation landmark", () => {
     render(<Pagination />);
@@ -140,16 +186,16 @@ describe("shadcn primitives", () => {
     const progress = screen.getByRole("progressbar", { name: "Upload progress" });
     expect(progress.getAttribute("value")).toBe("45");
   });
-  it("Resizable exposes a keyboard-operable separator", async () => {
-    const user = userEvent.setup();
+  it("Resizable exposes a keyboard-operable separator", () => {
     render(<ResizablePanelGroup orientation="horizontal"><ResizablePanel defaultSize={50}>Left</ResizablePanel><ResizableHandle /><ResizablePanel defaultSize={50}>Right</ResizablePanel></ResizablePanelGroup>);
     const separator = screen.getByRole("separator");
     separator.focus();
+    expect(separator.getAttribute("aria-valuenow")).not.toBeNull();
     expect(document.activeElement).toBe(separator);
   });
   it("ScrollArea retains its content", () => {
     render(<ScrollArea><span>Scrollable content</span></ScrollArea>);
-    expect(screen.getByText("Scrollable content")).toBeTruthy();
+    expect(screen.getByText("Scrollable content").closest('[data-slot="scroll-area"]')).toBeTruthy();
   });
   it("Select exposes a labeled combobox and closes on Escape", async () => {
     const user = userEvent.setup();
@@ -220,6 +266,12 @@ describe("AI Elements primitives", () => {
     render(<Message from="assistant"><MessageContent>Answer text</MessageContent></Message>);
     expect(screen.getByText("Answer text")).toBeTruthy();
   });
+  it("MessageResponse renders a code fence without runtime highlighting styles", () => {
+    render(<MessageResponse>{"```js\nconst answer = 42\n```"}</MessageResponse>);
+    const code = screen.getByText("const answer = 42");
+    expect(code.closest("pre")).toBeTruthy();
+    expect(code.getAttribute("style")).not.toContain("color:");
+  });
   it("Prompt Input exposes a labeled textbox and submit button", () => {
     render(<PromptInput onSubmit={() => undefined}><PromptInputTextarea aria-label="Message"/><PromptInputSubmit aria-label="Send" /></PromptInput>);
     expect(screen.getByRole("textbox", { name: "Message" })).toBeTruthy();
@@ -245,11 +297,13 @@ describe("AI Elements primitives", () => {
   });
   it("Suggestion is a keyboard-accessible button", async () => {
     const user = userEvent.setup();
-    render(<Suggestion suggestion="Summarize" />);
+    const onClick = vi.fn();
+    render(<Suggestion suggestion="Summarize" onClick={onClick} />);
     const button = screen.getByRole("button", { name: "Summarize" });
     button.focus();
     await user.keyboard("{Enter}");
     expect(document.activeElement).toBe(button);
+    expect(onClick).toHaveBeenCalledWith("Summarize");
   });
   it("Task collapses and expands with its trigger", async () => {
     const user = userEvent.setup();

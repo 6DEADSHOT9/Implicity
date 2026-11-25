@@ -29,7 +29,7 @@ function HoverCardContent({
         align={align}
         sideOffset={sideOffset}
         className={cn(
-          "z-50 w-sidebar origin-(--radix-hover-card-content-transform-origin) rounded-md border-token bg-popover p-space-4 text-popover-foreground  outline-hidden     data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
+          "z-50 w-sidebar origin-(--radix-hover-card-content-transform-origin) rounded-md border-token bg-popover p-space-4 text-popover-foreground  outline-token-hidden     data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
           className
         )}
         {...props}

@@ -207,12 +207,12 @@ export const Attachment = ({
           variant === "grid" && "size-attachment-preview overflow-hidden rounded-lg",
           variant === "inline" && [
             "flex h-control cursor-pointer select-none items-center gap-space-2",
-            "rounded-md border border-border px-space-2",
+            "rounded-md border-token border-border px-space-2",
             "font-medium text-sm transition-all",
             "hover:bg-accent hover:text-accent-foreground hover:bg-accent/50",
           ],
           variant === "list" && [
-            "flex w-full items-center gap-space-3 rounded-lg border p-space-3",
+            "flex w-full items-center gap-space-3 rounded-lg border-token p-space-3",
             "hover:bg-accent/50",
           ],
           className
@@ -360,7 +360,7 @@ export const AttachmentRemove = ({
       {...props}
     >
       {children ?? <XIcon />}
-      <span className="sr-only">{label}</span>
+      <span className="visually-hidden">{label}</span>
     </Button>
   );
 };

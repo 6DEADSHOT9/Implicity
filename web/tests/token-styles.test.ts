@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { paths, tokenStyleViolations } from "../scripts/check-token-styles.mjs";
+import { readFileSync } from "node:fs";
+import webPackage from "../package.json" with { type: "json" };
+import tokens from "../../contracts/looks/tokens.json" with { type: "json" };
+import { missingTailwindRules, paths, tokenStyleViolations } from "../scripts/check-token-styles.mjs";
 import { token } from "../src/registry/token";
 import { tokenNames } from "../src/registry/token-values.mjs";
 
@@ -27,6 +30,34 @@ describe("token-only style guard", () => {
     expect(tokenStyleViolations('const Probe = () => <div className="bg-[#f00]" />;', primitiveFile)).toContain("arbitrary style utility is not allowed: bg-[#f00]");
     expect(tokenStyleViolations('const Probe = () => <div style={{ color: "#f00" }} />;', primitiveFile)).toContain("color: #f00");
     expect(tokenStyleViolations('const Probe = () => <div style={{ color: "var(--foreground)" }} />;', primitiveFile)).toEqual([]);
+  });
+
+  it("checks primitive classes against Tailwind's generated rules", () => {
+    expect(missingTailwindRules(["bg-background", "@md:flex", "banana-split"])).toEqual(["banana-split"]);
+  });
+
+  it("keeps static query thresholds aligned with the design tokens", () => {
+    const css = readFileSync(new URL("../src/tokens.css", import.meta.url), "utf8");
+    for (const size of ["sm", "md", "lg", "xl"]) {
+      expect(css).toContain(`--breakpoint-${size}: ${tokens.derivedTokens.dimensions[`--screen-${size}` as keyof typeof tokens.derivedTokens.dimensions]};`);
+      expect(css).toContain(`--container-${size}: ${tokens.derivedTokens.dimensions[`--container-size-${size}` as keyof typeof tokens.derivedTokens.dimensions]};`);
+    }
+  });
+
+  it("keeps release-age guarded packages pinned and removes unused theme and highlighting packages", () => {
+    expect(webPackage.dependencies["lucide-react"]).toBe("1.73.0");
+    expect(webPackage.dependencies["react-resizable-panels"]).toBe("4.24.1");
+    expect(webPackage.dependencies["tw-animate-css"]).toBe("1.4.0");
+    expect("next-themes" in webPackage.dependencies).toBe(false);
+    expect("@streamdown/code" in webPackage.dependencies).toBe(false);
+    expect("@streamdown/math" in webPackage.dependencies).toBe(false);
+    expect("@streamdown/mermaid" in webPackage.dependencies).toBe(false);
+    const workspace = readFileSync(new URL("../../pnpm-workspace.yaml", import.meta.url), "utf8");
+    expect(workspace).not.toContain("minimumReleaseAgeExclude");
+  });
+
+  it.each(["border", "border-0", "ring-2", "ring-4", "ring-0", "z-9999", "duration-500", "rotate-45", "top-12", "w-px"])("rejects hard-coded utility %s", (utility) => {
+    expect(tokenStyleViolations(`const Probe = () => <div className="${utility}" />;`, primitiveFile).length).toBeGreaterThan(0);
   });
 
   it.each([
