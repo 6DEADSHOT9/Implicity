@@ -1,18 +1,34 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CaptureProvider, recordingCapture, registry } from "../index";
-import { ChangeNotice, ChangeNoticeToastHost } from "./ChangeNotice";
+import { ChangeNotice } from "./ChangeNotice";
+import { ChangeNoticeToastHost } from "../../components/change-notice-toast-host";
 import { events } from "./events";
 import { meta } from "./meta";
 import { propsSchema, slotsSchema } from "./schema";
 
 const decisionId = "dec_123e4567-e89b-42d3-a456-426614174000";
 const visibilityDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, "checkVisibility");
+class TestObserver {
+  static instances: TestObserver[] = [];
+  target?: Element;
+  constructor(private callback: IntersectionObserverCallback) { TestObserver.instances.push(this); }
+  observe(target: Element) { this.target = target; }
+  unobserve() { this.target = undefined; }
+  disconnect() { this.target = undefined; }
+  takeRecords() { return []; }
+  setRatio(ratio: number) { if (this.target) this.callback([{ target: this.target, isIntersecting: ratio > 0, intersectionRatio: ratio, time: performance.now() } as IntersectionObserverEntry], this as unknown as IntersectionObserver); }
+}
 
-beforeEach(() => Object.defineProperty(Element.prototype, "checkVisibility", { configurable: true, value: () => true }));
+beforeEach(() => {
+  TestObserver.instances = [];
+  vi.stubGlobal("IntersectionObserver", TestObserver);
+  Object.defineProperty(Element.prototype, "checkVisibility", { configurable: true, value: () => true });
+});
 afterEach(() => {
+  vi.unstubAllGlobals();
   if (visibilityDescriptor) Object.defineProperty(Element.prototype, "checkVisibility", visibilityDescriptor);
   else delete (Element.prototype as { checkVisibility?: () => boolean }).checkVisibility;
 });
@@ -26,7 +42,8 @@ describe("ChangeNotice", () => {
     render(<CaptureProvider sink={recorder.sink}><ChangeNotice decision_id={decisionId} title="Density changed" reason="Long answers were often expanded." presentation="inline" onKeep={onKeep} onUndo={onUndo} /></CaptureProvider>);
 
     expect(screen.getByRole("status", { name: "Density changed" })).toBeTruthy();
-    await waitFor(() => expect(recorder.events).toContainEqual({ name: "change_shown", decision_id: decisionId }));
+    act(() => TestObserver.instances.at(-1)!.setRatio(1));
+    expect(recorder.events).toContainEqual({ name: "change_shown", decision_id: decisionId });
     await user.tab();
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Keep" }));
     await user.keyboard("{Enter}");

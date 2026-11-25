@@ -6,13 +6,16 @@ export const SEEN_VISIBLE_SECONDS = 3;
 
 // shortcut: hidden then shown between checks may count, and clip-path is ignored; revisit if the contract requires continuous CSS-state tracking.
 
-export function useSeen({ component, defaultState, slot }: { component: string; defaultState: string; slot?: string }) {
+export function useSeen({ component, defaultState, slot, onVisible }: { component: string; defaultState: string; slot?: string; onVisible?: () => void }) {
   const { emit } = useCapture<"component_seen">();
   const emitRef = useRef(emit);
   const fieldsRef = useRef({ component, defaultState, slot });
+  const onVisibleRef = useRef(onVisible);
+  const notifiedVisibleRef = useRef(false);
   const emittedRef = useRef(false);
   emitRef.current = emit;
   fieldsRef.current = { component, defaultState, slot };
+  onVisibleRef.current = onVisible;
   const [element, setElement] = useState<Element | null>(null);
   const ref = useCallback((node: Element | null) => setElement(node), []);
 
@@ -56,6 +59,11 @@ export function useSeen({ component, defaultState, slot }: { component: string; 
         ...(slot === undefined ? {} : { slot }),
       });
     };
+    const notifyVisible = () => {
+      if (notifiedVisibleRef.current) return;
+      notifiedVisibleRef.current = true;
+      onVisibleRef.current?.();
+    };
     const applyEntries = (entries: IntersectionObserverEntry[]) => {
       const currentEntries = entries.filter(({ target }) => target === observedElement).sort((a, b) => a.time - b.time);
       let latestVisible = false;
@@ -77,6 +85,7 @@ export function useSeen({ component, defaultState, slot }: { component: string; 
         if (visibleSince === undefined) visibleSince = entry.time;
       }
       if (!currentEntries.length || !intersectionVisible) return;
+      if (latestVisible) notifyVisible();
       if (!latestVisible) {
         schedule(SEEN_VISIBLE_SECONDS * 1000);
       } else if (needsFreshSample) {
@@ -97,6 +106,7 @@ export function useSeen({ component, defaultState, slot }: { component: string; 
         schedule(250);
         return;
       }
+      notifyVisible();
       if (visibleSince === undefined) {
         requestFreshSample();
         return;

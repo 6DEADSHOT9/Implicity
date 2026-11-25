@@ -4,7 +4,6 @@ import { Component, createContext, useContext, useRef, useState, type ErrorInfo,
 import type { Spec } from "./contracts/generated";
 import { createRegistry, registry, registryVersion } from "./registry";
 import { isT3Spec, isT3SpecElement, isT3SpecEnvelope } from "./registry/validate";
-import { ChangeNoticeToastHost } from "./registry/ChangeNotice/ChangeNotice";
 
 const PlainTextFallback = "PlainTextFallback";
 const recoveryText = "Workspace unavailable. Showing the default workspace.";
@@ -157,7 +156,6 @@ function JsonRenderView({ spec, current, plainText, onError }: { spec: Spec; cur
   const fallback = plainTextComponent(plainText);
   return <JSONUIProvider registry={componentRegistry}>
     <Renderer spec={spec as unknown as JsonRenderSpec} registry={componentRegistry} fallback={fallback} />
-    <ChangeNoticeToastHost />
   </JSONUIProvider>;
 }
 

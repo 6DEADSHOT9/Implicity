@@ -2,7 +2,9 @@
 import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CaptureProvider, recordingCapture, registry } from "./index";
-import { ChangeNotice, ChangeNoticeToastHost } from "./ChangeNotice/ChangeNotice";
+import { ChangeNotice } from "./ChangeNotice/ChangeNotice";
+import { ChangeNoticeToastHost } from "../components/change-notice-toast-host";
+import { renderMessage } from "../renderer";
 
 class TestIntersectionObserver {
   static instances: TestIntersectionObserver[] = [];
@@ -63,6 +65,33 @@ async function passTime(milliseconds: number) {
 }
 
 describe("system message seen events", () => {
+  it("shares the document host across renderMessage calls and routes toast events to each origin", async () => {
+    const first = recordingCapture();
+    const second = recordingCapture();
+    const spec = (decision_id: string, title: string, root: string) => ({
+      registry_version: registry.version,
+      root,
+      elements: { [root]: { type: "ChangeNotice", props: { decision_id, title, reason: "Because.", presentation: "toast" } } },
+    });
+    render(<><ChangeNoticeToastHost />
+      <CaptureProvider sink={first.sink}>{renderMessage(spec("dec_123e4567-e89b-42d3-a456-426614174000", "First", "notice1"), "fallback")}</CaptureProvider>
+      <CaptureProvider sink={second.sink}>{renderMessage(spec("dec_223e4567-e89b-42d3-a456-426614174000", "Second", "notice2"), "fallback")}</CaptureProvider>
+    </>);
+
+    await passTime(0);
+    const notices = screen.getAllByRole("status");
+    expect(notices).toHaveLength(2);
+    expect(document.querySelectorAll("[data-sonner-toaster]")).toHaveLength(1);
+    expect(document.querySelectorAll("[data-sonner-toast]")).toHaveLength(2);
+    for (const observer of TestIntersectionObserver.instances) act(() => observer.setRatio(1));
+    await passTime(0);
+    expect(first.events).toContainEqual({ name: "change_shown", decision_id: "dec_123e4567-e89b-42d3-a456-426614174000" });
+    expect(second.events).toContainEqual({ name: "change_shown", decision_id: "dec_223e4567-e89b-42d3-a456-426614174000" });
+    act(() => { notices.find((notice) => notice.textContent?.includes("First"))!.querySelector("button")!.click(); });
+    expect(first.events).toContainEqual({ name: "change_kept", decision_id: "dec_123e4567-e89b-42d3-a456-426614174000" });
+    expect(second.events.some(({ name }) => name === "change_kept")).toBe(false);
+  });
+
   it("emits change_shown for an inline ChangeNotice only after it becomes visible", async () => {
     const capture = recordingCapture();
     let visibleWhenShown = false;
@@ -76,6 +105,7 @@ describe("system message seen events", () => {
     expect(capture.events.some(({ name }) => name === "change_shown")).toBe(false);
 
     view.rerender(<CaptureProvider sink={sink}><div>{notice}</div></CaptureProvider>);
+    act(() => TestIntersectionObserver.instances.at(-1)!.setRatio(1));
     await passTime(100);
     expect(capture.events).toContainEqual({ name: "change_shown", decision_id: "dec_123e4567-e89b-42d3-a456-426614174000" });
     expect(visibleWhenShown).toBe(true);
