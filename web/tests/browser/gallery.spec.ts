@@ -77,6 +77,7 @@ test("focus rings are painted with 3:1 contrast on shared controls in every look
       const controls = [
         page.getByRole("button", { name: "Continue" }),
         page.getByRole("textbox", { name: "Email" }),
+        page.getByRole("textbox", { name: "Notes" }),
         page.getByRole("textbox", { name: "Message" }),
         page.getByRole("checkbox", { name: "Remember this device" }),
         page.getByRole("switch", { name: "Enable notifications" }),
@@ -125,8 +126,14 @@ test("focus rings are painted with 3:1 contrast on shared controls in every look
 test("Marker truncates long labels without horizontal scrolling at 320 px", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 900 });
   await page.goto("/tests/browser/gallery.html");
-  await page.addStyleTag({ content: ".gallery-header, .primitive-gallery-grid > :not(:nth-child(6)), [aria-label='Registered Skeletons'] { display: none !important; }" });
   const marker = page.getByRole("note", { name: "Remembered from your earlier conversation about travel" });
+  await marker.evaluate((element) => {
+    document.querySelector(".gallery-header")?.remove();
+    const card = element.closest(".primitive-gallery-grid > *");
+    const grid = card?.parentElement;
+    if (grid && card) for (const child of [...grid.children]) if (child !== card) child.remove();
+    document.querySelector('[aria-label="Registered Skeletons"]')?.remove();
+  });
   const bounds = await marker.boundingBox();
   expect(bounds).not.toBeNull();
   expect(bounds!.width).toBeGreaterThan(0);
@@ -134,6 +141,7 @@ test("Marker truncates long labels without horizontal scrolling at 320 px", asyn
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(320);
   const label = marker.locator('[data-slot="badge"]');
   expect(await label.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+  await expect(label).toHaveCSS("text-overflow", "ellipsis");
 });
 
 test("desktop Sidebar responds to the token breakpoint", async ({ page }) => {
