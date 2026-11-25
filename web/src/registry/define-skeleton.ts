@@ -11,8 +11,18 @@ export const skeletonMetaSchema = z.object({
     minHeight: z.number().positive(),
     minContrast: z.number().min(4.5).max(21),
   }).strict(),
-  galleryStates: z.array(z.string()).min(1),
+  galleryStates: z.array(z.object({
+    id: z.string(),
+    props: z.record(z.string(), z.unknown()),
+    slots: z.record(z.string(), z.array(z.string())).optional(),
+  }).strict()).min(1),
 }).strict();
+
+export type GalleryState = {
+  id: string;
+  props: Record<string, unknown>;
+  slots?: Readonly<Record<string, readonly string[]>>;
+};
 
 export type SkeletonMeta = {
   role: "shell" | "content" | "panel" | "home" | "system";
@@ -20,7 +30,7 @@ export type SkeletonMeta = {
   defaultStates: readonly string[];
   commands: readonly string[];
   limits: { minWidth: number; minHeight: number; minContrast: number };
-  galleryStates: readonly string[];
+  galleryStates: readonly GalleryState[];
 };
 export type SkeletonEntry = {
   id: string;

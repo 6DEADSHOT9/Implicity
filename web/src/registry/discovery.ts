@@ -14,6 +14,11 @@ export type DiscoveredSkeleton = {
   definition: SkeletonDefinition;
 };
 
+export function registryFoldersFromPaths(paths: readonly string[], prefix = "./"): { id: string; files: string[] }[] {
+  const ids = [...new Set(paths.map((path) => path.slice(prefix.length).split("/")[0]))].sort();
+  return ids.map((id) => ({ id, files: paths.filter((path) => path.startsWith(`${prefix}${id}/`)).map((path) => path.slice(path.lastIndexOf("/") + 1)) }));
+}
+
 export function discoverRegistryFolders(folders: readonly RegistryFolderModules[]): DiscoveredSkeleton[] {
   return [...folders].sort((left, right) => left.id.localeCompare(right.id)).map(({ id, files, componentExports, schema, events, metadata }) => {
     const expected = [`${id}.tsx`, `${id}.test.tsx`, "schema.ts", "events.ts", "meta.ts"];

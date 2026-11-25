@@ -6,6 +6,7 @@ NODE = node
 install:
 	uv sync --all-packages --locked
 	$(PNPM) install --frozen-lockfile
+	$(PNPM) --filter @implicity/web install:browsers
 
 lint: contracts-check token-styles-check lint-python lint-typescript
 

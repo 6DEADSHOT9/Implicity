@@ -1,4 +1,5 @@
 import Ajv2020 from "ajv/dist/2020.js";
+import { z } from "zod";
 import contracts from "../../../contracts/schemas/index.json" with { type: "json" };
 import type { SkeletonEntry } from "./define-skeleton.ts";
 import { skeletonMetaSchema } from "./define-skeleton.ts";
@@ -52,8 +53,25 @@ export function validateRegistryDefinitions(entries: readonly SkeletonDefinition
     if (entry.events.some((event) => !eventNames.has(event))) throw new Error(`${entry.id} declares an event not in T3`);
     if (!entry.events.includes("component_shown") || !entry.events.includes("component_seen")) throw new Error(`${entry.id} must declare shown and seen events`);
 
+    const rawStates = (entry.meta as { galleryStates?: unknown } | undefined)?.galleryStates;
+    if (Array.isArray(rawStates)) {
+      for (const state of rawStates) {
+        const stateId = state && typeof state === "object" && "id" in state && typeof state.id === "string" ? state.id : "(unknown)";
+        if (!state || typeof state !== "object" || !("props" in state) || !state.props || typeof state.props !== "object" || Array.isArray(state.props)) {
+          throw new Error(`${entry.id} gallery state ${stateId} is missing example props`);
+        }
+      }
+    }
+
     const meta = skeletonMetaSchema.safeParse(entry.meta);
-    if (!meta.success) throw new Error(`${entry.id} metadata is incomplete: ${meta.error.issues.map((issue) => issue.path.join(".")).join(", ")}`);
+    if (!meta.success) {
+      const issue = meta.error.issues.find(({ path }) => path[0] === "galleryStates" && typeof path[1] === "number");
+      if (issue) {
+        const stateId = Array.isArray(rawStates) && rawStates[issue.path[1] as number] && typeof rawStates[issue.path[1] as number] === "object" && "id" in rawStates[issue.path[1] as number] ? (rawStates[issue.path[1] as number] as { id?: unknown }).id : "(unknown)";
+        throw new Error(`${entry.id} gallery state ${String(stateId)} has an invalid example at ${issue.path.slice(2).join(".")}`);
+      }
+      throw new Error(`${entry.id} metadata is incomplete: ${meta.error.issues.map((issue) => issue.path.join(".")).join(", ")}`);
+    }
     const declaredSlots = Object.keys(entry.slotsSchema.shape).sort();
     const metadataSlots = [...meta.data.slots].sort();
     if (declaredSlots.join("\0") !== metadataSlots.join("\0")) throw new Error(`${entry.id} slot metadata does not match its schema`);
@@ -63,8 +81,26 @@ export function validateRegistryDefinitions(entries: readonly SkeletonDefinition
       if (entry.slotsSchema.safeParse(invalidChildren).success) throw new Error(`${entry.id} slot schema does not enforce T3 child ids`);
     }
     if (meta.data.defaultStates.some((state) => !stateIdValid(state))) throw new Error(`${entry.id} declares a default state id not in T3`);
-    if (meta.data.galleryStates.some((state) => !stateIdValid(state))) throw new Error(`${entry.id} declares a gallery state id not in T3`);
-    if (meta.data.defaultStates.some((state) => !meta.data.galleryStates.includes(state))) throw new Error(`${entry.id} gallery states must include every default state`);
+    if (meta.data.galleryStates.some(({ id }) => !stateIdValid(id))) throw new Error(`${entry.id} declares a gallery state id not in T3`);
+    if (meta.data.defaultStates.some((state) => !meta.data.galleryStates.some(({ id }) => id === state))) throw new Error(`${entry.id} gallery states must include every default state`);
+    for (const state of meta.data.galleryStates) {
+      if (!entry.propsSchema.safeParse(state.props).success) {
+        throw new Error(`${entry.id} gallery state ${state.id} example props do not match its props schema`);
+      }
+      if (Object.keys(entry.slotsSchema.shape).length && state.slots === undefined) {
+        throw new Error(`${entry.id} gallery state ${state.id} is missing example slots`);
+      }
+      for (const [slot, example] of Object.entries(state.slots ?? {})) {
+        const slotSchema = entry.slotsSchema.shape[slot];
+        const validSlot = slotSchema && z.object({ [slot]: slotSchema }).strict().safeParse({ [slot]: example }).success;
+        if (!validSlot || (example as string[]).some((child) => !slotIdValid(child))) {
+          throw new Error(`${entry.id} gallery state ${state.id} slot ${slot} example does not match its slot schema`);
+        }
+      }
+      if (!entry.slotsSchema.safeParse(state.slots ?? {}).success) {
+        throw new Error(`${entry.id} gallery state ${state.id} example slots do not match its slots schema`);
+      }
+    }
     if (meta.data.commands.some((command) => command.startsWith("cmd_"))) throw new Error(`${entry.id} Command uses reserved cmd_ prefix`);
     if (meta.data.commands.some((command) => !commandValid(command))) throw new Error(`${entry.id} declares a Command not in T3`);
   }

@@ -1,0 +1,29 @@
+.gallery {
+  padding: var(--space-6);
+  color: var(--foreground);
+  background: var(--background);
+  font-size: var(--text-base);
+  font-family: var(--font-body);
+}
+
+.gallery-preview-root { margin: 0; color: var(--foreground); background-color: var(--background); font-size: var(--text-base); font-family: var(--font-body); }
+
+.gallery-header, .gallery-controls, .gallery-card > header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
+.gallery-header { margin-bottom: var(--section-gap); }
+.gallery-controls { flex-wrap: wrap; }
+.gallery-control { display: flex; flex-direction: column; gap: var(--space-1); color: var(--muted-foreground); }
+.gallery-control select { min-height: var(--control-height); padding: var(--space-2); color: var(--foreground); background: var(--card); border-radius: var(--radius); }
+.gallery > .gallery-header h1, .gallery > .gallery-grid > .gallery-card > header h2 { color: var(--foreground); font-family: var(--font-heading); }
+.gallery > .gallery-header h1 { font-size: var(--heading-1); }
+.gallery > .gallery-grid > .gallery-card > header h2 { font-size: var(--heading-4); }
+.gallery-kicker { color: var(--muted-foreground); }
+.gallery-grid { display: flex; flex-direction: column; gap: var(--section-gap); }
+.gallery-card { box-sizing: border-box; width: 100%; padding: var(--space-4); color: var(--card-foreground); background: var(--card); border-radius: var(--radius); }
+.gallery-card > header { align-items: baseline; }
+.gallery-card > header span { color: var(--muted-foreground); }
+.gallery-preview { overflow: hidden; padding-block: var(--space-4); }
+.gallery-preview-stage { position: relative; width: 100%; }
+.gallery-preview-frame { position: absolute; inset: 0 auto auto 0; display: block; max-width: none; border: 0; transform-origin: top left; }
+.gallery[data-texture="paper-grain"] { background-image: url("/textures/paper-grain.svg"); }
+html[data-texture="paper-grain"] { background-color: var(--background); background-image: url("/textures/paper-grain.svg"); }
+.gallery-error { color: var(--destructive); }

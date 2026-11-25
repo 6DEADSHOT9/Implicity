@@ -122,6 +122,11 @@ Features and dimensions are data files in `contracts`, so adding one needs no en
 
 **A feature** is a pair of daily counts per kind of chat. The setup command registers each one in PostHog as a saved query.
 
+**The setup command** takes a fresh clone to a running system and is safe to re-run: each step reports what it did or skipped. It stops below 16 GB of memory, creates `.env` from `.env.example` without overwriting values, brings up the Compose stack, runs the migrations, and then needs two things only the person can do, each a one-time stop with exact instructions that resumes on the next run:
+- **PostHog.** The person creates their own account in the local PostHog and a personal API key with the scopes setup names, and gives setup the key, which goes in `.env` and is never printed. With it, setup finds or creates the project and its project key, then calls the PostHog event source implementation's `register_features()`, which creates or updates each feature's saved query and leaves matching ones unchanged. Setup never creates PostHog users or writes to PostHog's database.
+- **Feature registration lives in the event source implementation** (rule 6: PostHog is named only there and in the capture wrapper). `register_features()` loads feature definitions with the engine's feature loader, so there is one reading of them, and builds each saved query from one HogQL query shape that the event source's runtime reads reuse, with room for the date window and excluded sessions. Setup only calls it and reports the result; a failed write stops setup with an error.
+- **Codex.** The person signs in inside the Hermes container (`hermes auth add openai-codex`). Setup only checks the sign-in and never handles the credential.
+
 ```yaml
 # contracts/features/long_answer_expanded.yaml
 id: long_answer_expanded
@@ -474,10 +479,14 @@ Quota {
 
 **MCP tools.** Every tool validates its input against the contracts before doing anything.
 
+**A rendered spec and its message.** `render` stores a valid message spec unattached, through the app module, and returns its id; it never takes a message or conversation id from the model, because only trusted code assigns identifiers (ADR 0020). When the app saves an assistant turn, it attaches the spec ids from the `render` calls and results it saw in that conversation's relayed stream. Specs left unattached are discarded after a fixed retention period.
+
+**Message spec rules.** `render` rejects a spec, storing nothing, when its `registry_version` is not the current one, its root is missing, an element names an unknown component or child, a prop or slot fails its schema, it has a cycle, it has more than 200 elements, or its nesting is deeper than 10. The registry's `limits` are minimum sizes and contrast for adaptations, not content bounds, so these two caps bound a spec. `catalogue` and `render` read the current-version file `registry.json`; the append-only version snapshots keep only `registry_version` and `components`. A spec attaches to exactly one message and is never re-attached or moved; discarding unattached specs is one conditional delete, so it can never remove a spec attached in the meantime. Expiry runs at startup and then daily. Checking that the target is an assistant message waits until messages have a role (T16).
+
 | Tool | Input | Result |
 | --- | --- | --- |
-| `catalogue` | Optional role filter | Each component's name, props schema, slots and limits |
-| `render` | A message spec | An id the frontend renders, or a validation error |
+| `catalogue` | Optional role filter | The current `registry_version` and, for each component, its `name`, `role`, `props_schema`, `slots`, `slots_schema` and `limits` |
+| `render` | A message spec only; no message or conversation id | An id the frontend renders, or a validation error |
 | `propose` | A proposal request with `source: hermes` and no id; the app mints the id | The arbiter's verdict |
 | `memory_save` | Item type, text, scope, sensitive flag | Saved, or queued for the person's confirmation |
 | `label_kind` | Conversation id, kind | Recorded |
@@ -496,12 +505,12 @@ Each module owns its tables in SQLite, and no module reads another's.
 | --- | --- | --- |
 | Engine | `decisions`, `explicit_settings`, `locks`, `excluded_sessions`, `layout_revisions` | Beliefs are not stored; they are recomputed |
 | Memory | `memory_items`, `projects`, `drafts`, `inferences`, `typing_profiles`, `guest_patterns` | Drafts expire after 30 days, states after 1 day, patterns after 30 |
-| App | `conversations`, `messages`, `message_specs`, `kinds`, `looks`, `widgets`, `schedules`, `workflows`, `files` | `files` holds metadata; bodies live on a local volume |
+| App | `conversations`, `messages`, `message_specs`, `kinds`, `looks`, `widgets`, `schedules`, `workflows`, `files` | `files` holds metadata; bodies live on a local volume. Unattached message specs are discarded after 1 day |
 | Agent | `agent_sessions`, `quota_log`, `quota_settings` | Maps conversations to Hermes sessions with their instructions; logs tokens per turn; holds the person's quota limits |
 
 **Rules.**
 
 - Every table has a migration. SQLAlchemy and Alembic are used throughout, and no query relies on a SQLite-only feature, so the move to Postgres is a configuration change.
-- Every row that came from a session carries its `session_id`, so excluding or deleting a session can find everything it produced.
+- Every row that came from a session carries its `session_id`, so excluding or deleting a session can find everything it produced. One exception: a message spec stored by `render` has no `session_id` until the app attaches it to its message, because the model passes no ids (ADR 0020); it gets one when attached, and is discarded if never attached.
 - Deleting an item removes the matching events from PostHog as well.
 - A daily copy of the database file is kept, with the last seven retained.
