@@ -52,6 +52,7 @@ utilityNames.add("size-icon");
 utilityNames.add("grid-cols-icon-content");
 for (const prefix of ["border", "border-x", "border-y", "border-t", "border-r", "border-b", "border-l", "border-s", "border-e"]) utilityNames.add(`${prefix}-token`);
 utilityNames.add("ring-token");
+utilityNames.add("focus-ring-token");
 utilityNames.add("outline-token-hidden");
 utilityNames.add("visually-hidden");
 utilityNames.add("rotate-arrow");

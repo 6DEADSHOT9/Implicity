@@ -120,6 +120,11 @@ echo "Unhealthy leaf rejected by Compose --wait: PASS"
 project_created=1
 make up-development
 check_api_image_imports api-development
+api_id_before=$(COMPOSE_PROJECT_NAME="$project" docker compose ps -q api-development)
+make up-development
+api_id_after=$(COMPOSE_PROJECT_NAME="$project" docker compose ps -q api-development)
+test "$api_id_before" = "$api_id_after"
+echo "API container id after second setup build: stable ($api_id_after)"
 posthog_port=$(docker compose port posthog-proxy 8000 | sed 's/.*://')
 check_profile_health development
 api_id=$(COMPOSE_PROJECT_NAME="$project" docker compose ps -q api-development)
@@ -184,7 +189,7 @@ PersonalAPIKey.objects.create(
     user=user,
     team=team,
     label="Compose smoke query",
-    scopes=["query:read"],
+    scopes=["query:read", "project:read", "project:write", "endpoint:read", "endpoint:write", "insight_variable:read", "insight_variable:write"],
     secure_value=hash_key_value(key),
     mask_value=mask_key_value(key),
 )
@@ -192,6 +197,24 @@ print("SMOKE_CREDENTIALS=" + json.dumps({"query_key": key, "project_token": team
 PY
 credentials=$(COMPOSE_PROJECT_NAME="$project" docker compose exec -T posthog python manage.py shell <"$bootstrap" | sed -n 's/^SMOKE_CREDENTIALS=//p' | tail -n 1)
 test -n "$credentials"
+POSTHOG_PORT="$posthog_port" SMOKE_CREDENTIALS="$credentials" uv run --locked python - <<'PY'
+import json, os, tempfile
+from pathlib import Path
+from implicity_api.modules.event_source.posthog import PostHog, register_features
+
+credentials = json.loads(os.environ["SMOKE_CREDENTIALS"])
+with tempfile.TemporaryDirectory() as directory:
+    features = Path(directory)
+    (features / "smoke.yaml").write_text(
+        "id: compose_smoke\nhappened: {event: smoke_happened}\n"
+        "could_have: {event: smoke_seen}\ngroup_by: [day, kind]\n"
+    )
+    client = PostHog(
+        f"http://127.0.0.1:{os.environ['POSTHOG_PORT']}", credentials["query_key"]
+    )
+    assert register_features(client, credentials["team_id"], features) == (1, 0)
+    print("PostHog accepted saved HogQL query and three variable definitions: PASS")
+PY
 POSTHOG_PORT="$posthog_port" SMOKE_CREDENTIALS="$credentials" python3 - <<'PY'
 import json, os, time, urllib.error, urllib.request
 
