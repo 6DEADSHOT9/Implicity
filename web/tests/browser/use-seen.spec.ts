@@ -78,13 +78,25 @@ test("a scroll exit before a blocked deadline cancels the occasion", async ({ pa
 });
 
 test("a wall-clock adjustment does not change the reported visible duration", async ({ page }) => {
-  await page.addInitScript(() => {
+  await page.goto("/tests/browser/use-seen.html");
+  await page.locator("#seen-target").waitFor();
+  await page.evaluate(() => new Promise<void>((resolve) => {
+    const target = document.querySelector("#seen-target")!;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+        observer.disconnect();
+        resolve();
+      }
+    }, { threshold: [0, 0.5] });
+    observer.observe(target);
+  }));
+  await page.waitForTimeout(200);
+  expect(await page.evaluate(() => window.seenEvents)).toEqual([]);
+  await page.evaluate(() => {
     const originalNow = Date.now.bind(Date);
     Date.now = () => originalNow() - 60_000;
     window.restoreSeenClock = () => { Date.now = originalNow; };
   });
-  await page.goto("/tests/browser/use-seen.html");
-  await page.locator("#seen-target").waitFor();
   await expect.poll(() => page.evaluate(() => window.seenEvents.length), { timeout: 5000 }).toBe(1);
   const [event] = await page.evaluate(() => window.seenEvents) as Extract<CapturedEvent, { name: "component_seen" }>[];
   await page.evaluate(() => window.restoreSeenClock());
