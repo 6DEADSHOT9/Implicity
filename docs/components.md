@@ -82,7 +82,7 @@ Other widgets, such as a CI tracker or supplier watch, are a DataTable, DataChar
 | Component | What it is | shadcn/ui base | Build |
 | --- | --- | --- | --- |
 | ChangeNotice | "This changed because…" with Keep and Undo | Marker inside a conversation, Toast outside one | Composed |
-| ProposalCard | A proposed look, widget, workflow, schedule, kind of chat or setting change, with Keep and Dismiss and a preview | Card, Button | Composed |
+| ProposalCard | A proposed look, widget, workflow, schedule, kind of chat or setting change, with Keep and Dismiss and a preview. The preview is required: an offer without one is rejected by the schema, and every gallery state shows one | Card, Button | Composed |
 | Nudge | The once-a-day in-app prompt at session start. Stage 1 builds the skeleton only, with `onAction` and `onLater` callbacks and the `component_shown` and `component_seen` events; its action and dismissal events arrive with the nudges feature (Later) | Alert, Button | Composed |
 
 ### Features that are not separate components
@@ -175,7 +175,7 @@ Before adding, check whether the need is a new component or a new arrangement of
 ## Still to verify
 
 - [x] Trace fits RunActivity, reasoning and sources (Tool and Task use Collapsible until the pinned AI Elements ships Trace)
-- [x] Marker is for notes between turns, so it is the base for ContextChip and in-conversation notices, not Citation
+- [x] Marker is for notes between turns, so it is the base for ContextChip and in-conversation notices, not Citation. Neither shadcn/ui nor AI Elements ships a Marker, so it is our own primitive in `web/src/components/ui/marker.tsx`, composed from shadcn/ui's Separator with a label and an optional actions slot, styled with tokens like the copied primitives (issue #70)
 - [x] Item works as a general row
 - [ ] Spike: confirm the AI SDK's stream format works from the Python backend relaying Hermes. If not, return to assistant-ui
 - [ ] Check whether shadcn/ui's Message ships its own markdown renderer; otherwise use react-markdown with GitHub-flavoured extensions
