@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
+import { Button } from "../../components/ui/button";
 import { useCapture } from "../capture";
-import { token } from "../token";
 import { events } from "./events";
 
 type Props = {
@@ -14,7 +15,8 @@ type Props = {
 export function Nudge({ title, message, actionLabel, onAction, onLater }: Props) {
   const { emit } = useCapture<(typeof events)[number]>();
   const emitRef = useRef(emit);
-  const rootRef = useRef<HTMLElement>(null);
+  const titleId = useId();
+  const rootRef = useRef<HTMLDivElement>(null);
   emitRef.current = emit;
   useEffect(() => {
     emitRef.current("component_shown", { component: "Nudge", default_state: "prompt" });
@@ -37,12 +39,12 @@ export function Nudge({ title, message, actionLabel, onAction, onLater }: Props)
     return () => { observer?.disconnect(); if (timer !== undefined) window.clearTimeout(timer); };
   }, []);
 
-  return <aside ref={rootRef} style={{ display: "flex", flexDirection: "column", gap: token("--space-2"), borderRadius: token("--radius"), backgroundColor: token("--card"), color: token("--card-foreground"), padding: token("--space-4") }} role="status" aria-labelledby="nudge-title">
-    <h2 style={{ fontSize: token("--text-base") }} id="nudge-title">{title}</h2>
-    <p style={{ fontSize: token("--text-sm"), color: token("--muted-foreground") }}>{message}</p>
-    <div style={{ display: "flex", flexWrap: "wrap", gap: token("--space-2") }}>
-      <button style={{ minHeight: token("--target-min-size"), border: "none", borderRadius: token("--radius"), backgroundColor: token("--primary"), color: token("--primary-foreground"), fontFamily: "inherit", fontSize: token("--text-sm"), paddingInline: token("--space-4") }} type="button" onClick={onAction}>{actionLabel}</button>
-      <button style={{ minHeight: token("--target-min-size"), border: "none", borderRadius: token("--radius"), backgroundColor: token("--secondary"), color: token("--secondary-foreground"), fontFamily: "inherit", fontSize: token("--text-sm"), paddingInline: token("--space-4") }} type="button" onClick={onLater}>Later</button>
+  return <Alert ref={rootRef} className="grid-cols-1" role="status" aria-labelledby={titleId}>
+    <AlertTitle className="col-start-1"><h2 style={{ fontSize: "var(--heading-4)" }} id={titleId}>{title}</h2></AlertTitle>
+    <AlertDescription className="col-start-1">{message}</AlertDescription>
+    <div className="col-start-1 flex flex-wrap gap-space-2">
+      <Button onClick={onAction}>{actionLabel}</Button>
+      <Button variant="outline" onClick={onLater}>Later</Button>
     </div>
-  </aside>;
+  </Alert>;
 }

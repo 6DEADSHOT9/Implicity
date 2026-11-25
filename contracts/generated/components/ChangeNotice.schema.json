@@ -16,12 +16,20 @@
         "reason": {
           "type": "string",
           "minLength": 1
+        },
+        "presentation": {
+          "type": "string",
+          "enum": [
+            "inline",
+            "toast"
+          ]
         }
       },
       "required": [
         "decision_id",
         "title",
-        "reason"
+        "reason",
+        "presentation"
       ],
       "additionalProperties": false
     },
