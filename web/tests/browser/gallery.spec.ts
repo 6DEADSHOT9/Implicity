@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import tokens from "../../../contracts/looks/tokens.json" with { type: "json" };
 import { tokenNames } from "../../src/registry/token-values.mjs";
 
 test("screen size changes actual Skeleton preview width and all allowed tokens are set", async ({ page }) => {
@@ -47,6 +48,21 @@ test("desktop Sidebar responds to the token breakpoint", async ({ page }) => {
   expect(bounds!.width).toBeGreaterThan(0);
   expect(bounds!.x).toBeGreaterThanOrEqual(0);
   expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(1280);
+  const screenSize = page.getByLabel("Screen size");
+  await screenSize.click();
+  await screenSize.selectOption("tablet");
+});
+
+test("gallery resets the body margin and Pagination list markers", async ({ page }) => {
+  await page.goto("/tests/browser/gallery.html");
+  await expect(page.locator("body")).toHaveCSS("margin", "0px");
+  await expect(page.locator('[aria-label="pagination"] ul')).toHaveCSS("list-style-type", "none");
+  for (const selector of [".primitive-gallery-sidebar", ".primitive-gallery-prompt", '[data-slot="resizable-panel-group"]']) {
+    const sample = page.locator(selector);
+    const bounds = await sample.boundingBox();
+    expect(bounds).not.toBeNull();
+    expect(bounds!.height).toBeLessThan(200);
+  }
 });
 
 test("screen and container breakpoint variants match token thresholds", async ({ page }) => {
@@ -300,7 +316,12 @@ test("Notebook applies its bundled body font, paper texture, and both mode palet
   const previewHeading = page.frameLocator("iframe[title='ReviewPanel · plain']").locator("[data-preview-heading]");
   const previewBodyFont = await page.frameLocator("iframe[title='ReviewPanel · plain']").locator("body").evaluate((element) => getComputedStyle(element).fontFamily);
   expect(await previewHeading.evaluate((element) => getComputedStyle(element).fontFamily)).toBe(previewBodyFont);
-  expect(await previewHeading.evaluate((element) => getComputedStyle(element).fontSize)).toBe("30px");
+  for (const size of ["1", "2", "3", "4", "5"] as const) {
+    await page.getByLabel("Text size").selectOption(size);
+    const actual = Number.parseFloat(await previewHeading.evaluate((element) => getComputedStyle(element).fontSize));
+    const expected = Number.parseFloat(tokens.derivedTokens.textSize[size].headings["--heading-2"]) * 16;
+    expect(actual).toBeCloseTo(expected, 1);
+  }
   expect(await root.evaluate((element) => getComputedStyle(element).backgroundImage)).toContain("paper-grain.svg");
   const textureDetails = async () => page.frameLocator("iframe[title='ReviewPanel · plain']").locator("html").evaluate(async (element) => {
     const url = getComputedStyle(element).backgroundImage.match(/url\(["']?(.*?)["']?\)/)?.[1];

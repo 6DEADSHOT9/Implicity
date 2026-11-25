@@ -10,6 +10,7 @@ import { tokenNames } from "../src/registry/token-values.mjs";
 const componentFile = fileURLToPath(new URL("../src/registry/Probe/Probe.tsx", import.meta.url));
 const rendererFile = fileURLToPath(new URL("../src/renderer.tsx", import.meta.url));
 const galleryFile = fileURLToPath(new URL("../src/gallery.tsx", import.meta.url));
+const primitiveGalleryFile = fileURLToPath(new URL("../src/components/primitive-gallery.tsx", import.meta.url));
 const previewRuntimeFile = fileURLToPath(new URL("../src/preview-runtime.tsx", import.meta.url));
 const previewMainFile = fileURLToPath(new URL("../src/preview-main.tsx", import.meta.url));
 const primitiveFile = fileURLToPath(new URL("../src/components/ui/Probe.tsx", import.meta.url));
@@ -24,6 +25,11 @@ describe("token-only style guard", () => {
   it("scans copied shadcn and AI Elements source folders", () => {
     expect(paths.some((path) => path.includes("/components/ui/"))).toBe(true);
     expect(paths.some((path) => path.includes("/components/ai-elements/"))).toBe(true);
+  });
+
+  it("scans the primitive gallery and rejects hard-coded colors there", () => {
+    expect(paths).toContain(primitiveGalleryFile);
+    expect(tokenStyleViolations('const View = () => <div style={{ color: "#f00" }} />;', primitiveGalleryFile)).toContain("color: #f00");
   });
 
   it("rejects unknown and arbitrary primitive utilities and hard-coded inline styles", () => {

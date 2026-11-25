@@ -23,6 +23,7 @@ const hardCodedUtilities = /^(?:border(?:-[0-9]+)?|ring-[0-9]+|z-(?!auto|10|20|5
 const layoutUtility = /^(?:block|inline|inline-block|flex|inline-flex|grid|inline-grid|hidden|contents|flow-root|sr-only|not-sr-only|flex-(?:row|row-reverse|col|col-reverse|wrap|wrap-reverse|nowrap|1|auto|initial|none|grow|shrink)|(?:grow|shrink)(?:-0)?|basis-(?:auto|full|\d+\/\d+)|grid-flow-(?:row|col|dense)|grid-cols-(?:\d+|icon-content)|grid-rows-\d+|auto-rows-(?:auto|min|max|fr)|items-(?:start|end|center|baseline|stretch)|justify-(?:normal|start|end|center|between|around|evenly|stretch)|justify-(?:items|self)-(?:start|end|center|end|stretch)|self-(?:auto|start|end|center|stretch|baseline)|content-(?:normal|center|start|end|between|around|evenly|baseline|stretch)|place-(?:content|items|self)-(?:start|end|center|stretch|between|around|evenly|baseline)|col-(?:span|start|end)-(?:full|\d+)|row-(?:span|start|end)-(?:full|\d+)|order-(?:first|last|none|\d+)|relative|absolute|fixed|sticky|static|inset(?:-[xyse])?(?:-(?:0|y-0|space-\d+|y-space-\d+))?|(?:top|right|bottom|left|start|end|inset-[xyse])-(?:0|auto|full|1\/2|space-\d+)|-?(?:top|right|bottom|left)-(?:space-\d+|12)|overflow(?:-[xy])?-(?:auto|hidden|clip|visible|scroll)|z-(?:auto|\d+)|w-(?:auto|full|fit|max|screen|svw|\d+\/\d+)|h-(?:auto|full|fit|screen|svh|dvh)|size-full|min-[wh]-(?:0|full|svh)|max-[wh]-(?:none|full)|aspect-(?:auto|square|video)|object-(?:contain|cover|fill|none|scale-down)|cursor-(?:auto|default|pointer|wait|text|move|not-allowed|grab|grabbing|e-resize|w-resize)|pointer-events-(?:none|auto)|select-(?:none|text|all|auto)|touch-(?:auto|none|pan-[xy])|overscroll-(?:auto|contain|none)|whitespace-(?:normal|nowrap|pre|pre-wrap|pre-line|break-spaces)|break-(?:normal|words|all|keep)|truncate|text-(?:left|center|right|justify|start|end)|text-(?:ellipsis|clip|balance|pretty)|italic|not-italic|uppercase|lowercase|capitalize|normal-case|align-(?:baseline|top|middle|bottom|text-top|text-bottom|sub|super)|list-(?:none|disc|decimal)|line-clamp-\d+|underline|no-underline|outline-(?:none|hidden)|ring-(?:0|transparent)|border-(?:solid|dashed|dotted|double|hidden|none)|opacity-0|rotate-[-\w]+|translate-[xy]-[-\w./]+|origin-\(--radix-[\w-]+-transform-origin\)|transition(?:-[\w\],-]+)?|duration-\d+|ease-[\w-]+|animate-(?:in|out|pulse|spin)|fade-(?:in|out)-\d+|zoom-(?:in|out)-\d+|slide-(?:in|out)-to-[\w-]+|will-change-[\w-]+|contain-[\w-]+|@container(?:\/[\w-]+)?|@(?:sm|md|lg|xl)(?:\/[\w-]+)?|peer(?:\/[\w-]+)?|group(?:\/[\w-]+)?|is-(?:user|assistant)|caption-bottom|not-prose|ml-auto|mt-auto|mx-auto|resize-none)$/;
 const approvedTokenModule = resolve(dirname(fileURLToPath(import.meta.url)), "../src/registry/token.ts");
 const gallerySource = resolve(dirname(fileURLToPath(import.meta.url)), "../src/gallery.tsx");
+const primitiveGallerySource = resolve(dirname(fileURLToPath(import.meta.url)), "../src/components/primitive-gallery.tsx");
 const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../src");
 const galleryCssPath = resolve(dirname(fileURLToPath(import.meta.url)), "../src/gallery.css");
 const primitivePath = /\/components\/(?:ui|ai-elements)\//;
@@ -273,7 +274,7 @@ export function tokenStyleViolations(source, filename = resolve("web/src/registr
     const violations = [];
     postcss.parse(source).walkDecls((declaration) => {
       const value = declaration.value.trim();
-      if (resolve(filename) === galleryCssPath && (galleryLayout.get(declaration.prop)?.has(value) || ["display", "position", "inset", "top", "right", "bottom", "left", "width", "height", "min-width", "max-width", "min-height", "max-height", "margin", "padding", "gap", "grid-template-columns", "grid-template-rows", "flex-direction", "align-items", "justify-content", "box-sizing", "overflow", "transform", "transform-origin"].includes(declaration.prop))) return;
+      if (resolve(filename) === galleryCssPath && (galleryLayout.get(declaration.prop)?.has(value) || ["display", "position", "inset", "top", "right", "bottom", "left", "width", "height", "min-width", "max-width", "min-height", "max-height", "margin", "padding", "gap", "grid-template-columns", "grid-template-rows", "flex-direction", "align-items", "justify-content", "box-sizing", "overflow", "transform", "transform-origin", "contain"].includes(declaration.prop))) return;
       if (resolve(filename) === galleryCssPath && declaration.prop === "background-image" && value === 'url("/textures/paper-grain.svg")') return;
       const match = value.match(tokenReference);
       if (!(match && tokenNames.has(match[1])) && !safeStyleValue(declaration.prop, value)) violations.push(`${declaration.prop}: ${value}`);
@@ -333,7 +334,7 @@ export function tokenStyleViolations(source, filename = resolve("web/src/registr
     ts.forEachChild(node, findHelpers);
   };
   findHelpers(sourceFile);
-  const allowedClasses = resolve(filename) === gallerySource ? galleryClasses : new Set();
+  const allowedClasses = [gallerySource, primitiveGallerySource].includes(resolve(filename)) ? galleryClasses : new Set();
   const strict = primitivePath.test(resolve(filename));
   const violations = [];
   for (const classes of variants.values()) for (const value of classes) violations.push(...classStringViolations(value, allowedClasses));
@@ -372,7 +373,7 @@ async function sourceFiles(path) {
 }
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-export const paths = [...await sourceFiles(resolve(root, "web/src/registry")), ...await sourceFiles(resolve(root, "web/src/components/ui")), ...await sourceFiles(resolve(root, "web/src/components/ai-elements")), resolve(root, "web/src/renderer.tsx"), ...["gallery.tsx", "gallery.css", "preview-runtime.tsx", "preview-main.tsx"].map((file) => resolve(root, `web/src/${file}`))];
+export const paths = [...await sourceFiles(resolve(root, "web/src/registry")), ...await sourceFiles(resolve(root, "web/src/components/ui")), ...await sourceFiles(resolve(root, "web/src/components/ai-elements")), ...["renderer.tsx", "gallery.tsx", "gallery.css", "components/primitive-gallery.tsx", "preview-runtime.tsx", "preview-main.tsx"].map((file) => resolve(root, `web/src/${file}`))];
 let failed = false;
 for (const path of paths) {
   const violations = tokenStyleViolations(await readFile(path, "utf8"), path);

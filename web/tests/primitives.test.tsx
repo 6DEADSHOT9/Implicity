@@ -63,7 +63,10 @@ describe("shadcn primitives", () => {
   });
   it("AspectRatio constrains the box to the requested ratio", () => {
     render(<AspectRatio ratio={16 / 9}><span>Preview</span></AspectRatio>);
-    expect(screen.getByText("Preview").closest('[data-slot="aspect-ratio"]')).toBeTruthy();
+    const box = screen.getByText("Preview").closest('[data-slot="aspect-ratio"]');
+    const ratioBox = box?.parentElement;
+    expect((ratioBox as HTMLElement).style.paddingBottom).toBe("56.25%");
+    expect((ratioBox as HTMLElement).style.position).toBe("relative");
   });
   it("Avatar renders its fallback in the avatar slot", () => {
     render(<Avatar><AvatarFallback>AB</AvatarFallback></Avatar>);
@@ -166,7 +169,8 @@ describe("shadcn primitives", () => {
   it("HoverCard opens on keyboard focus", async () => {
     const user = userEvent.setup();
     render(<HoverCard openDelay={0}><HoverCardTrigger href="#profile">Profile</HoverCardTrigger><HoverCardContent>Profile details</HoverCardContent></HoverCard>);
-    await user.hover(screen.getByRole("link", { name: "Profile" }));
+    await user.tab();
+    expect(document.activeElement).toBe(screen.getByRole("link", { name: "Profile" }));
     expect(await screen.findByText("Profile details")).toBeTruthy();
   });
   it("Pagination has a named navigation landmark", () => {

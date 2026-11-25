@@ -110,7 +110,7 @@ function parseFontStylesheet(css) {
     .toEqual(['"tailwindcss/theme.css"', '"tailwindcss/utilities.css"', '"tw-animate-css"']);
   expect(stylesheet.nodes.every((node) => node.type === "comment" ||
     (node.type === "atrule" && ["import", "custom-variant", "theme", "utility", "font-face", "keyframes", "media"].includes(node.name.toLowerCase())) ||
-    (node.type === "rule" && ["html", ":where(button, input, select, textarea)"].includes(node.selector)))).toBe(true);
+    (node.type === "rule" && ["html", "body", "ul, ol", ":where(button, input, select, textarea)"].includes(node.selector)))).toBe(true);
   const nodes = stylesheet.nodes.filter((node) => node.type === "atrule" && node.name.toLowerCase() === "font-face");
   expect(nodes).toHaveLength(4);
   const faces = [];
