@@ -156,7 +156,7 @@
 @utility border-s-token { border-inline-start-style: var(--tw-border-style); border-inline-start-width: var(--border-width); }
 @utility border-e-token { border-inline-end-style: var(--tw-border-style); border-inline-end-width: var(--border-width); }
 @utility ring-token { outline: var(--focus-ring-width) solid var(--tw-ring-color, var(--ring)); outline-offset: var(--space-2); }
-@utility focus-ring-token { box-shadow: 0 0 0 var(--focus-ring-width) var(--tw-ring-color, var(--ring)); }
+@utility focus-ring-token { outline: none; box-shadow: 0 0 0 var(--space-1) var(--card), 0 0 0 calc(var(--space-1) + var(--focus-ring-width)) var(--tw-ring-color, var(--ring)); }
 @utility outline-token-hidden { outline: var(--focus-ring-width) solid transparent; outline-offset: var(--space-2); }
 @utility visually-hidden { position: absolute; width: var(--border-width); height: var(--border-width); padding: 0; margin: calc(var(--border-width) * -1); overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; }
 @utility size-icon { width: var(--icon-size); height: var(--icon-size); }
