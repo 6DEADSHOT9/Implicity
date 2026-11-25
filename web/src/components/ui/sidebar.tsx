@@ -390,7 +390,7 @@ function SidebarGroupLabel({
       data-slot="sidebar-group-label"
       data-sidebar="group-label"
       className={cn(
-        "flex h-control shrink-0 items-center rounded-md px-space-2 text-xs font-medium text-sidebar-foreground ring-sidebar-ring outline-token-hidden transition-all duration-normal ease-linear focus-visible:ring-token [&>svg]:size-icon [&>svg]:shrink-0",
+        "flex h-control shrink-0 items-center rounded-md px-space-2 text-xs font-medium text-sidebar-foreground ring-sidebar-ring outline-token-hidden transition-all duration-normal ease-linear focus-visible:focus-ring-token [&>svg]:size-icon [&>svg]:shrink-0",
         "group-data-[collapsible=icon]:-mt-space-6 group-data-[collapsible=icon]:opacity-0",
         className
       )}
@@ -411,7 +411,7 @@ function SidebarGroupAction({
       data-slot="sidebar-group-action"
       data-sidebar="group-action"
       className={cn(
-        "absolute top-space-3 right-space-3 flex aspect-square w-space-5 items-center justify-center rounded-md p-0 text-sidebar-foreground ring-sidebar-ring outline-token-hidden transition-transform hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-token [&>svg]:size-icon [&>svg]:shrink-0",
+        "absolute top-space-3 right-space-3 flex aspect-square w-space-5 items-center justify-center rounded-md p-0 text-sidebar-foreground ring-sidebar-ring outline-token-hidden transition-transform hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:focus-ring-token [&>svg]:size-icon [&>svg]:shrink-0",
         // Increases the hit area of the button on mobile.
         "after:absolute after:-inset-space-2 md:after:hidden",
         "group-data-[collapsible=icon]:hidden",
@@ -459,7 +459,7 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
 }
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-space-2 overflow-hidden rounded-md p-space-2 text-left text-sm ring-sidebar-ring outline-token-hidden transition-all group-has-data-[sidebar=menu-action]/menu-item:pr-space-6 group-data-[collapsible=icon]:size-control! group-data-[collapsible=icon]:p-space-2 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-token active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none  aria-disabled:pointer-events-none  data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground [&>span:last-child]:truncate [&>svg]:size-icon [&>svg]:shrink-0",
+  "peer/menu-button flex w-full items-center gap-space-2 overflow-hidden rounded-md p-space-2 text-left text-sm ring-sidebar-ring outline-token-hidden transition-all group-has-data-[sidebar=menu-action]/menu-item:pr-space-6 group-data-[collapsible=icon]:size-control! group-data-[collapsible=icon]:p-space-2 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:focus-ring-token active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none  aria-disabled:pointer-events-none  data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground [&>span:last-child]:truncate [&>svg]:size-icon [&>svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -541,7 +541,7 @@ function SidebarMenuAction({
       data-slot="sidebar-menu-action"
       data-sidebar="menu-action"
       className={cn(
-        "absolute top-space-1 right-space-1 flex aspect-square w-space-5 items-center justify-center rounded-md p-0 text-sidebar-foreground ring-sidebar-ring outline-token-hidden transition-transform peer-hover/menu-button:text-sidebar-accent-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-token [&>svg]:size-icon [&>svg]:shrink-0",
+        "absolute top-space-1 right-space-1 flex aspect-square w-space-5 items-center justify-center rounded-md p-0 text-sidebar-foreground ring-sidebar-ring outline-token-hidden transition-transform peer-hover/menu-button:text-sidebar-accent-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:focus-ring-token [&>svg]:size-icon [&>svg]:shrink-0",
         // Increases the hit area of the button on mobile.
         "after:absolute after:-inset-space-2 md:after:hidden",
         "peer-data-[size=sm]/menu-button:top-space-1",
@@ -657,7 +657,7 @@ function SidebarMenuSubButton({
       data-size={size}
       data-active={isActive}
       className={cn(
-        "flex h-control min-w-0 -translate-x-space-1 items-center gap-space-2 overflow-hidden rounded-md px-space-2 text-sidebar-foreground ring-sidebar-ring outline-token-hidden hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-token active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none  aria-disabled:pointer-events-none  [&>span:last-child]:truncate [&>svg]:size-icon [&>svg]:shrink-0 [&>svg]:text-sidebar-accent-foreground",
+        "flex h-control min-w-0 -translate-x-space-1 items-center gap-space-2 overflow-hidden rounded-md px-space-2 text-sidebar-foreground ring-sidebar-ring outline-token-hidden hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:focus-ring-token active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none  aria-disabled:pointer-events-none  [&>span:last-child]:truncate [&>svg]:size-icon [&>svg]:shrink-0 [&>svg]:text-sidebar-accent-foreground",
         "data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground",
         size === "sm" && "text-xs",
         size === "md" && "text-sm",

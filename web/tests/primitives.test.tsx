@@ -25,6 +25,7 @@ import { InputGroup, InputGroupAddon } from "../src/components/ui/input-group";
 import { Item, ItemTitle } from "../src/components/ui/item";
 import { Kbd } from "../src/components/ui/kbd";
 import { Label } from "../src/components/ui/label";
+import { Marker } from "../src/components/ui/marker";
 import { Pagination } from "../src/components/ui/pagination";
 import { Popover, PopoverContent, PopoverTrigger } from "../src/components/ui/popover";
 import { Progress } from "../src/components/ui/progress";
@@ -57,6 +58,27 @@ import { Tool, ToolContent, ToolHeader } from "../src/components/ai-elements/too
 import { Toaster } from "../src/components/ui/sonner";
 
 describe("shadcn primitives", () => {
+  it("Marker names an in-conversation note and keeps its actions keyboard-focusable", async () => {
+    const user = userEvent.setup();
+    const action = vi.fn();
+    render(<Marker id="context-marker" data-testid="context-marker" className="mt-space-2" label="Context" actions={<Button onClick={action}>Undo</Button>}>This answer used saved context.</Marker>);
+    const marker = screen.getByRole("note", { name: "Context" });
+    expect(marker.textContent).toContain("This answer used saved context.");
+    expect(marker.getAttribute("id")).toBe("context-marker");
+    expect(marker.classList.contains("mt-space-2")).toBe(true);
+    expect(marker.getAttribute("data-testid")).toBe("context-marker");
+    await user.tab();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Undo" }));
+    await user.keyboard("{Enter}");
+    expect(action).toHaveBeenCalledOnce();
+  });
+
+  it("Marker renders without an actions slot", () => {
+    render(<Marker label="Notice">A note between turns.</Marker>);
+    expect(screen.getByRole("note", { name: "Notice" }).textContent).toContain("A note between turns.");
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+
   it("Alert exposes the alert role and its heading", () => {
     render(<Alert><AlertTitle>Saved</AlertTitle><AlertDescription>Changes saved</AlertDescription></Alert>);
     expect(screen.getByRole("alert").textContent).toContain("Saved");

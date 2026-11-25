@@ -136,7 +136,7 @@ function InputGroupInput({
     <Input
       data-slot="input-group-control"
       className={cn(
-        "flex-1 rounded-md  bg-transparent  focus-visible:ring-token ",
+        "flex-1 rounded-md  bg-transparent  focus-visible:focus-ring-token ",
         className
       )}
       {...props}
@@ -152,7 +152,7 @@ function InputGroupTextarea({
     <Textarea
       data-slot="input-group-control"
       className={cn(
-        "flex-1  rounded-md  bg-transparent py-space-3  focus-visible:ring-token ",
+        "flex-1  rounded-md  bg-transparent py-space-3  focus-visible:focus-ring-token ",
         className
       )}
       {...props}
