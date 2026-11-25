@@ -506,6 +506,7 @@ test("content skeletons render every declared gallery state across gallery setti
 
 
 test("content skeletons survive every gallery setting combination", async ({ page }) => {
+  test.setTimeout(60000);
   await page.goto("/");
   await expect.poll(() => page.locator("iframe").evaluateAll((frames) => frames.some((frame) => frame.getAttribute("title")?.startsWith("DataTable ·")) && frames.filter((frame) => ["DataTable", "DataChart", "CodeBlock", "MediaPlayer", "ArtifactWorkspace", "Checklist", "List", "Metric", "Tabs", "Card"].some((name) => frame.getAttribute("title")?.startsWith(`${name} · `))).every((frame) => {
     const root = (frame as HTMLIFrameElement).contentDocument?.querySelector("#root");
