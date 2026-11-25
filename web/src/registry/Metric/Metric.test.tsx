@@ -24,7 +24,10 @@ describe("Metric public registry entry", () => {
   let observerCallback: IntersectionObserverCallback | undefined;
   class ObserverMock {
    constructor(callback: IntersectionObserverCallback) { observerCallback = callback; }
-   observe() { observerCallback?.([{ isIntersecting: true } as IntersectionObserverEntry], this as unknown as IntersectionObserver); }
+   observe(target: Element) {
+    Object.defineProperty(target, "checkVisibility", { configurable: true, value: () => true });
+    observerCallback?.([{ target, isIntersecting: true, intersectionRatio: 1, time: performance.now() } as IntersectionObserverEntry], this as unknown as IntersectionObserver);
+   }
    disconnect() {}
    unobserve() {}
    takeRecords() { return []; }

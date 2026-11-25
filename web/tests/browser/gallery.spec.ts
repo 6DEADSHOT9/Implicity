@@ -549,11 +549,14 @@ test("preview ignores styling messages from unrelated same-origin frames", async
 test("Notebook applies its bundled body font, paper texture, and both mode palettes without changing Skeleton headings", async ({ page }) => {
   await page.goto("/tests/browser/gallery.html");
   await page.getByLabel("Look").selectOption("notebook");
+  const frame = page.locator("iframe[title='ReviewPanel · plain']");
+  await expect(frame.contentFrame().locator("html")).toHaveAttribute("data-look", "notebook");
+  await waitForStableHeight(frame);
   const root = page.locator("[data-gallery-root]");
   const bodyFont = await root.evaluate((element) => getComputedStyle(element).fontFamily);
   expect(bodyFont).toContain("Source Serif 4");
   const previewHeading = page.frameLocator("iframe[title='ReviewPanel · plain']").locator("[data-preview-heading]");
-  const previewBodyFont = await page.frameLocator("iframe[title='ReviewPanel · plain']").locator("body").evaluate((element) => getComputedStyle(element).fontFamily);
+  const previewBodyFont = await frame.contentFrame().locator("body").evaluate((element) => getComputedStyle(element).fontFamily);
   expect(await previewHeading.evaluate((element) => getComputedStyle(element).fontFamily)).toBe(previewBodyFont);
   for (const size of ["1", "2", "3", "4", "5"] as const) {
     await page.getByLabel("Text size").selectOption(size);
@@ -646,13 +649,14 @@ test("content skeletons survive every gallery setting combination", async ({ pag
   const modes = ["light", "dark"] as const;
   const devices = ["desktop", "tablet"] as const;
   const skeletonNames = ["DataTable", "DataChart", "CodeBlock", "MediaPlayer", "ArtifactWorkspace", "Checklist", "List", "Metric", "Tabs", "Card"];
+  let current = { look: "default", mode: "light", density: "comfortable", textSize: "3", device: "desktop" };
   let combinations = 0;
   for (const look of looks) for (const mode of modes) for (const density of densities) for (const textSize of sizes) for (const device of devices) {
-    await page.getByLabel("Look").selectOption(look);
-    await page.getByLabel("Mode").selectOption(mode);
-    await page.getByLabel("Density").selectOption(density);
-    await page.getByLabel("Text size").selectOption(textSize);
-    await page.getByLabel("Screen size").selectOption(device);
+    if (look !== current.look) { await page.getByLabel("Look").selectOption(look); current.look = look; }
+    if (mode !== current.mode) { await page.getByLabel("Mode").selectOption(mode); current.mode = mode; }
+    if (density !== current.density) { await page.getByLabel("Density").selectOption(density); current.density = density; }
+    if (textSize !== current.textSize) { await page.getByLabel("Text size").selectOption(textSize); current.textSize = textSize; }
+    if (device !== current.device) { await page.getByLabel("Screen size").selectOption(device); current.device = device; }
     const expectedWidth = device === "tablet" ? 800 : 1440;
     await expect.poll(() => page.locator("iframe").evaluateAll((frames, args) => frames.filter((frame) => args.names.some((name) => (frame as HTMLIFrameElement).title.startsWith(`${name} · `))).every((frame) => (frame as HTMLIFrameElement).contentWindow?.innerWidth === args.width), { names: skeletonNames, width: expectedWidth })).toBe(true);
     await expect.poll(() => page.locator("iframe").evaluateAll((frames, names) => frames.filter((frame) => names.some((name) => (frame as HTMLIFrameElement).title.startsWith(`${name} · `))).every((frame) => {
