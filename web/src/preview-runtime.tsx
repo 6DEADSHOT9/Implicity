@@ -8,8 +8,8 @@ class PreviewBoundary extends Component<{ children: ReactNode; label: string }, 
   render() { return this.state.failed ? <p style={{ color: "var(--destructive)" }} role="alert">{this.props.label}: preview failed</p> : this.props.children; }
 }
 
-function PreviewMounted({ children, onMounted }: { children: ReactNode; onMounted: () => void }) {
-  useEffect(onMounted, [onMounted]);
+function PreviewMounted({ children, onMounted, version }: { children: ReactNode; onMounted: (version: number) => void; version: number }) {
+  useEffect(() => onMounted(version), [onMounted, version]);
   return children;
 }
 
@@ -26,6 +26,8 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
   let previousHeight = -1;
   let mounted = false;
   let fontsLoaded = false;
+  let entrySettled = false;
+  let renderVersion = 0;
   const previewRoot = document.getElementById("root")!;
   const reportHeight = () => {
     if (!mounted || !fontsLoaded) return;
@@ -34,9 +36,12 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
     previousHeight = height;
     window.parent.postMessage({ type: "preview-height", height }, location.origin);
   };
-  const onMounted = () => {
+  const onMounted = (version: number) => {
     mounted = true;
+    getComputedStyle(previewRoot).fontFamily;
+    previewRoot.getBoundingClientRect();
     void document.fonts.ready.then(() => {
+      if (version !== renderVersion) return;
       fontsLoaded = true;
       reportHeight();
     });
@@ -45,14 +50,17 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
   heightObserver.observe(document.documentElement);
   heightObserver.observe(previewRoot);
   const render = () => {
-    if (styles === undefined || texture === undefined || config === undefined) return;
+    if (styles === undefined || texture === undefined || config === undefined || !entrySettled) return;
+    const version = ++renderVersion;
+    mounted = false;
+    fontsLoaded = false;
     document.documentElement.style.cssText = styles;
     Object.assign(document.documentElement.dataset, {
       texture, look: config.look, mode: config.mode, density: config.density,
       textSize: config.textSize, deviceClass: config.deviceClass,
     });
     document.body.className = "gallery-preview-root";
-    root.render(<PreviewMounted onMounted={onMounted}>{entry && state
+    root.render(<PreviewMounted onMounted={onMounted} version={version}>{entry && state
       ? <PreviewBoundary label={`${entry.id} · ${state.id}`}><entry.Component props={state.props} slots={state.slots ?? {}} /></PreviewBoundary>
       : <p role="alert">Preview unavailable</p>}</PreviewMounted>);
   };
@@ -66,6 +74,10 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
   void loadEntry(entryId).then((loaded) => {
     entry = loaded;
     state = entry?.meta.galleryStates.find(({ id }) => id === stateId);
+    entrySettled = true;
     render();
-  }).catch(() => render());
+  }).catch(() => {
+    entrySettled = true;
+    render();
+  });
 }
