@@ -41,18 +41,30 @@ test("panel gallery states render with the selected settings across every config
     });
     const expectedWidth = device === "desktop" ? 1440 : 800;
     await expect.poll(() => page.locator("iframe").evaluateAll((frames, { expectedTitles: names, expectedContent: contentByTitle, tokens, expectedMode, width }) => {
-      const previews = frames.map((frame) => {
+      const previews = frames.filter((frame) => names.includes((frame as HTMLIFrameElement).title)).map((frame) => {
       const iframe = frame as HTMLIFrameElement;
       const document = iframe.contentDocument;
       const view = document?.defaultView;
-      if (!document || !view) return { title: iframe.title, ready: false };
-      const buttons = [...(document?.querySelectorAll("button") ?? [])].filter((button) => button.getClientRects().length > 0).map((button) => {
-        const style = view!.getComputedStyle(button);
-        const foreground = style.color.match(/[\d.]+/g)!.map(Number);
-        const background = style.backgroundColor.match(/[\d.]+/g)!.map(Number);
-        const luminance = ([r, g, b]: number[]) => [r, g, b].map((channel) => channel / 255).map((channel) => channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4).reduce((sum, channel, index) => sum + channel * [0.2126, 0.7152, 0.0722][index], 0);
+      if (!document?.documentElement || !view) return { title: iframe.title, ready: false };
+      const rgba = (color: string) => color.slice(color.indexOf("(") + 1, color.lastIndexOf(")")).split(/[, /]+/).map(Number).concat(1).slice(0, 4).map((channel, index) => index === 3 ? channel : channel / 255);
+      const contrast = (foreground: number[], background: number[]) => {
+        const luminance = (color: number[]) => color.slice(0, 3).map((channel) => channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4).reduce((sum, channel, index) => sum + channel * [0.2126, 0.7152, 0.0722][index], 0);
         const [light, dark] = [luminance(foreground), luminance(background)].sort((a, b) => b - a);
-        return { height: button.getBoundingClientRect().height, contrast: (light + 0.05) / (dark + 0.05) };
+        return (light + 0.05) / (dark + 0.05);
+      };
+      const texts = [...document.querySelectorAll("*")].filter((element) => [...element.childNodes].some((node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) && element.getClientRects().length > 0).map((element) => {
+        const style = view!.getComputedStyle(element);
+        let background = [0, 0, 0, 0];
+        const ancestors: Element[] = [];
+        for (let node: Element | null = element; node; node = node.parentElement) ancestors.unshift(node);
+        for (const node of ancestors) {
+          const layer = rgba(view!.getComputedStyle(node).backgroundColor);
+          const alpha = layer[3];
+          background = layer.slice(0, 3).map((channel, index) => channel * alpha + background[index] * (1 - alpha)).concat(alpha + background[3] * (1 - alpha));
+        }
+        if (background[3] < 1) background = background.slice(0, 3).map((channel) => channel * background[3] + 1 * (1 - background[3])).concat(1);
+        const color = rgba(style.color);
+        return { height: element instanceof HTMLButtonElement ? element.getBoundingClientRect().height : undefined, contrast: contrast(color.slice(0, 3).map((channel, index) => channel * color[3] + background[index] * (1 - color[3])), background) };
       });
       const heading = document?.querySelector("h2");
       const headingSize = heading && view ? view.getComputedStyle(heading).fontSize : undefined;
@@ -69,11 +81,11 @@ test("panel gallery states render with the selected settings across every config
         content: document?.body.innerText.includes(contentByTitle[iframe.title]),
         healthy: !document?.body.innerText.includes("preview failed") && !document?.body.innerText.includes("Preview unavailable"),
         headingsMatchToken: !heading || headingSize === `${Number.parseFloat(headingToken ?? "") * 16}px`,
-        controlsMeetTarget: buttons.every(({ height }) => height >= Number.parseFloat(document?.documentElement.style.getPropertyValue("--target-min-size") ?? "") * 16),
-        controlsMeetContrast: buttons.every(({ contrast }) => contrast >= 4.5),
+        controlsMeetTarget: texts.filter(({ height }) => height !== undefined).every(({ height }) => height! >= Number.parseFloat(document?.documentElement.style.getPropertyValue("--target-min-size") ?? "") * 16),
+        textMeetsContrast: texts.every(({ contrast }) => contrast >= 4.5),
       };
-      }).filter(({ title }) => names.includes(title));
-      return previews.length === names.length && previews.every((preview) => preview.ready && preview.background === tokens.background && preview.space === tokens.space && preview.text === tokens.text && preview.target === tokens.target && preview.mode === expectedMode && preview.width === width && preview.content && preview.healthy && preview.headingsMatchToken && preview.controlsMeetTarget && preview.controlsMeetContrast);
+      });
+      return previews.length === names.length && previews.every((preview) => preview.ready && preview.background === tokens.background && preview.space === tokens.space && preview.text === tokens.text && preview.target === tokens.target && preview.mode === expectedMode && preview.width === width && preview.content && preview.healthy && preview.headingsMatchToken && preview.controlsMeetTarget && preview.textMeetsContrast);
     }, {
       expectedTitles: titles,
       expectedContent,
@@ -107,6 +119,22 @@ test("gallery previews complete panel callbacks, fit overlays, and preserve keyb
   await tabpanel.focus();
   expect(await tabpanel.evaluate((element) => getComputedStyle(element).boxShadow)).not.toBe("none");
 
+  const projectFrame = page.locator('iframe[title="ProjectPanel · decisions"]');
+  await projectFrame.evaluate((frame) => {
+    const item = (frame as HTMLIFrameElement).contentDocument!.querySelector('[role="listitem"]')!;
+    item.textContent = "The team decided to keep the existing service and migrate in two carefully measured stages.";
+  });
+  for (const [device, width] of [["tablet", 800], ["desktop", 1440]] as const) {
+    await page.getByLabel("Screen size").selectOption(device);
+    await expect.poll(() => projectFrame.evaluate((frame) => (frame as HTMLIFrameElement).contentWindow?.innerWidth)).toBe(width);
+    await expect(page.frameLocator('iframe[title="ProjectPanel · decisions"]').getByRole("tablist")).toBeVisible();
+    const layout = await projectFrame.evaluate((frame) => {
+      const document = (frame as HTMLIFrameElement).contentDocument!;
+      return { tabs: document.querySelector('[role="tablist"]')!.getBoundingClientRect().width, content: document.querySelector('[role="tabpanel"]')!.getBoundingClientRect().width };
+    });
+    expect(layout.content).toBeGreaterThan(layout.tabs);
+  }
+
   const docked = page.frameLocator('iframe[title="DockedPanel · open_undocked"]');
   const dialog = docked.getByRole("dialog", { name: "Workspace" });
   await expect(dialog).toBeVisible();
@@ -114,18 +142,38 @@ test("gallery previews complete panel callbacks, fit overlays, and preserve keyb
   const geometry = await dialog.evaluate((element) => {
     const rect = element.getBoundingClientRect();
     const height = window.innerHeight;
+    const nodes = [...element.querySelectorAll("button, [role=tab], [role=tabpanel]")];
     const buttons = [...element.querySelectorAll("button")].map((button) => button.getBoundingClientRect());
-    return { top: rect.top, bottom: rect.bottom, height, controlsSeparate: buttons[0]?.right <= buttons[1]?.left || buttons[1]?.right <= buttons[0]?.left || buttons[0]?.bottom <= buttons[1]?.top || buttons[1]?.bottom <= buttons[0]?.top };
+    return { top: rect.top, bottom: rect.bottom, height, scrollWidth: element.scrollWidth, clientWidth: element.clientWidth, allInside: nodes.every((node) => { const box = node.getBoundingClientRect(); return box.left >= 0 && box.right <= innerWidth && box.top >= 0 && box.bottom <= innerHeight; }), controlsSeparate: buttons[0]?.right <= buttons[1]?.left || buttons[1]?.right <= buttons[0]?.left || buttons[0]?.bottom <= buttons[1]?.top || buttons[1]?.bottom <= buttons[0]?.top };
   });
   expect(geometry.top).toBeGreaterThanOrEqual(0);
   expect(geometry.bottom).toBeLessThanOrEqual(geometry.height);
+  expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth);
+  expect(geometry.allInside).toBe(true);
   expect(geometry.controlsSeparate).toBe(true);
   await docked.getByRole("button", { name: "Close" }).press("Escape");
   await expect(dialog).toHaveCount(0);
   await expect(docked.getByRole("button", { name: "Open Workspace" })).toBeFocused();
 
+  const sheetFrame = page.locator('iframe[title="DockedPanel · open_undocked"]');
+  const sheetRoot = sheetFrame.contentFrame().locator("html");
+  await docked.getByRole("button", { name: "Open Workspace" }).click();
+  await expect(docked.getByRole("dialog", { name: "Workspace" })).toBeVisible();
+  await sheetFrame.evaluate((frame) => {
+    (frame as HTMLIFrameElement).contentDocument!.querySelector('[role="tabpanel"]')!.textContent = "A detailed project history entry that wraps across several lines as its text size changes. ".repeat(8);
+  });
+  const initialSheetHeight = Number(await sheetFrame.getAttribute("height"));
+  await page.getByLabel("Text size").selectOption("5");
+  await expect(sheetRoot).toHaveAttribute("data-text-size", "5");
+  await expect.poll(() => sheetFrame.getAttribute("height").then(Number)).toBeGreaterThan(initialSheetHeight);
+  const largeSheetHeight = Number(await sheetFrame.getAttribute("height"));
+  await page.getByLabel("Text size").selectOption("1");
+  await expect(sheetRoot).toHaveAttribute("data-text-size", "1");
+  await expect.poll(() => sheetFrame.getAttribute("height").then(Number)).toBeLessThan(largeSheetHeight);
+
   const closed = page.frameLocator('iframe[title="DockedPanel · closed"]');
   await closed.getByRole("button", { name: "Open Workspace" }).click();
+  await expect(closed.getByRole("button", { name: "Close" })).toBeFocused();
   await expect(closed.getByRole("separator", { name: "Resize workspace and panel" })).toBeVisible();
   const separator = closed.getByRole("separator", { name: "Resize workspace and panel" });
   const before = Number(await separator.getAttribute("aria-valuenow"));
@@ -134,6 +182,13 @@ test("gallery previews complete panel callbacks, fit overlays, and preserve keyb
   await separator.press("ArrowLeft");
   expect(await separator.evaluate((element) => getComputedStyle(element).boxShadow)).not.toBe("none");
   await expect.poll(async () => Number(await separator.getAttribute("aria-valuenow"))).toBeLessThan(before);
+  await closed.getByRole("button", { name: "Close" }).click();
+  await expect(closed.getByRole("button", { name: "Open Workspace" })).toBeFocused();
+  await closed.getByRole("button", { name: "Open Workspace" }).click();
+  await closed.getByRole("button", { name: "Undock" }).click();
+  await expect(closed.getByRole("button", { name: "Dock" })).toBeFocused();
+  await closed.getByRole("button", { name: "Dock" }).click();
+  await expect(closed.getByRole("button", { name: "Undock" })).toBeFocused();
   for (let index = 0; index < 14; index += 1) await separator.press("ArrowRight");
   const minimumPanelWidth = await closed.locator('[data-slot="resizable-panel"]').nth(1).evaluate((element) => {
     const root = element.ownerDocument.documentElement;

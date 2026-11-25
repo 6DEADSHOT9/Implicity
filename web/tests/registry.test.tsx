@@ -4,7 +4,7 @@ import { createRoot } from "react-dom/client";
 import Ajv2020 from "ajv/dist/2020.js";
 import { z } from "zod";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createRegistry, defineSkeleton, defineSkeletonDefinition, getSkeleton } from "../src/registry";
+import { createRegistry, defineSkeleton, defineSkeletonDefinition, getSkeleton, registry } from "../src/registry";
 import { baselineLayout, renderLayout, renderMessage, resolveLayout } from "../src/renderer";
 import { events } from "./fixtures/ReviewPanel/events";
 import { meta } from "./fixtures/ReviewPanel/meta";
@@ -14,7 +14,7 @@ import { definition as panelDefinition, propsSchema } from "./fixtures/ReviewPan
 import { ReviewShellEntry } from "./fixtures/ReviewShell/entry";
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-Object.defineProperty(window, "matchMedia", { configurable: true, value: () => ({ matches: true }) });
+Object.defineProperty(window, "matchMedia", { configurable: true, value: () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }) });
 
 const panelRegistry = createRegistry([ReviewPanelEntry], 1);
 const goodLayout = {
@@ -62,6 +62,21 @@ describe("registry and renderer", () => {
       },
     };
     expect(await markup(renderMessage(spec, "fallback", panelRegistry))).toContain("<strong>7</strong><section class=\"review-panel\" data-count=\"3\"><strong>3</strong>");
+  });
+
+  it("renders DockedPanel slots named by custom tab ids", async () => {
+    vi.spyOn(window, "matchMedia").mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as MediaQueryList);
+    const panel = registry.getSkeleton("DockedPanel")!;
+    const current = createRegistry([panel, ReviewPanelEntry], registry.version);
+    const spec = {
+      registry_version: registry.version,
+      root: "panel",
+      elements: {
+        panel: { type: "DockedPanel", props: { title: "Workspace", tabs: [{ id: "notes", label: "Notes" }], activeTab: "notes", open: true, docked: true }, slots: { notes: ["note"] } },
+        note: { type: "ReviewPanel", props: { count: 1 }, slots: { main: [] } },
+      },
+    };
+    expect(await markup(renderMessage(spec, "fallback", current))).toContain("<strong>1</strong>");
   });
 
   it("falls back for inherited, unknown and missing-root component ids", async () => {

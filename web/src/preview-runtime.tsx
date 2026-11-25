@@ -44,14 +44,28 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
   let renderVersion = 0;
   let heightReportPending = false;
   const previewRoot = document.getElementById("root")!;
+  const readHeight = () => {
+    const sheetBody = document.querySelector<HTMLElement>("[data-panel-sheet-body]");
+    if (!sheetBody) return previewRoot.getBoundingClientRect().height;
+    const body = sheetBody.getBoundingClientRect();
+    const content = sheetBody.lastElementChild?.getBoundingClientRect();
+    return content ? content.bottom - body.top + Number.parseFloat(getComputedStyle(sheetBody).paddingBottom) : body.height;
+  };
   const reportHeight = () => {
     if (!mounted || !fontsLoaded || heightReportPending) return;
+    if (!document.querySelector("[data-panel-sheet-body]")) {
+      const height = readHeight();
+      if (height === previousHeight) return;
+      previousHeight = height;
+      window.parent.postMessage({ type: "preview-height", height }, location.origin);
+      return;
+    }
     heightReportPending = true;
-    const firstHeight = Math.max(previewRoot.getBoundingClientRect().height, document.querySelector<HTMLElement>('[role="dialog"]')?.scrollHeight ?? 0);
+    const firstHeight = readHeight();
     requestAnimationFrame(() => requestAnimationFrame(() => {
       heightReportPending = false;
       if (!mounted || !fontsLoaded) return;
-      const height = Math.max(previewRoot.getBoundingClientRect().height, document.querySelector<HTMLElement>('[role="dialog"]')?.scrollHeight ?? 0);
+      const height = readHeight();
       if (height !== firstHeight) {
         reportHeight();
         return;
@@ -77,6 +91,8 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
   const portalObserver = new MutationObserver(() => {
     const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
     if (dialog) heightObserver.observe(dialog);
+    const sheetBody = document.querySelector<HTMLElement>("[data-panel-sheet-body]");
+    if (sheetBody) heightObserver.observe(sheetBody);
     reportHeight();
   });
   portalObserver.observe(document.body, { childList: true, subtree: true });

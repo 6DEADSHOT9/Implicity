@@ -9,24 +9,29 @@
           "type": "string"
         },
         "tabs": {
-          "minItems": 2,
-          "maxItems": 2,
+          "minItems": 1,
           "type": "array",
           "items": {
-            "type": "string",
-            "enum": [
-              "Details",
-              "History"
-            ]
-          },
-          "uniqueItems": true
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "label"
+            ],
+            "additionalProperties": false
+          }
         },
         "activeTab": {
           "type": "string",
-          "enum": [
-            "Details",
-            "History"
-          ]
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
         "open": {
           "type": "boolean"
@@ -46,19 +51,14 @@
     },
     "slots": {
       "type": "object",
-      "properties": {
-        "main": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-          }
+      "properties": {},
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         }
-      },
-      "required": [
-        "main"
-      ],
-      "additionalProperties": false
+      }
     }
   },
   "required": [

@@ -17,24 +17,29 @@
             "type": "string"
           },
           "tabs": {
-            "minItems": 2,
-            "maxItems": 2,
+            "minItems": 1,
             "type": "array",
             "items": {
-              "type": "string",
-              "enum": [
-                "Details",
-                "History"
-              ]
-            },
-            "uniqueItems": true
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "label"
+              ],
+              "additionalProperties": false
+            }
           },
           "activeTab": {
             "type": "string",
-            "enum": [
-              "Details",
-              "History"
-            ]
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
           },
           "open": {
             "type": "boolean"
@@ -52,25 +57,18 @@
         ],
         "additionalProperties": false
       },
-      "slots": [
-        "main"
-      ],
+      "slots": [],
       "slots_schema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
-        "properties": {
-          "main": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            }
+        "properties": {},
+        "additionalProperties": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
           }
-        },
-        "required": [
-          "main"
-        ],
-        "additionalProperties": false
+        }
       },
       "limits": {
         "minWidth": 384,
@@ -89,18 +87,29 @@
             "type": "string"
           },
           "tabs": {
-            "minItems": 3,
-            "maxItems": 3,
+            "minItems": 1,
             "type": "array",
             "items": {
-              "type": "string",
-              "enum": [
-                "decisions",
-                "constraints",
-                "files"
-              ]
-            },
-            "uniqueItems": true
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "enum": [
+                    "decisions",
+                    "constraints",
+                    "files"
+                  ]
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "label"
+              ],
+              "additionalProperties": false
+            }
           },
           "activeTab": {
             "type": "string",
@@ -149,11 +158,6 @@
             }
           }
         },
-        "required": [
-          "decisions",
-          "constraints",
-          "files"
-        ],
         "additionalProperties": false
       },
       "limits": {

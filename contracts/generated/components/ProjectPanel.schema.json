@@ -9,18 +9,29 @@
           "type": "string"
         },
         "tabs": {
-          "minItems": 3,
-          "maxItems": 3,
+          "minItems": 1,
           "type": "array",
           "items": {
-            "type": "string",
-            "enum": [
-              "decisions",
-              "constraints",
-              "files"
-            ]
-          },
-          "uniqueItems": true
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "enum": [
+                  "decisions",
+                  "constraints",
+                  "files"
+                ]
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "label"
+            ],
+            "additionalProperties": false
+          }
         },
         "activeTab": {
           "type": "string",
@@ -63,11 +74,6 @@
           }
         }
       },
-      "required": [
-        "decisions",
-        "constraints",
-        "files"
-      ],
       "additionalProperties": false
     }
   },

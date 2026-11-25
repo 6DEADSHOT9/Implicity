@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactElement } from "react";
-import { Source, Sources, SourcesContent, SourcesTrigger } from "@/components/ai-elements/sources";
+import { Sources, SourcesContent, SourcesTrigger } from "@/components/ai-elements/sources";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyTitle } from "@/components/ui/empty";
 import { useCapture } from "../capture";
@@ -35,7 +35,7 @@ export function SourcesPanel({ docked, sources = [], onDockChange }: {
         {sources.length ? <ul className="list-disc space-y-space-2 pl-space-4">
           {sources.map((source, index) => <li key={`${source.type}-${index}`}>
             <div className="flex flex-wrap items-center gap-space-2">
-              <Source title={source.title} />
+              <span>{source.title}</span>
               <span className="text-muted-foreground">{source.type}</span>
             </div>
           </li>)}

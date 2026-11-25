@@ -74,7 +74,9 @@ export function validateRegistryDefinitions(entries: readonly SkeletonDefinition
     }
     const declaredSlots = Object.keys(entry.slotsSchema.shape).sort();
     const metadataSlots = [...meta.data.slots].sort();
-    if (declaredSlots.join("\0") !== metadataSlots.join("\0")) throw new Error(`${entry.id} slot metadata does not match its schema`);
+    const catchall = entry.slotsSchema._zod.def.catchall;
+    const dynamicSlots = catchall !== undefined && catchall._zod.def.type !== "never";
+    if (dynamicSlots ? declaredSlots.length !== 0 || metadataSlots.length !== 0 : declaredSlots.join("\0") !== metadataSlots.join("\0")) throw new Error(`${entry.id} slot metadata does not match its schema`);
     if (meta.data.slots.some((slot) => !slotIdValid(slot))) throw new Error(`${entry.id} declares a slot id not in T3`);
     if (declaredSlots.length) {
       const invalidChildren = Object.fromEntries(declaredSlots.map((slot) => [slot, ["Upper"]]));
@@ -87,13 +89,13 @@ export function validateRegistryDefinitions(entries: readonly SkeletonDefinition
       if (!entry.propsSchema.safeParse(state.props).success) {
         throw new Error(`${entry.id} gallery state ${state.id} example props do not match its props schema`);
       }
-      if (Object.keys(entry.slotsSchema.shape).length && state.slots === undefined) {
+      if ((Object.keys(entry.slotsSchema.shape).length || dynamicSlots) && state.slots === undefined) {
         throw new Error(`${entry.id} gallery state ${state.id} is missing example slots`);
       }
       for (const [slot, example] of Object.entries(state.slots ?? {})) {
-        const slotSchema = entry.slotsSchema.shape[slot];
+        const slotSchema = entry.slotsSchema.shape[slot] ?? (dynamicSlots ? catchall : undefined);
         const validSlot = slotSchema && z.object({ [slot]: slotSchema }).strict().safeParse({ [slot]: example }).success;
-        if (!validSlot || (example as string[]).some((child) => !slotIdValid(child))) {
+        if (!validSlot || (dynamicSlots && !/^[a-z][a-z0-9_-]{0,63}$/.test(slot)) || (example as string[]).some((child) => !slotIdValid(child))) {
           throw new Error(`${entry.id} gallery state ${state.id} slot ${slot} example does not match its slot schema`);
         }
       }
