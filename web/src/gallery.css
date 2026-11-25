@@ -7,6 +7,13 @@
 }
 
 .gallery-preview-root { margin: 0; color: var(--foreground); background-color: var(--background); font-size: var(--text-base); font-family: var(--font-body); }
+.gallery-preview-root h1, .gallery-preview-root h2, .gallery-preview-root h3, .gallery-preview-root h4, .gallery-preview-root h5, .gallery-preview-root h6 { font-family: var(--font-heading); }
+.gallery-preview-root h1 { font-size: var(--text-preview-heading-1); }
+.gallery-preview-root h2 { font-size: var(--text-preview-heading-2); }
+.gallery-preview-root h3 { font-size: var(--text-preview-heading-3); }
+.gallery-preview-root h4 { font-size: var(--text-preview-heading-4); }
+.gallery-preview-root h5 { font-size: var(--text-preview-heading-5); }
+.gallery-preview-root h6 { font-size: var(--text-preview-heading-6); }
 
 .gallery-header, .gallery-controls, .gallery-card > header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
 .gallery-header { margin-bottom: var(--section-gap); }
@@ -18,6 +25,13 @@
 .gallery > .gallery-grid > .gallery-card > header h2 { font-size: var(--heading-4); }
 .gallery-kicker { color: var(--muted-foreground); }
 .gallery-grid { display: flex; flex-direction: column; gap: var(--section-gap); }
+.primitive-gallery { margin-bottom: var(--section-gap); }
+.primitive-gallery > h2 { color: var(--foreground); font-family: var(--font-heading); font-size: var(--heading-2); margin-bottom: var(--space-3); }
+.primitive-gallery-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.gallery[data-device-class="tablet"] .primitive-gallery-grid { grid-template-columns: minmax(0, 1fr); }
+.primitive-gallery-sidebar { height: var(--content-min-height); overflow: hidden; contain: layout; }
+.primitive-gallery-resizable { height: var(--content-min-height); min-height: var(--content-min-height); max-height: var(--content-max-height); }
+.primitive-gallery-grid .primitive-gallery-prompt { min-height: var(--content-min-height); max-height: var(--content-min-height); }
 .gallery-card { box-sizing: border-box; width: 100%; padding: var(--space-4); color: var(--card-foreground); background: var(--card); border-radius: var(--radius); }
 .gallery-card > header { align-items: baseline; }
 .gallery-card > header span { color: var(--muted-foreground); }
