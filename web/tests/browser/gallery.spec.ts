@@ -184,3 +184,31 @@ test("Notebook applies its bundled body font, paper texture, and both mode palet
   expect((await textureDetails())?.slice(0, 1)[0]).toMatch(/\/textures\/paper-grain\.svg$/);
   expect((await textureDetails())?.slice(1)).toEqual([160, 160, "rgb(32, 31, 26)"]);
 });
+
+
+test("content skeletons render every declared gallery state across gallery settings", async ({ page }) => {
+  await page.goto("/");
+  const cards = await page.locator(".gallery-card[data-skeleton]").evaluateAll((elements) => elements.map((element) => ({
+    name: element.getAttribute("data-skeleton")!,
+    state: element.getAttribute("data-gallery-state")!,
+  })));
+  const names = new Set(cards.map(({ name }) => name));
+  expect(names).toEqual(new Set(["DataTable", "DataChart", "CodeBlock", "MediaPlayer", "ArtifactWorkspace", "Checklist", "List", "Metric", "Tabs", "Card"]));
+  for (const { name, state } of cards) {
+    const frame = page.frameLocator(`iframe[title="${name} · ${state}"]`);
+    await expect(page.locator(`iframe[title="${name} · ${state}"]`)).toBeVisible();
+    await expect(frame.locator("#root")).not.toContainText("Preview unavailable");
+    await expect(frame.locator("#root")).not.toContainText("preview failed");
+  }
+
+  await page.getByLabel("Look").selectOption("notebook");
+  await page.getByLabel("Mode").selectOption("dark");
+  await page.getByLabel("Density").selectOption("spacious");
+  await page.getByLabel("Text size").selectOption("5");
+  await page.getByLabel("Screen size").selectOption("tablet");
+  await expect(page.locator("[data-gallery-root]")).toHaveAttribute("data-look", "notebook");
+  await expect(page.locator("[data-gallery-root]")).toHaveAttribute("data-mode", "dark");
+  await expect(page.locator("[data-gallery-root]")).toHaveAttribute("data-device-class", "tablet");
+  await expect(page.frameLocator('iframe[title="DataTable · default"]').locator("table")).toBeVisible();
+  await expect(page.frameLocator('iframe[title="Tabs · default"]').getByRole("tablist")).toBeVisible();
+});

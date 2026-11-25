@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "props": {
+      "type": "object",
+      "properties": {
+        "tabs": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "content": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "label",
+              "content"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "selected": {
+          "type": "string"
+        },
+        "state": {
+          "default": "default",
+          "type": "string",
+          "enum": [
+            "default",
+            "empty",
+            "error"
+          ]
+        }
+      },
+      "required": [
+        "tabs",
+        "selected",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "slots": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "props",
+    "slots"
+  ],
+  "additionalProperties": false
+}

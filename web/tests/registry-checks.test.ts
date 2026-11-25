@@ -62,8 +62,8 @@ describe("registry generation guards", () => {
       copy("contracts/generated/components", "contracts/generated/components");
       mkdirSync(join(temp, "web"), { recursive: true });
       if (!existsSync(join(temp, "web/node_modules"))) symlinkSync(resolve(ROOT, "web/node_modules"), join(temp, "web/node_modules"), "dir");
-      const snapshotPath = join(temp, "contracts/generated/components/registry-v2.json");
-      writeFileSync(snapshotPath, JSON.stringify({ registry_version: 2, components: ["Ghost"] }, null, 2) + "\n");
+      const snapshotPath = join(temp, "contracts/generated/components/registry-v3.json");
+      writeFileSync(snapshotPath, JSON.stringify({ registry_version: 3, components: ["Ghost"] }, null, 2) + "\n");
       const changedSnapshot = readFileSync(snapshotPath, "utf8");
 
       expect(() => execFileSync(process.execPath, [join(temp, "web/scripts/generate-registry-schemas.mjs")], { cwd: temp, stdio: "pipe" })).toThrow(/Registry roster differs/);

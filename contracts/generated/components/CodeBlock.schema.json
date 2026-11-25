@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "props": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "language": {
+          "default": "text",
+          "type": "string"
+        },
+        "variant": {
+          "default": "code",
+          "type": "string",
+          "enum": [
+            "code",
+            "diff",
+            "stack_trace",
+            "terminal"
+          ]
+        },
+        "state": {
+          "default": "default",
+          "type": "string",
+          "enum": [
+            "default",
+            "empty",
+            "long_content",
+            "error"
+          ]
+        }
+      },
+      "required": [
+        "code",
+        "language",
+        "variant",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "slots": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "props",
+    "slots"
+  ],
+  "additionalProperties": false
+}
