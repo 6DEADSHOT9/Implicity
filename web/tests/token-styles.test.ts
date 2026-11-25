@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import webPackage from "../package.json" with { type: "json" };
@@ -6,12 +7,12 @@ import { missingTailwindRules, paths, tokenStyleViolations } from "../scripts/ch
 import { token } from "../src/registry/token";
 import { tokenNames } from "../src/registry/token-values.mjs";
 
-const componentFile = new URL("../src/registry/Probe/Probe.tsx", import.meta.url).pathname;
-const rendererFile = new URL("../src/renderer.tsx", import.meta.url).pathname;
-const galleryFile = new URL("../src/gallery.tsx", import.meta.url).pathname;
-const previewRuntimeFile = new URL("../src/preview-runtime.tsx", import.meta.url).pathname;
-const previewMainFile = new URL("../src/preview-main.tsx", import.meta.url).pathname;
-const primitiveFile = new URL("../src/components/ui/Probe.tsx", import.meta.url).pathname;
+const componentFile = fileURLToPath(new URL("../src/registry/Probe/Probe.tsx", import.meta.url));
+const rendererFile = fileURLToPath(new URL("../src/renderer.tsx", import.meta.url));
+const galleryFile = fileURLToPath(new URL("../src/gallery.tsx", import.meta.url));
+const previewRuntimeFile = fileURLToPath(new URL("../src/preview-runtime.tsx", import.meta.url));
+const previewMainFile = fileURLToPath(new URL("../src/preview-main.tsx", import.meta.url));
+const primitiveFile = fileURLToPath(new URL("../src/components/ui/Probe.tsx", import.meta.url));
 const tokenImport = 'import { token } from "../token"; ';
 
 describe("token-only style guard", () => {
@@ -115,7 +116,7 @@ describe("token-only style guard", () => {
     expect(tokenStyleViolations('const View = () => <p style={{ color: "#f00" }} />;', previewRuntimeFile)).toContain("color: #f00");
     expect(tokenStyleViolations('const View = () => <p style={{ color: "#f00" }} />;', previewMainFile)).toContain("color: #f00");
     expect(tokenStyleViolations('.probe { color: center; width: center; display: flex; }', "styles.css")).toEqual(["color: center", "width: center"]);
-    expect(tokenStyleViolations('.probe { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }', new URL("../src/gallery.css", import.meta.url).pathname)).toEqual([]);
+    expect(tokenStyleViolations('.probe { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }', fileURLToPath(new URL("../src/gallery.css", import.meta.url)))).toEqual([]);
   });
 
   it("rejects dynamic token names and non-token CSS values", () => {
