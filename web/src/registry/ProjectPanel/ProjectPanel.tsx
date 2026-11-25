@@ -18,17 +18,15 @@ export function ProjectPanel({ title, tabs, activeTab, slots, onTabChange }: {
   const initialState = useRef(activeTab);
   useEffect(() => {
     emitRef.current("component_shown", { component: "ProjectPanel", default_state: initialState.current });
-    const timer = window.setTimeout(() => emitRef.current("component_seen", { component: "ProjectPanel", default_state: initialState.current, seconds_visible: 3 }), 3000);
-    return () => window.clearTimeout(timer);
   }, []);
 
   return <section aria-label={title} className="flex flex-col gap-space-4 bg-card p-space-4 text-card-foreground">
     <h2 className="text-heading-3">{title}</h2>
     <Tabs value={activeTab} onValueChange={(value) => onTabChange?.(value as typeof activeTab)} orientation="vertical">
       <TabsList className="w-full flex-wrap">
-        {tabs.map((tab) => <TabsTrigger key={tab} value={tab}>{tab}</TabsTrigger>)}
+        {tabs.map((tab) => <TabsTrigger key={tab} value={tab} className="bg-muted text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground" style={{ minHeight: "var(--target-min-size)" }}>{tab}</TabsTrigger>)}
       </TabsList>
-      {tabs.map((tab) => <TabsContent key={tab} value={tab}>
+      {tabs.map((tab) => <TabsContent key={tab} value={tab} className="focus-visible:focus-ring-token focus-visible:ring-ring">
         {slots?.[tab]?.length ? <ItemGroup aria-label={tab}>
           {slots[tab]?.map((child, index) => <Item key={`${tab}-${index}`} role="listitem"><ItemContent>{child}</ItemContent></Item>)}
         </ItemGroup> : <Empty role="status"><EmptyTitle className="text-heading-4">No {tab}</EmptyTitle></Empty>}

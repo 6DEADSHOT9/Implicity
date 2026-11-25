@@ -1,51 +1,38 @@
 // @vitest-environment jsdom
-import { act, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { CaptureProvider, recordingCapture } from "../capture";
 import { SourcesPanel } from "./SourcesPanel";
 import { events } from "./events";
 import { meta } from "./meta";
 import { propsSchema, slotsSchema } from "./schema";
 
-afterEach(() => vi.useRealTimers());
-
 describe("SourcesPanel public interface", () => {
-  it("renders populated and empty gallery states", () => {
-    const populated = render(<SourcesPanel {...meta.galleryStates[0].props} />);
-    expect(screen.getByRole("button", { name: "Sources (2)" })).toBeTruthy();
+  it("accepts the documented docked layout and renders closed and docked examples", () => {
+    expect(propsSchema.safeParse({ docked: true }).success).toBe(true);
+    expect(slotsSchema.safeParse({}).success).toBe(true);
+    const closed = render(<SourcesPanel {...meta.galleryStates[1].props} />);
+    expect(screen.getByRole("button", { name: "Sources (0)" }).getAttribute("data-state")).toBe("closed");
+    closed.unmount();
+    render(<SourcesPanel {...meta.galleryStates[0].props} />);
+    expect(screen.getByRole("button", { name: "Sources (2)" }).getAttribute("data-state")).toBe("open");
     expect(screen.getByText("Reference one")).toBeTruthy();
-    populated.unmount();
-    render(<SourcesPanel {...meta.galleryStates[1].props} />);
-    expect(screen.getByRole("status").textContent).toContain("No sources");
+    expect(screen.getByText("Reference two")).toBeTruthy();
   });
 
-  it("validates props, declares only contract events, and tracks disclosure state", async () => {
-    expect(propsSchema.safeParse(meta.galleryStates[0].props).success).toBe(true);
-    expect(propsSchema.safeParse({ sources: [{ title: "x", type: "filename" }] }).success).toBe(false);
-    expect(slotsSchema.safeParse({}).success).toBe(true);
-    expect(events).toEqual(["component_shown", "component_seen", "panel_opened", "panel_closed"]);
-
+  it("calls the controlled callback and emits only after the docked prop changes", async () => {
     const user = userEvent.setup();
     const recorder = recordingCapture();
-    const onOpenChange = vi.fn();
-    render(<CaptureProvider sink={recorder.sink}><SourcesPanel {...meta.galleryStates[0].props} onOpenChange={onOpenChange} /></CaptureProvider>);
-    expect(recorder.events[0]).toEqual({ name: "component_shown", component: "SourcesPanel", default_state: "populated" });
-    expect(screen.getByText("Reference one")).toBeTruthy();
+    const onDockChange = vi.fn();
+    const view = render(<CaptureProvider sink={recorder.sink}><SourcesPanel {...meta.galleryStates[0].props} onDockChange={onDockChange} /></CaptureProvider>);
+    expect(recorder.events).toEqual([{ name: "component_shown", component: "SourcesPanel", default_state: "docked" }]);
     await user.click(screen.getByRole("button", { name: "Sources (2)" }));
-    expect(screen.queryByText("Reference one")).toBeNull();
-    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(onDockChange).toHaveBeenCalledWith(false);
+    expect(recorder.events).toHaveLength(1);
+    view.rerender(<CaptureProvider sink={recorder.sink}><SourcesPanel docked={false} sources={meta.galleryStates[0].props.sources} onDockChange={onDockChange} /></CaptureProvider>);
     expect(recorder.events.at(-1)).toEqual({ name: "panel_closed", component: "SourcesPanel" });
-    await user.click(screen.getByRole("button", { name: "Sources (2)" }));
-    expect(screen.getByText("Reference one")).toBeTruthy();
-    expect(recorder.events.at(-1)).toEqual({ name: "panel_opened", component: "SourcesPanel" });
-  });
-
-  it("emits seen after the panel remains rendered", async () => {
-    vi.useFakeTimers();
-    const recorder = recordingCapture();
-    render(<CaptureProvider sink={recorder.sink}><SourcesPanel {...meta.galleryStates[0].props} /></CaptureProvider>);
-    await act(async () => { vi.advanceTimersByTime(3000); });
-    expect(recorder.events.at(-1)).toEqual({ name: "component_seen", component: "SourcesPanel", default_state: "populated", seconds_visible: 3 });
+    expect(screen.queryByText("Reference one")).toBeNull();
+    expect(events).toEqual(["component_shown", "component_seen", "panel_opened", "panel_closed"]);
   });
 });

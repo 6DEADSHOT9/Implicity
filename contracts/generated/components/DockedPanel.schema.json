@@ -9,14 +9,24 @@
           "type": "string"
         },
         "tabs": {
-          "minItems": 1,
+          "minItems": 2,
+          "maxItems": 2,
           "type": "array",
           "items": {
-            "type": "string"
-          }
+            "type": "string",
+            "enum": [
+              "Details",
+              "History"
+            ]
+          },
+          "uniqueItems": true
         },
         "activeTab": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "Details",
+            "History"
+          ]
         },
         "open": {
           "type": "boolean"

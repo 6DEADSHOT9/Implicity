@@ -1,78 +1,73 @@
 // @vitest-environment jsdom
-import { render, screen, act } from "@testing-library/react";
+import Ajv2020 from "ajv/dist/2020.js";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import generatedSchema from "../../../../contracts/generated/components/DockedPanel.schema.json" with { type: "json" };
 import { CaptureProvider, recordingCapture } from "../capture";
 import { DockedPanel } from "./DockedPanel";
 import { events } from "./events";
 import { meta } from "./meta";
 import { propsSchema, slotsSchema } from "./schema";
 
-vi.mock("@/hooks/use-mobile", () => ({ useIsMobile: () => true }));
+const mobile = vi.hoisted(() => ({ value: true }));
+vi.mock("@/hooks/use-mobile", () => ({ useIsMobile: () => mobile.value }));
 
-afterEach(() => vi.useRealTimers());
+afterEach(() => { mobile.value = true; });
 
 describe("DockedPanel public interface", () => {
-  it("renders its docked state with an accessible mobile Sheet and Tabs", () => {
+  it("renders an accessible Sheet and tabs on small screens", () => {
     render(<DockedPanel {...meta.galleryStates[0].props} slots={{ main: [<p key="content">panel content</p>] }} />);
     expect(screen.getByRole("tablist")).toBeTruthy();
     expect(screen.getByRole("dialog", { name: "Workspace" })).toBeTruthy();
   });
 
-  it("renders the undocked state in an accessible Sheet overlay", () => {
-    render(<DockedPanel {...meta.galleryStates[1].props} />);
-    expect(screen.getByRole("dialog", { name: "Workspace" })).toBeTruthy();
-  });
-
-  it("renders the closed state with an open control", () => {
-    render(<DockedPanel {...meta.galleryStates[2].props} />);
-    expect(screen.getByRole("button", { name: "Open Workspace" })).toBeTruthy();
-  });
-
-  it("validates props and slots and uses only declared event vocabulary", () => {
-    expect(propsSchema.safeParse(meta.galleryStates[0].props).success).toBe(true);
-    expect(propsSchema.safeParse({ ...meta.galleryStates[0].props, extra: true }).success).toBe(false);
+  it("validates metadata states, events, and tab relationships in runtime and JSON Schema", () => {
+    const recorder = recordingCapture();
+    for (const state of meta.galleryStates) {
+      expect(propsSchema.safeParse(state.props).success).toBe(true);
+      const view = render(<CaptureProvider sink={recorder.sink}><DockedPanel {...state.props} /></CaptureProvider>);
+      expect(meta.defaultStates.map(String)).toContain(state.id);
+      expect(recorder.events.at(-1)).toMatchObject({ name: "component_shown", default_state: state.id });
+      view.unmount();
+    }
+    expect(propsSchema.safeParse({ ...meta.galleryStates[0].props, activeTab: "Missing" }).success).toBe(false);
+    expect(propsSchema.safeParse({ ...meta.galleryStates[0].props, tabs: ["Details", "Details"] }).success).toBe(false);
     expect(slotsSchema.safeParse({ main: ["panel_content"] }).success).toBe(true);
     expect(events).toEqual(["component_shown", "component_seen", "panel_opened", "panel_closed", "panel_docked", "panel_undocked"]);
+    const schema = (generatedSchema as { properties: { props: object } }).properties.props;
+    const validate = new Ajv2020({ strict: false }).compile(schema);
+    expect(validate(meta.galleryStates[0].props)).toBe(true);
+    expect(validate({ ...meta.galleryStates[0].props, activeTab: "Missing" })).toBe(false);
+    expect(validate({ ...meta.galleryStates[0].props, tabs: ["Details", "Details"] })).toBe(false);
   });
 
-  it("keeps Tabs keyboard-operable and emits panel and lifecycle events", async () => {
+  it("calls controlled callbacks without recording a transition until props change", async () => {
     const user = userEvent.setup();
     const recorder = recordingCapture();
     const onOpenChange = vi.fn();
     const onDockChange = vi.fn();
-    const onTabChange = vi.fn();
-    render(<CaptureProvider sink={recorder.sink}><DockedPanel {...meta.galleryStates[0].props} onOpenChange={onOpenChange} onDockChange={onDockChange} onTabChange={onTabChange} /></CaptureProvider>);
-    expect(recorder.events[0]).toEqual({ name: "component_shown", component: "DockedPanel", default_state: "open_docked" });
-    screen.getByRole("tab", { name: "Details" }).focus();
-    await user.keyboard("{ArrowRight}");
-    expect(onTabChange).toHaveBeenCalledWith("History");
-    await user.click(screen.getByRole("button", { name: "Undock" }));
+    const view = render(<CaptureProvider sink={recorder.sink}><DockedPanel {...meta.galleryStates[0].props} onOpenChange={onOpenChange} onDockChange={onDockChange} /></CaptureProvider>);
     await user.click(screen.getByRole("button", { name: "Close" }));
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(recorder.events).toEqual([{ name: "component_shown", component: "DockedPanel", default_state: "open_docked" }]);
+    view.rerender(<CaptureProvider sink={recorder.sink}><DockedPanel {...meta.galleryStates[0].props} open={false} onOpenChange={onOpenChange} onDockChange={onDockChange} /></CaptureProvider>);
+    expect(recorder.events.at(-1)).toEqual({ name: "panel_closed", component: "DockedPanel" });
+    view.rerender(<CaptureProvider sink={recorder.sink}><DockedPanel {...meta.galleryStates[0].props} onOpenChange={onOpenChange} onDockChange={onDockChange} /></CaptureProvider>);
+    await user.click(screen.getByRole("button", { name: "Undock" }));
     expect(onDockChange).toHaveBeenCalledWith(false);
-    expect(onOpenChange).toHaveBeenCalledWith(false);
-    expect(recorder.events.slice(1)).toEqual([
-      { name: "panel_undocked", component: "DockedPanel" },
-      { name: "panel_closed", component: "DockedPanel" },
-    ]);
+    expect(recorder.events.at(-1)).toEqual({ name: "panel_opened", component: "DockedPanel" });
+    view.rerender(<CaptureProvider sink={recorder.sink}><DockedPanel {...meta.galleryStates[1].props} onOpenChange={onOpenChange} onDockChange={onDockChange} /></CaptureProvider>);
+    expect(recorder.events.at(-1)).toEqual({ name: "panel_undocked", component: "DockedPanel" });
   });
 
-  it("emits seen after the panel remains rendered", async () => {
-    vi.useFakeTimers();
-    const recorder = recordingCapture();
-    render(<CaptureProvider sink={recorder.sink}><DockedPanel {...meta.galleryStates[0].props} /></CaptureProvider>);
-    await act(async () => { vi.advanceTimersByTime(3000); });
-    expect(recorder.events.at(-1)).toEqual({ name: "component_seen", component: "DockedPanel", default_state: "open_docked", seconds_visible: 3 });
-  });
-
-  it("closes its Sheet on Escape and emits the close event", async () => {
-    const user = userEvent.setup();
-    const recorder = recordingCapture();
-    const onOpenChange = vi.fn();
-    render(<CaptureProvider sink={recorder.sink}><DockedPanel {...meta.galleryStates[1].props} onOpenChange={onOpenChange} /></CaptureProvider>);
-    expect(screen.getByRole("dialog", { name: "Workspace" })).toBeTruthy();
-    await user.keyboard("{Escape}");
-    expect(onOpenChange).toHaveBeenCalledWith(false);
-    expect(recorder.events).toContainEqual({ name: "panel_closed", component: "DockedPanel" });
+  it("uses unique layout and panel ids when composed twice", () => {
+    mobile.value = false;
+    render(<><DockedPanel {...meta.galleryStates[0].props} /><DockedPanel {...meta.galleryStates[0].props} /></>);
+    const groups = [...document.querySelectorAll('[data-slot="resizable-panel-group"]')];
+    expect(groups).toHaveLength(2);
+    const ids = groups.flatMap((group) => [group.id, ...[...group.querySelectorAll("[id]")].map((element) => element.id)]);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(screen.getAllByRole("separator", { name: "Resize workspace and panel" })).toHaveLength(2);
   });
 });

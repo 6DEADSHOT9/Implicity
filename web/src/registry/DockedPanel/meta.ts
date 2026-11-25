@@ -1,7 +1,7 @@
 export const meta = {
   role: "panel",
   slots: ["main"],
-  defaultStates: ["open_docked"],
+  defaultStates: ["open_docked", "open_undocked", "closed"],
   commands: [],
   limits: { minWidth: 384, minHeight: 160, minContrast: 4.5 },
   galleryStates: [

@@ -5,6 +5,9 @@
     "props": {
       "type": "object",
       "properties": {
+        "docked": {
+          "type": "boolean"
+        },
         "sources": {
           "type": "array",
           "items": {
@@ -31,7 +34,7 @@
         }
       },
       "required": [
-        "sources"
+        "docked"
       ],
       "additionalProperties": false
     },

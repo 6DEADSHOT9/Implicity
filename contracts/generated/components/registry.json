@@ -17,14 +17,24 @@
             "type": "string"
           },
           "tabs": {
-            "minItems": 1,
+            "minItems": 2,
+            "maxItems": 2,
             "type": "array",
             "items": {
-              "type": "string"
-            }
+              "type": "string",
+              "enum": [
+                "Details",
+                "History"
+              ]
+            },
+            "uniqueItems": true
           },
           "activeTab": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "Details",
+              "History"
+            ]
           },
           "open": {
             "type": "boolean"
@@ -79,7 +89,8 @@
             "type": "string"
           },
           "tabs": {
-            "minItems": 1,
+            "minItems": 3,
+            "maxItems": 3,
             "type": "array",
             "items": {
               "type": "string",
@@ -88,7 +99,8 @@
                 "constraints",
                 "files"
               ]
-            }
+            },
+            "uniqueItems": true
           },
           "activeTab": {
             "type": "string",
@@ -157,6 +169,9 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": {
+          "docked": {
+            "type": "boolean"
+          },
           "sources": {
             "type": "array",
             "items": {
@@ -183,7 +198,7 @@
           }
         },
         "required": [
-          "sources"
+          "docked"
         ],
         "additionalProperties": false
       },

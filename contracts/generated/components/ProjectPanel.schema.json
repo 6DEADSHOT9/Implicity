@@ -9,7 +9,8 @@
           "type": "string"
         },
         "tabs": {
-          "minItems": 1,
+          "minItems": 3,
+          "maxItems": 3,
           "type": "array",
           "items": {
             "type": "string",
@@ -18,7 +19,8 @@
               "constraints",
               "files"
             ]
-          }
+          },
+          "uniqueItems": true
         },
         "activeTab": {
           "type": "string",
