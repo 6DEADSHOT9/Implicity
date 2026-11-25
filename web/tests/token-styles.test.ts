@@ -1,13 +1,14 @@
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { paths, tokenStyleViolations } from "../scripts/check-token-styles.mjs";
 import { token } from "../src/registry/token";
 import { tokenNames } from "../src/registry/token-values.mjs";
 
-const componentFile = new URL("../src/registry/Probe/Probe.tsx", import.meta.url).pathname;
-const rendererFile = new URL("../src/renderer.tsx", import.meta.url).pathname;
-const galleryFile = new URL("../src/gallery.tsx", import.meta.url).pathname;
-const previewRuntimeFile = new URL("../src/preview-runtime.tsx", import.meta.url).pathname;
-const previewMainFile = new URL("../src/preview-main.tsx", import.meta.url).pathname;
+const componentFile = fileURLToPath(new URL("../src/registry/Probe/Probe.tsx", import.meta.url));
+const rendererFile = fileURLToPath(new URL("../src/renderer.tsx", import.meta.url));
+const galleryFile = fileURLToPath(new URL("../src/gallery.tsx", import.meta.url));
+const previewRuntimeFile = fileURLToPath(new URL("../src/preview-runtime.tsx", import.meta.url));
+const previewMainFile = fileURLToPath(new URL("../src/preview-main.tsx", import.meta.url));
 const tokenImport = 'import { token } from "../token"; ';
 
 describe("token-only style guard", () => {
