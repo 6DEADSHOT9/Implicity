@@ -12,9 +12,11 @@ from mcp.server.mcpserver.exceptions import ToolError
 from implicity_api.modules import app as app_module
 from implicity_api.modules.app import store as app_store
 
-PROJECT_ROOT = Path(__file__).resolve().parents[4]
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 REGISTRY_FILE = PROJECT_ROOT / "contracts/generated/components/registry.json"
 Role = Literal["shell", "content", "panel", "home", "system"]
+MAX_MESSAGE_SPEC_ELEMENTS = 200
+MAX_MESSAGE_SPEC_DEPTH = 10
 
 
 def create_server(registry_file: Path = REGISTRY_FILE, store=app_store) -> MCPServer:
@@ -23,24 +25,45 @@ def create_server(registry_file: Path = REGISTRY_FILE, store=app_store) -> MCPSe
     def read_registry() -> dict[str, Any]:
         return json.loads(registry_file.read_text())
 
-    def has_cycle(elements: dict[str, Any]) -> bool:
-        visiting: set[str] = set()
-        visited: set[str] = set()
+    def graph_error(elements: dict[str, Any], root: str) -> str | None:
+        state: dict[str, int] = {}
+        for start in elements:
+            if state.get(start) == 2:
+                continue
+            state[start] = 1
+            stack = [(start, iter(_children(elements[start])))]
+            while stack:
+                element_id, children = stack[-1]
+                child = next(children, None)
+                if child is None:
+                    state[element_id] = 2
+                    stack.pop()
+                elif state.get(child) == 1:
+                    return "Message spec contains a cyclic slot reference"
+                elif state.get(child) != 2:
+                    state[child] = 1
+                    stack.append((child, iter(_children(elements[child]))))
 
-        def visit(element_id: str) -> bool:
-            if element_id in visiting:
-                return True
-            if element_id in visited:
-                return False
-            visiting.add(element_id)
-            for children in elements[element_id].get("slots", {}).values():
-                if any(visit(child) for child in children):
-                    return True
-            visiting.remove(element_id)
-            visited.add(element_id)
-            return False
+        deepest: dict[str, int] = {}
+        stack = [(root, 1)]
+        while stack:
+            element_id, depth = stack.pop()
+            if depth > MAX_MESSAGE_SPEC_DEPTH:
+                return f"Message spec nesting exceeds {MAX_MESSAGE_SPEC_DEPTH} levels"
+            if depth <= deepest.get(element_id, 0):
+                continue
+            deepest[element_id] = depth
+            stack.extend(
+                (child, depth + 1) for child in _children(elements[element_id])
+            )
+        return None
 
-        return any(visit(element_id) for element_id in elements)
+    def _children(element: dict[str, Any]) -> list[str]:
+        return [
+            child
+            for children in element.get("slots", {}).values()
+            for child in children
+        ]
 
     @server.tool()
     def catalogue(role: Role | None = None) -> dict:
@@ -66,6 +89,10 @@ def create_server(registry_file: Path = REGISTRY_FILE, store=app_store) -> MCPSe
         except (JSONSchemaValidationError, TypeError, ValueError) as error:
             raise ToolError(f"Invalid message spec: {error}") from None
 
+        if len(contract.elements) > MAX_MESSAGE_SPEC_ELEMENTS:
+            raise ToolError(
+                f"Message spec exceeds {MAX_MESSAGE_SPEC_ELEMENTS} elements"
+            )
         registry = read_registry()
         components = {item["name"]: item for item in registry["catalogue"]}
         if contract.registry_version != registry["registry_version"]:
@@ -94,8 +121,8 @@ def create_server(registry_file: Path = REGISTRY_FILE, store=app_store) -> MCPSe
                 for child in children:
                     if child not in elements:
                         raise ToolError(f"Slot refers to unknown element: {child}")
-        if has_cycle(elements):
-            raise ToolError("Message spec contains a cyclic slot reference")
+        if error := graph_error(elements, contract.root):
+            raise ToolError(error)
 
         stored = app_module.save_message_spec(
             json.loads(encode_contract(contract)), store

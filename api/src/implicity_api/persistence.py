@@ -5,7 +5,7 @@ from implicity_contracts.codec import decode_contract, encode_contract
 from implicity_contracts.generated import Decision as ContractDecision
 from implicity_contracts.generated import Spec as ContractSpec
 from jsonschema.exceptions import ValidationError as JSONSchemaValidationError
-from sqlalchemy import event, select
+from sqlalchemy import delete, event, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.sql import visitors
@@ -130,12 +130,15 @@ class ModuleStore:
             session.flush()
         return rows
 
-    def delete(self, row: Any) -> None:
-        _check_model(type(row), self.__owner)
+    def delete_unattached_message_specs_before(self, cutoff) -> int:
+        if self.__owner != "app":
+            raise PermissionError("Only the app store owns message specs")
+        statement = delete(MessageSpec).where(
+            MessageSpec.session_id.is_(None), MessageSpec.created_at < cutoff
+        )
+        _check_tables(statement, self.__owner)
         with self._session() as session, session.begin():
-            current = session.get(type(row), row.id)
-            if current is not None:
-                session.delete(current)
+            return session.execute(statement).rowcount
 
     def _validate(self, row: Any) -> None:
         model = type(row)

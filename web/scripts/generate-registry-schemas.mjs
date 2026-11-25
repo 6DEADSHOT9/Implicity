@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import { registryVersion } from "../src/registry/version.ts";
 import { validateRegistryDefinitions } from "../src/registry/validate.ts";
+import { catalogueFromEntries } from "../src/registry/catalogue.ts";
 import { checkGeneratedFileSet, checkRegistrySnapshots } from "../src/registry/snapshot.ts";
 import { discoverRegistryFolders } from "../src/registry/discovery.ts";
 
@@ -48,15 +49,8 @@ entries.push(...discoverRegistryFolders(folders).map(({ definition }) => definit
 const snapshot = {
   registry_version: registryVersion,
   components: entries.map(({ id }) => id).sort(),
-  catalogue: entries.map(({ id, propsSchema, slotsSchema, meta }) => ({
-    name: id,
-    role: meta.role,
-    props_schema: propsSchema.toJSONSchema(),
-    slots: meta.slots,
-    slots_schema: slotsSchema.toJSONSchema(),
-    limits: meta.limits,
-  })),
 };
+const currentRegistry = { ...snapshot, catalogue: catalogueFromEntries(entries) };
 validateRegistryDefinitions(entries);
 
 const historyFiles = (await readdir(directory).catch((error) => error.code === "ENOENT" ? [] : Promise.reject(error)))
@@ -74,12 +68,10 @@ if (!check && registryVersion === highestVersion + 1) {
   await writeFile(path, `${JSON.stringify(snapshot, null, 2)}\n`);
   snapshots = [...snapshots, snapshot];
 }
-const currentSnapshotIndex = snapshots.findIndex(({ registry_version }) => registry_version === registryVersion);
-if (currentSnapshotIndex >= 0) snapshots[currentSnapshotIndex] = snapshot;
 checkRegistrySnapshots(snapshots, snapshot);
 const artifacts = new Map(entries.map((entry) => [`${entry.id}.schema.json`, `${JSON.stringify(entry.schema.toJSONSchema(), null, 2)}\n`]));
 for (const historical of snapshots) artifacts.set(`registry-v${historical.registry_version}.json`, `${JSON.stringify(historical, null, 2)}\n`);
-artifacts.set("registry.json", `${JSON.stringify(snapshot, null, 2)}\n`);
+artifacts.set("registry.json", `${JSON.stringify(currentRegistry, null, 2)}\n`);
 const typeCheckPath = resolve(sourceDirectory, "registry-props-typecheck.ts");
 const typeCheckSource = entries.length ? [
   'import { defineSkeleton, defineSkeletonDefinition } from "./define-skeleton.ts";',

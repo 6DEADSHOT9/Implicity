@@ -1,4 +1,6 @@
 import json
+import re
+from pathlib import Path
 
 import anyio
 import httpx2
@@ -11,7 +13,7 @@ from implicity_api.modules import app as app_module
 from implicity_api.persistence import create_store
 from mcp import Client
 from mcp.client.streamable_http import streamable_http_client
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 
 REGISTRY = {
     "registry_version": 2,
@@ -48,6 +50,21 @@ REGISTRY = {
         },
     ],
 }
+NON_SPEC_CONTRACT = {
+    "event_id": "550e8400-e29b-41d4-a716-446655440000",
+    "timestamp": "2026-11-24T00:00:00.000Z",
+    "contracts_version": 1,
+    "session_id": "550e8400-e29b-41d4-a716-446655440001",
+    "layout_version": 1,
+    "registry_version": 2,
+    "device_class": "desktop",
+    "input_type": "mouse",
+    "name": "session_started",
+    "mode": "light",
+    "text_scale": 1,
+    "local_hour_bucket": "night",
+}
+ROOT = Path(__file__).parents[2]
 
 
 @pytest.fixture
@@ -86,6 +103,21 @@ def test_catalogue_uses_current_registry_and_filters_by_role(registry_file):
     anyio.run(check)
 
 
+def test_catalogue_default_registry_is_the_highest_committed_snapshot():
+    versions = [
+        int(re.fullmatch(r"registry-v(\d+)\.json", path.name)[1])
+        for path in (ROOT / "contracts/generated/components").glob("registry-v*.json")
+    ]
+
+    async def check():
+        async with Client(create_server()) as client:
+            result = await client.call_tool("catalogue", {})
+            catalogue = json.loads(result.content[0].text)
+            assert catalogue["registry_version"] == max(versions)
+
+    anyio.run(check)
+
+
 def test_mcp_is_reachable_from_the_api_over_streamable_http(monkeypatch):
     import implicity_api.app as app_module
     from implicity_api.app import create_app
@@ -114,6 +146,26 @@ def test_mcp_is_reachable_from_the_api_over_streamable_http(monkeypatch):
         anyio.run(check)
 
 
+def test_api_discards_expired_specs_at_startup(monkeypatch):
+    import implicity_api.app as app_module
+    from implicity_api.app import create_app
+
+    calls = []
+
+    async def idle():
+        await anyio.sleep_forever()
+
+    monkeypatch.setattr(app_module, "daily_backups", idle)
+    monkeypatch.setattr(
+        app_module,
+        "discard_unattached_message_specs",
+        lambda: calls.append("cleanup"),
+    )
+
+    with TestClient(create_app()):
+        assert calls == ["cleanup"]
+
+
 def test_render_validates_and_stores_unattached_spec_through_mcp(
     registry_file, tmp_path
 ):
@@ -135,6 +187,32 @@ def test_render_validates_and_stores_unattached_spec_through_mcp(
             stored = app_store.get(MessageSpec, spec_id)
             assert stored.data == spec
             assert stored.session_id is None
+
+    anyio.run(check)
+
+
+def test_python_render_validates_the_zod_mapped_catalogue_fixture(tmp_path):
+    registry_file = ROOT / "web/tests/fixtures/catalogue.json"
+    bind = create_engine(f"sqlite:///{tmp_path / 'mapped-catalogue.db'}")
+    for metadata in METADATA.values():
+        metadata.create_all(bind)
+    app_store = create_store("app", bind)
+    spec = {
+        "registry_version": 2,
+        "root": "panel",
+        "elements": {
+            "panel": {
+                "type": "ReviewPanel",
+                "props": {"count": 4},
+                "slots": {"main": []},
+            }
+        },
+    }
+
+    async def check():
+        async with Client(create_server(registry_file, app_store)) as client:
+            result = await client.call_tool("render", {"message_spec": spec})
+            assert not result.is_error
 
     anyio.run(check)
 
@@ -191,6 +269,55 @@ def test_render_rejects_invalid_specs_without_storing(registry_file, tmp_path):
             },
             "cyclic slot reference",
         ),
+        ({**valid, "registry_version": 1}, "registry_version is not current"),
+        ({**valid, "root": "missing"}, "root does not exist"),
+        (
+            {
+                **valid,
+                "elements": {
+                    "card": {
+                        "type": "Card",
+                        "props": {"title": "Hello"},
+                        "slots": {"body": ["missing"]},
+                    }
+                },
+            },
+            "Slot refers to unknown element",
+        ),
+        (NON_SPEC_CONTRACT, "Input must be a message spec"),
+        (
+            {
+                "registry_version": 2,
+                "root": "node-0",
+                "elements": {
+                    f"node-{index}": {
+                        "type": "Card",
+                        "props": {"title": "Hi"},
+                    }
+                    for index in range(201)
+                },
+            },
+            "exceeds 200 elements",
+        ),
+        (
+            {
+                "registry_version": 2,
+                "root": "node-0",
+                "elements": {
+                    f"node-{index}": {
+                        "type": "Card",
+                        "props": {"title": "Hi"},
+                        **(
+                            {"slots": {"body": [f"node-{index + 1}"]}}
+                            if index < 10
+                            else {}
+                        ),
+                    }
+                    for index in range(11)
+                },
+            },
+            "nesting exceeds 10 levels",
+        ),
     ]
 
     async def check():
@@ -219,9 +346,77 @@ def test_app_attaches_rendered_spec_to_assistant_message_atomically(tmp_path):
     )
 
     app_module.attach_message_spec("message-1", spec_id, app_store)
+    attached_message = app_store.get(Message, "message-1")
+    app_module.attach_message_spec("message-1", spec_id, app_store)
 
-    assert app_store.get(Message, "message-1").data["message_spec_id"] == spec_id
+    assert attached_message.data["message_spec_id"] == spec_id
+    assert app_store.get(Message, "message-1").data == attached_message.data
     assert app_store.get(MessageSpec, spec_id).session_id == "session-1"
+
+
+def test_app_attach_refuses_reuse_and_overwrite_with_distinct_errors(tmp_path):
+    bind = create_engine(f"sqlite:///{tmp_path / 'attach-errors.db'}")
+    for metadata in METADATA.values():
+        metadata.create_all(bind)
+    app_store = create_store("app", bind)
+    for message_id, session_id, data in (
+        ("m1", "s1", {}),
+        ("m2", "s1", {}),
+        ("m3", "s2", {}),
+    ):
+        app_store.insert(Message(id=message_id, session_id=session_id, data=data))
+    first = app_module.save_message_spec(
+        {"registry_version": 2, "root": "card", "elements": {}}, app_store
+    )
+    second = app_module.save_message_spec(
+        {"registry_version": 2, "root": "card", "elements": {}}, app_store
+    )
+
+    with pytest.raises(app_module.MessageNotFoundError):
+        app_module.attach_message_spec("missing", first, app_store)
+    with pytest.raises(app_module.MessageSpecNotFoundError):
+        app_module.attach_message_spec("m1", "missing", app_store)
+    app_module.attach_message_spec("m1", first, app_store)
+    for message_id in ("m2", "m3"):
+        with pytest.raises(app_module.MessageSpecAlreadyAttachedError):
+            app_module.attach_message_spec(message_id, first, app_store)
+    with pytest.raises(app_module.MessageAlreadyHasSpecError):
+        app_module.attach_message_spec("m1", second, app_store)
+    assert app_store.get(Message, "m2").data == {}
+    assert app_store.get(Message, "m3").data == {}
+
+
+def test_app_attach_rolls_back_both_rows_when_second_write_fails(tmp_path):
+    bind = create_engine(f"sqlite:///{tmp_path / 'attach-rollback.db'}")
+    for metadata in METADATA.values():
+        metadata.create_all(bind)
+    app_store = create_store("app", bind)
+    message = Message(id="m1", session_id="s1", data={"text": "answer"})
+    app_store.insert(message)
+    spec_id = app_module.save_message_spec(
+        {"registry_version": 2, "root": "card", "elements": {}}, app_store
+    )
+    updates = 0
+
+    def fail_second_write(
+        _connection, _cursor, statement, _parameters, _context, _many
+    ):
+        nonlocal updates
+        if statement.lstrip().upper().startswith("UPDATE"):
+            updates += 1
+            if updates == 2:
+                raise RuntimeError("second write failed")
+
+    event.listen(bind, "before_cursor_execute", fail_second_write)
+    try:
+        with pytest.raises(RuntimeError, match="second write failed"):
+            app_module.attach_message_spec("m1", spec_id, app_store)
+    finally:
+        event.remove(bind, "before_cursor_execute", fail_second_write)
+
+    assert updates == 2
+    assert app_store.get(Message, "m1").data == {"text": "answer"}
+    assert app_store.get(MessageSpec, spec_id).session_id is None
 
 
 def test_app_discards_only_expired_unattached_specs(tmp_path):
@@ -249,8 +444,38 @@ def test_app_discards_only_expired_unattached_specs(tmp_path):
             created_at=old,
         )
     )
+    app_store.insert(
+        MessageSpec(
+            id="fresh",
+            session_id=None,
+            data={"registry_version": 2, "root": "card", "elements": {}},
+            created_at=now,
+        )
+    )
+    app_store.insert(Message(id="race-message", session_id="s-race", data={}))
+    app_store.insert(
+        MessageSpec(
+            id="race",
+            session_id=None,
+            data={"registry_version": 2, "root": "card", "elements": {}},
+            created_at=old,
+        )
+    )
 
-    app_module.discard_unattached_message_specs(app_store, now)
+    class AttachDuringDelete:
+        delete_calls = 0
+
+        def delete_unattached_message_specs_before(self, cutoff):
+            self.delete_calls += 1
+            app_module.attach_message_spec("race-message", "race", app_store)
+            return app_store.delete_unattached_message_specs_before(cutoff)
+
+    racing_store = AttachDuringDelete()
+    app_module.discard_unattached_message_specs(racing_store, now)
 
     assert app_store.get(MessageSpec, "expired") is None
     assert app_store.get(MessageSpec, "attached") is not None
+    assert app_store.get(MessageSpec, "fresh") is not None
+    assert app_store.get(MessageSpec, "race").session_id == "s-race"
+    assert app_store.get(Message, "race-message").data["message_spec_id"] == "race"
+    assert racing_store.delete_calls == 1

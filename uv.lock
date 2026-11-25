@@ -380,9 +380,15 @@ dependencies = [
     { name = "fastapi" },
     { name = "httpx" },
     { name = "implicity-contracts" },
+    { name = "jsonschema" },
     { name = "mcp" },
     { name = "sqlalchemy" },
     { name = "uvicorn" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "httpx2" },
 ]
 
 [package.metadata]
@@ -391,10 +397,14 @@ requires-dist = [
     { name = "fastapi", specifier = "==0.121.3" },
     { name = "httpx", specifier = "==0.28.1" },
     { name = "implicity-contracts", editable = "contracts/python" },
+    { name = "jsonschema", specifier = "==4.26.0" },
     { name = "mcp", specifier = "==2.3.0" },
     { name = "sqlalchemy", specifier = "==2.0.44" },
     { name = "uvicorn", specifier = "==0.38.0" },
 ]
+
+[package.metadata.requires-dev]
+dev = [{ name = "httpx2", specifier = "==2.16.2" }]
 
 [[package]]
 name = "implicity-contracts"

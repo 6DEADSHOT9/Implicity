@@ -7,7 +7,7 @@ import subprocess
 import sys
 import threading
 import tomllib
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from importlib.util import resolve_name
 from pathlib import Path
 
@@ -188,6 +188,36 @@ def test_migrations_are_isolated_and_round_trip_every_owned_table(
         assert set(inspect(connection).get_table_names()) == expected | {
             "alembic_version"
         }
+    finally:
+        connection.close()
+
+
+def test_unattached_message_spec_migration_keeps_rows_and_guards_downgrade(tmp_path):
+    database = tmp_path / "unattached-specs.db"
+    bind = create_engine(f"sqlite:///{database}")
+    connection = bind.connect()
+    config = Config(str(API_ROOT / "alembic.ini"))
+    config.attributes["connection"] = connection
+    try:
+        command.upgrade(config, "head")
+        app_store = create_store("app", bind)
+        app_store.insert(MessageSpec(id="linked", session_id="s1", data=SPEC))
+        app_store.insert(MessageSpec(id="pending", session_id=None, data=SPEC))
+
+        with pytest.raises(RuntimeError, match="unattached message specs exist"):
+            command.downgrade(config, "0003_agent_session_instructions")
+        assert app_store.get(MessageSpec, "pending") is not None
+
+        app_store.delete_unattached_message_specs_before(
+            datetime.now(timezone.utc) + timedelta(seconds=1)
+        )
+        command.downgrade(config, "0003_agent_session_instructions")
+        columns = {
+            column["name"]: column
+            for column in inspect(connection).get_columns("message_specs")
+        }
+        assert not columns["session_id"]["nullable"]
+        assert "created_at" not in columns
     finally:
         connection.close()
 

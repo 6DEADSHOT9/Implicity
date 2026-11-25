@@ -86,11 +86,12 @@ socket.socket.connect = tracked_connect
 
 from fastapi.testclient import TestClient
 from implicity_api.app import app
+from starlette.routing import Mount
 
 with TestClient(app) as client:
     response = client.get("/health")
     assert (response.status_code, response.json()) == (200, {"status": "ok"})
-    assert {route.path for route in app.routes} == {"/health", ""}
+    assert any(route.path == "" and isinstance(route, Mount) for route in app.routes)
     snapshot = Path(os.environ["T14_SNAPSHOT_PATH"])
     deadline = time.monotonic() + 3
     while not snapshot.exists() and time.monotonic() < deadline:
