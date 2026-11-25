@@ -39,9 +39,9 @@ describe("DataTable public registry entry", () => {
   const host = document.createElement("div");
   const root = createRoot(host);
   act(() => root.render(<CaptureProvider sink={recorder.sink}><entry.Component props={entry.meta.galleryStates[0].props} slots={{}} /></CaptureProvider>));
-  expect(recorder.events[0]).toEqual({ name: "component_shown", component: "DataTable", default_state: "default" });
+  expect(recorder.events[0]).toEqual({ name: "component_shown", component: "DataTable", default_state: "table" });
   act(() => vi.advanceTimersByTime(3000));
-  expect(recorder.events[1]).toEqual({ name: "component_seen", component: "DataTable", default_state: "default", seconds_visible: 3 });
+  expect(recorder.events[1]).toEqual({ name: "component_seen", component: "DataTable", default_state: "table", seconds_visible: 3 });
   act(() => root.unmount());
  });
  it("records a switch only after the displayed representation changes", () => {
@@ -54,6 +54,23 @@ describe("DataTable public registry entry", () => {
   expect(onAction).toHaveBeenCalledWith("representation", "chart");
   expect(recorder.events.some(({ name }) => name === "representation_switched")).toBe(false);
   act(() => root.render(<CaptureProvider sink={recorder.sink}><entry.Component props={{ ...entry.meta.galleryStates[0].props, form: "chart" }} slots={{}} onAction={onAction} /></CaptureProvider>));
+  expect(recorder.events).toContainEqual({ name: "representation_switched", dimension: "data_form", from: "table", to: "chart" });
+  act(() => root.unmount());
+ });
+ it("does not record representation changes while no representation is displayed", () => {
+  const recorder = recordingCapture();
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  const render = (props: Record<string, unknown>) => <CaptureProvider sink={recorder.sink}><entry.Component props={props} slots={{}} /></CaptureProvider>;
+  const base = entry.meta.galleryStates[0].props;
+  act(() => root.render(render({ ...base, state: "error" })));
+  expect(recorder.events[0]).toEqual({ name: "component_shown", component: "DataTable", default_state: "error" });
+  act(() => root.render(render({ ...base, form: "chart", state: "error" })));
+  expect(recorder.events.some(({ name }) => name === "representation_switched")).toBe(false);
+  act(() => root.render(render({ ...base, form: "chart" })));
+  expect(recorder.events.some(({ name }) => name === "representation_switched")).toBe(false);
+  act(() => root.render(render({ ...base, form: "table" })));
+  act(() => root.render(render({ ...base, form: "chart" })));
   expect(recorder.events).toContainEqual({ name: "representation_switched", dimension: "data_form", from: "table", to: "chart" });
   act(() => root.unmount());
  });

@@ -4,7 +4,7 @@ import { createRoot } from "react-dom/client";
 import Ajv2020 from "ajv/dist/2020.js";
 import { z } from "zod";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createRegistry, defineSkeleton, defineSkeletonDefinition, getSkeleton } from "../src/registry";
+import { createRegistry, defineSkeleton, defineSkeletonDefinition, getSkeleton, registry } from "../src/registry";
 import { baselineLayout, renderLayout, renderMessage, resolveLayout } from "../src/renderer";
 import { events } from "./fixtures/ReviewPanel/events";
 import { meta } from "./fixtures/ReviewPanel/meta";
@@ -114,6 +114,29 @@ describe("registry and renderer", () => {
     expect(await markup(renderMessage(missingSlot, "fallback", panelRegistry))).toContain("fallback");
     expect(resolveLayout(missingSlot, undefined, panelRegistry)).toEqual(baselineLayout);
     expect(await markup(renderMessage({ ...goodLayout, elements: { panel: { type: "ReviewPanel", props: { count: 8 }, slots: { main: [] } } } }, "fallback", panelRegistry))).toContain("<strong>8</strong>");
+  });
+
+  it("renders Tabs content through named slots and rejects cross-field tab errors", async () => {
+    const tabs = {
+      registry_version: registry.version,
+      root: "tabs",
+      elements: {
+        tabs: { type: "Tabs", props: { tabs: [{ id: "summary", label: "Summary" }], selected: "summary" }, slots: { summary: ["card"] } },
+        card: { type: "Card", props: { title: "Named slot content", state: "default" }, slots: { content: [] } },
+      },
+    };
+    expect(await markup(renderMessage(tabs, "fallback"))).toContain("Named slot content");
+    const invalid = { ...tabs, elements: { ...tabs.elements, tabs: { ...tabs.elements.tabs, props: { ...tabs.elements.tabs.props, selected: "missing" } } } };
+    expect(await markup(renderMessage(invalid, "plain fallback"))).toContain("plain fallback");
+  });
+
+  it("rejects Metric progress bounds through renderer validation", async () => {
+    const metric = {
+      registry_version: registry.version,
+      root: "metric",
+      elements: { metric: { type: "Metric", props: { label: "Quota", value: "25", progress: { value: 25, max: 20 } } } },
+    };
+    expect(await markup(renderMessage(metric, "plain fallback"))).toContain("plain fallback");
   });
 
   it("falls back from a throwing message component in place", async () => {

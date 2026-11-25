@@ -555,25 +555,23 @@
               "type": "object",
               "properties": {
                 "id": {
-                  "type": "string"
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_-]{0,63}$"
                 },
                 "label": {
-                  "type": "string"
-                },
-                "content": {
                   "type": "string"
                 }
               },
               "required": [
                 "id",
-                "label",
-                "content"
+                "label"
               ],
               "additionalProperties": false
             }
           },
           "selected": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
           },
           "state": {
             "default": "default",
@@ -597,7 +595,13 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": {},
-        "additionalProperties": false
+        "additionalProperties": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          }
+        }
       },
       "limits": {
         "minWidth": 320,

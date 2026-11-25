@@ -6,7 +6,7 @@ import { createRoot } from "react-dom/client";
 import userEvent from "@testing-library/user-event";
 import { CaptureProvider, recordingCapture } from "../capture";
 import { registry } from "../index";
-import { propsSchema } from "./schema";
+import { propsSchema, slotsSchema } from "./schema";
 
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
@@ -19,6 +19,12 @@ describe("Tabs public registry entry", () => {
   expect(propsSchema.safeParse(entry.meta.galleryStates[0].props).success).toBe(true);
   expect(propsSchema.safeParse({ unexpected: true }).success).toBe(false);
   expect(entry.events).toEqual(["component_shown", "component_seen"]);
+  const base = { tabs: [{ id: "summary", label: "Summary" }], selected: "summary" };
+  expect(propsSchema.safeParse(base).success).toBe(true);
+  expect(propsSchema.safeParse({ ...base, tabs: [{ id: "Bad ID", label: "Bad" }] }).success).toBe(false);
+  expect(propsSchema.safeParse({ ...base, tabs: [...base.tabs, ...base.tabs] }).success).toBe(false);
+  expect(propsSchema.safeParse({ ...base, selected: "missing" }).success).toBe(false);
+  expect(slotsSchema.safeParse({ "Bad ID": [] }).success).toBe(false);
  });
 
  it("emits lifecycle events through the capture provider", () => {
@@ -39,9 +45,9 @@ describe("Tabs public registry entry", () => {
   const host = document.createElement("div");
   const root = createRoot(host);
   act(() => root.render(<CaptureProvider sink={recorder.sink}><entry.Component props={entry.meta.galleryStates[0].props} slots={{}} /></CaptureProvider>));
-  expect(recorder.events[0]).toEqual({ name: "component_shown", component: "Tabs", default_state: "default" });
+  expect(recorder.events[0]).toEqual({ name: "component_shown", component: "Tabs", default_state: "overview" });
   act(() => vi.advanceTimersByTime(3000));
-  expect(recorder.events[1]).toEqual({ name: "component_seen", component: "Tabs", default_state: "default", seconds_visible: 3 });
+  expect(recorder.events[1]).toEqual({ name: "component_seen", component: "Tabs", default_state: "overview", seconds_visible: 3 });
   act(() => root.unmount());
  });
 
@@ -67,6 +73,10 @@ describe("Tabs public registry entry", () => {
   expect(onAction).toHaveBeenCalledWith("tab_select", "details");
   act(() => root.unmount());
   host.remove();
+ });
+ it("renders each tab's named slot content", () => {
+  const markup = renderToStaticMarkup(<entry.Component props={{ tabs: [{ id: "summary", label: "Summary" }], selected: "summary" }} slots={{ summary: ["slot child"] }} />);
+  expect(markup).toContain("slot child");
  });
  it("keeps the primary content accessible", () => {
   const markup = renderToStaticMarkup(<entry.Component props={entry.meta.galleryStates[0].props} slots={{}} />);

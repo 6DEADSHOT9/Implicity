@@ -38,9 +38,9 @@ describe("CodeBlock public registry entry", () => {
   const host = document.createElement("div");
   const root = createRoot(host);
   act(() => root.render(<CaptureProvider sink={recorder.sink}><entry.Component props={entry.meta.galleryStates[0].props} slots={{}} /></CaptureProvider>));
-  expect(recorder.events[0]).toEqual({ name: "component_shown", component: "CodeBlock", default_state: "default" });
+  expect(recorder.events[0]).toEqual({ name: "component_shown", component: "CodeBlock", default_state: "code" });
   act(() => vi.advanceTimersByTime(3000));
-  expect(recorder.events[1]).toEqual({ name: "component_seen", component: "CodeBlock", default_state: "default", seconds_visible: 3 });
+  expect(recorder.events[1]).toEqual({ name: "component_seen", component: "CodeBlock", default_state: "code", seconds_visible: 3 });
   act(() => root.unmount());
  });
  it("keeps the primary content accessible", () => {
@@ -57,5 +57,13 @@ describe("CodeBlock public registry entry", () => {
   expect(markup).toContain("text-code-foreground");
   expect(markup).toContain("src/view.ts:12:4");
   expect(markup).not.toContain("disabled=");
+ });
+ it("shows the error state before every variant", () => {
+  for (const variant of ["code", "diff", "stack_trace", "terminal"] as const) {
+   const markup = renderToStaticMarkup(<entry.Component props={{ code: "failure", variant, state: "error" }} slots={{}} />);
+   expect(markup).toContain('role="alert"');
+   expect(markup).toContain("Code could not be loaded");
+   expect(markup).not.toContain("failure");
+  }
  });
 });

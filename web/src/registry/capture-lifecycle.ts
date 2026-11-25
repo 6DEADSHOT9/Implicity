@@ -7,11 +7,12 @@ type LifecycleCapture = ReturnType<typeof useCapture<"component_shown" | "compon
 export function useSkeletonCapture(capture: LifecycleCapture, component: string, defaultState: string) {
   const emit = useRef(capture.emit);
   emit.current = capture.emit;
+  const initial = useRef({ component, defaultState });
   const seenRef = useSeen({ component, defaultState });
 
   useEffect(() => {
-    emit.current("component_shown", { component, default_state: defaultState });
-  }, [component, defaultState]);
+    emit.current("component_shown", { component: initial.current.component, default_state: initial.current.defaultState });
+  }, []);
 
   return seenRef;
 }

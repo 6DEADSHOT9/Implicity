@@ -56,7 +56,7 @@ export type SkeletonDefinition<P extends z.ZodObject<z.ZodRawShape> = z.ZodObjec
 };
 
 export function createSkeletonSchema<P extends z.ZodObject<z.ZodRawShape>, S extends z.ZodObject<z.ZodRawShape>>(props: P, slots: S) {
-  return z.object({ props: props.strict(), slots: slots.strict() }).strict();
+  return z.object({ props: props.strict(), slots: slots._def.catchall ? slots : slots.strict() }).strict();
 }
 
 export function defineSkeletonDefinition<P extends z.ZodObject<z.ZodRawShape>, S extends z.ZodObject<z.ZodRawShape>>(entry: {
@@ -67,7 +67,7 @@ export function defineSkeletonDefinition<P extends z.ZodObject<z.ZodRawShape>, S
   meta: SkeletonMeta;
 }): SkeletonDefinition<P, S> {
   const propsSchema = entry.props.strict() as P;
-  const slotsSchema = entry.slots.strict() as S;
+  const slotsSchema = (entry.slots._def.catchall ? entry.slots : entry.slots.strict()) as S;
   const schema = createSkeletonSchema(propsSchema, slotsSchema);
   return { id: entry.id, propsSchema, slotsSchema, schema, events: entry.events, meta: entry.meta };
 }

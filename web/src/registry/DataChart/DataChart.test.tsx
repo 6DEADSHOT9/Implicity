@@ -39,9 +39,9 @@ describe("DataChart public registry entry", () => {
   const host = document.createElement("div");
   const root = createRoot(host);
   act(() => root.render(<CaptureProvider sink={recorder.sink}><entry.Component props={entry.meta.galleryStates[0].props} slots={{}} /></CaptureProvider>));
-  expect(recorder.events[0]).toEqual({ name: "component_shown", component: "DataChart", default_state: "default" });
+  expect(recorder.events[0]).toEqual({ name: "component_shown", component: "DataChart", default_state: "bar" });
   act(() => vi.advanceTimersByTime(3000));
-  expect(recorder.events[1]).toEqual({ name: "component_seen", component: "DataChart", default_state: "default", seconds_visible: 3 });
+  expect(recorder.events[1]).toEqual({ name: "component_seen", component: "DataChart", default_state: "bar", seconds_visible: 3 });
   act(() => root.unmount());
  });
  it("keeps the primary content accessible", () => {

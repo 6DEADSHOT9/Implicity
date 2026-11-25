@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
+import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useCapture } from "../capture";
 import { useSkeletonCapture } from "../capture-lifecycle";
@@ -13,15 +14,16 @@ type Props = z.infer<typeof propsSchema>;
 
 export function DataTable({ columns, rows, chartValues, form, state, onAction }: Props & { onAction?: (action: string, value?: string | number | boolean) => void }) {
   const capture = useCapture<(typeof events)[number]>();
-  const root = useSkeletonCapture(capture, "DataTable", "default");
-  const previousForm = useRef(form);
+  const displayedForm = (state === "default" || state === "long_content") && rows.length > 0 && (form !== "chart" || !!chartValues?.length) ? form : undefined;
+  const root = useSkeletonCapture(capture, "DataTable", displayedForm ?? state);
+  const previousForm = useRef(displayedForm);
   const emit = useRef(capture.emit);
   emit.current = capture.emit;
 
   useEffect(() => {
-    if (previousForm.current !== form) emit.current("representation_switched", { dimension: "data_form", from: previousForm.current, to: form });
-    previousForm.current = form;
-  }, [form]);
+    if (previousForm.current && displayedForm && previousForm.current !== displayedForm) emit.current("representation_switched", { dimension: "data_form", from: previousForm.current, to: displayedForm });
+    previousForm.current = displayedForm;
+  }, [displayedForm]);
 
   const switchView = (to: "table" | "chart") => onAction?.("representation", to);
 
@@ -30,7 +32,7 @@ export function DataTable({ columns, rows, chartValues, form, state, onAction }:
       <Button variant={form === "table" ? "default" : "outline"} aria-pressed={form === "table"} onClick={() => switchView("table")}>Table</Button>
       <Button variant={form === "chart" ? "default" : "outline"} aria-pressed={form === "chart"} disabled={!chartValues?.length} onClick={() => switchView("chart")}>Chart</Button>
     </ButtonGroup>
-    {state === "loading" ? <p aria-busy="true">Loading data</p>
+    <Card><CardContent>{state === "loading" ? <p aria-busy="true">Loading data</p>
       : state === "error" ? <p role="alert">Data could not be loaded</p>
         : state === "empty" || !rows.length ? <p>No data</p>
           : form === "chart" ? chartValues?.length
@@ -40,6 +42,6 @@ export function DataTable({ columns, rows, chartValues, form, state, onAction }:
               <TableCaption>Data</TableCaption>
               <TableHeader><TableRow>{columns.map((column) => <TableHead scope="col" key={column}>{column}</TableHead>)}</TableRow></TableHeader>
               <TableBody>{rows.map((row, index) => <TableRow key={index}>{row.map((cell, cellIndex) => <TableCell key={cellIndex}>{cell}</TableCell>)}</TableRow>)}</TableBody>
-            </Table>}
+            </Table>}</CardContent></Card>
   </section>;
 }
