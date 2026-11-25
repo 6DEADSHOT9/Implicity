@@ -49,6 +49,8 @@ request is updated, the agent stops and reports.
 
 **Dependencies.** Pin every new tool, package and image version and commit lockfiles. Never bypass the package manager's release-age guard: pin a version old enough to pass it, and if no usable version does, stop and ask the owner.
 
+**Flaky tests.** The test configuration never retries failed tests automatically. A test that fails and then passes is a bug: file it straight away, never rerun until green. New or changed browser tests are run repeatedly before merging (`--repeat-each=10`), by the builder and the reviewer.
+
 **Docker.** Agents that start containers use their own Compose project name and ports, tear down only what they started, and leave other stacks on the machine running.
 
 **Decisions.** When the docs leave a question open, the owner decides it by interview. The answer is written into `CONTEXT.md`, the docs, or an ADR, and merged to main in a docs pull request before builders rely on it. A brief or fix request may state what the docs already settle, but never invents a rule.
