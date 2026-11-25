@@ -27,16 +27,31 @@ Stage 1, foundation. Three spikes run before any other work: see `docs/spikes`.
 
 ## Development
 
+Run `make setup` to check the machine, generate missing local secrets, and start
+the development stack. On first run, create your PostHog account at the printed
+local URL, then create a personal API key with `project:read`, `project:write`,
+`endpoint:read`, `endpoint:write`, `insight_variable:read` and
+`insight_variable:write` scopes.
+Put it in `.env` as
+`POSTHOG_PERSONAL_API_KEY` and run `make setup` again. Setup reuses the sole
+project on a new account, or the project named by `POSTHOG_PROJECT_NAME`, and
+stores its project key in `VITE_POSTHOG_API_KEY` for the app. If Hermes reports
+`openai-codex: logged out`, run
+`hermes auth add openai-codex` inside its container, finish sign-in and rerun
+setup.
+The PostHog page opens only in an interactive terminal; set
+`IMPLICITY_SETUP_NO_BROWSER=1` to keep it closed (also suppressed when `CI` is
+`1`, `true` or `yes`, case-insensitive).
+
 Install the pinned workspaces with `make install`; run `make lint` and `make test`.
 The TypeScript workspace uses the Node.js version in `.node-version` and npm;
 the Python workspace uses uv 0.11.25 with the version in `.python-version`.
 
-Copy `.env.example` to `.env` and replace the four secret placeholders with
-URI-safe values from `openssl rand -hex 32`, and the encryption salt with
-`openssl rand -hex 16`; retain the port settings unless they conflict with
-another local service. Start the containerized
-stack with `make up-development` or `make up-production`; each command waits up to
-30 minutes for healthy services. Check health with `docker compose --profile development ps`
+To start the stack without running setup, copy `.env.example` to `.env` and
+replace its secret placeholders with URI-safe values; retain the port settings
+unless they conflict with another local service. Start the containerized stack
+with `make up-development` or `make up-production`; each command waits up to
+45 minutes for healthy services. Check health with `docker compose --profile development ps`
 (or the `production` profile), then run `make down` to stop it. The Compose
 project is named `implicity-6deadshot9-local`.
 

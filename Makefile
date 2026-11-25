@@ -1,4 +1,4 @@
-.PHONY: install lint lint-python lint-typescript test test-python test-typescript contracts-generate contracts-check contracts-runtime-check registry-generate registry-check token-styles-check up-development up-production down compose-smoke
+.PHONY: install lint lint-python lint-typescript test test-python test-typescript contracts-generate contracts-check contracts-runtime-check registry-generate registry-check token-styles-check up-development up-production down compose-smoke setup
 
 PNPM = npx --yes pnpm@12.23.0
 NODE = node
@@ -45,10 +45,15 @@ test-typescript: lint-typescript
 	$(PNPM) test
 
 up-development:
-	docker compose --profile development up --build -d --wait --wait-timeout 1800
+	docker compose --profile development up --build -d --wait --wait-timeout 2700
 
 up-production:
-	docker compose --profile production up --build -d --wait --wait-timeout 1800
+	docker compose --profile production up --build -d --wait --wait-timeout 2700
+
+setup:
+	uv run --no-project python scripts/setup.py --check-memory
+	$(MAKE) install
+	uv run --locked python scripts/setup.py
 
 down:
 	docker compose --profile development --profile production down --remove-orphans

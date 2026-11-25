@@ -1,0 +1,103 @@
+{
+  "result": "pass",
+  "api_calls": [
+    {
+      "method": "POST",
+      "path": "/api/environments/1/endpoints/",
+      "payload": {
+        "name": "spike_daily_event_counts",
+        "description": "S3 placeholder query",
+        "query": {
+          "kind": "HogQLQuery",
+          "query": "SELECT toDate(timestamp) AS day, properties['kind'] AS kind, count() AS count FROM events WHERE event = 'spike_query_event' AND timestamp >= now() - INTERVAL 30 DAY GROUP BY day, kind ORDER BY day, kind"
+        },
+        "is_materialized": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/environments/1/endpoints/spike_daily_event_counts/run/",
+      "payload": {}
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects/1/query/",
+      "payload": {
+        "query": {
+          "kind": "HogQLQuery",
+          "query": "SELECT toDate(timestamp) AS day, properties['kind'] AS kind, count() AS count FROM events WHERE event = 'spike_query_event' AND timestamp >= now() - INTERVAL 30 DAY GROUP BY day, kind ORDER BY day, kind"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/environments/1/insight_variables/",
+      "payload": {
+        "name": "S3 Date From 2e3af81f",
+        "type": "String",
+        "default_value": "2026-10-25"
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/environments/1/endpoints/spike_daily_event_counts/",
+      "payload": {
+        "query": {
+          "kind": "HogQLQuery",
+          "query": "SELECT toDate(timestamp) AS day, properties['kind'] AS kind, count() AS count FROM events WHERE event = 'spike_query_event' AND timestamp >= toDateTime({variables.s3_date_from_2e3af81f}) GROUP BY day, kind ORDER BY day, kind",
+          "variables": {
+            "01a20d7b-f5ed-0000-d3e6-6e7403fb2342": {
+              "variableId": "01a20d7b-f5ed-0000-d3e6-6e7403fb2342",
+              "code_name": "s3_date_from_2e3af81f",
+              "value": "2026-10-25"
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/environments/1/endpoints/spike_daily_event_counts/run/",
+      "payload": {
+        "variables": {
+          "s3_date_from_2e3af81f": "2026-10-25"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/environments/1/endpoints/spike_daily_event_counts/"
+    }
+  ],
+  "create": {
+    "status": 201,
+    "ms": 63.81
+  },
+  "first_run": {
+    "status": 200,
+    "ms": 22.76
+  },
+  "regular_query": {
+    "status": 200,
+    "ms": 19.41
+  },
+  "results_match": true,
+  "update": {
+    "status": 200,
+    "ms": 84.19
+  },
+  "first_version": 1,
+  "new_version": 2,
+  "version_served": true,
+  "variable_run": {
+    "status": 200,
+    "ms": 76.75
+  },
+  "version_read_ms": 22.7,
+  "variable_create": {
+    "status": 201,
+    "ms": 23.0,
+    "id": "01a20d7b-f5ed-0000-d3e6-6e7403fb2342",
+    "code_name": "s3_date_from_2e3af81f"
+  }
+}
