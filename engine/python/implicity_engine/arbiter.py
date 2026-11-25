@@ -5,7 +5,6 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from threading import Lock
 from typing import Protocol, Sequence
-from uuid import UUID, uuid5
 
 from implicity_contracts.generated import (
     ChangePolicy,
@@ -19,9 +18,7 @@ from implicity_contracts.generated import (
     Type1,
 )
 
-from .evidence import DailyCount, Dimension, EventSource, evaluate_belief
-
-_NAMESPACE = UUID("d4f353f1-7632-4d63-aebc-02ab6135516b")
+from .evidence import Dimension, EventSource, evaluate_belief
 
 
 @dataclass(frozen=True)
@@ -39,7 +36,6 @@ class Verdict:
 
 @dataclass
 class StateData:
-    values: dict[tuple[str, str | None], str] = field(default_factory=dict)
     explicit: dict[tuple[str, str | None], str] = field(default_factory=dict)
     learned: dict[tuple[str, str | None], str] = field(default_factory=dict)
     undone: dict[tuple[str, str | None], set[str]] = field(default_factory=dict)
@@ -55,6 +51,11 @@ class StateData:
 class Store(Protocol):
     def read(self) -> tuple[int, StateData]: ...
     def commit(self, revision: int, state: StateData) -> bool: ...
+
+
+class IdSource(Protocol):
+    def proposal_id(self) -> ProposalId: ...
+    def decision_id(self) -> DecisionId: ...
 
 
 class InMemoryStore:
@@ -86,27 +87,20 @@ class Clock(Protocol):
 
 @dataclass(frozen=True)
 class State:
-    values: dict[str, str]
+    values: dict[str, str | None]
 
 
-class _GlobalEventSource:
+class _Stage1EventSource:
     def __init__(self, source: EventSource):
         self.source = source
 
     def daily_counts(self, feature, start, end, exclude_sessions=()):
-        rows = self.source.daily_counts(feature, start, end, exclude_sessions)
-        grouped: dict[date, DailyCount] = {}
-        for row in rows:
-            previous = grouped.get(row.day)
-            grouped[row.day] = DailyCount(
-                row.day,
-                "",
-                row.happened + (previous.happened if previous else 0),
-                row.could_have + (previous.could_have if previous else 0),
-                row.conversation_ids
-                | (previous.conversation_ids if previous else frozenset()),
-            )
-        return list(grouped.values())
+        kinds = {kind.value for kind in Kind}
+        return [
+            row
+            for row in self.source.daily_counts(feature, start, end, exclude_sessions)
+            if row.kind in kinds
+        ]
 
     def session_summaries(self, start, end, exclude_sessions=()):
         return self.source.session_summaries(start, end, exclude_sessions)
@@ -119,23 +113,25 @@ class Engine:
         source: EventSource,
         store: Store,
         clock: Clock,
+        ids: IdSource,
     ):
         self.dimensions = {dimension.id: dimension for dimension in dimensions}
         if len(self.dimensions) != len(dimensions):
             raise ValueError("dimension ids must be unique")
-        self.source, self.store, self.clock = source, store, clock
+        self.source, self.store, self.clock, self.ids = source, store, clock, ids
+        self._stage1_source = _Stage1EventSource(source)
 
-    def _source(self, dimension: Dimension) -> EventSource:
-        return (
-            _GlobalEventSource(self.source)
-            if dimension.scope == "global"
-            else self.source
-        )
+    def _read(self) -> tuple[int, StateData]:
+        revision, data = self.store.read()
+        return revision, deepcopy(data)
 
-    def _dim(self, dimension: str) -> Dimension:
-        if dimension not in self.dimensions:
-            raise ValueError(f"unknown dimension: {dimension}")
-        return self.dimensions[dimension]
+    @staticmethod
+    def _kind(kind: str | None) -> str | None:
+        return getattr(kind, "value", kind)
+
+    @staticmethod
+    def _stage1_kind(kind: str | None) -> bool:
+        return kind is None or kind in {item.value for item in Kind}
 
     def _now(self) -> datetime:
         now = self.clock.now()
@@ -143,18 +139,47 @@ class Engine:
             raise ValueError("clock must return a timezone-aware datetime")
         return now
 
+    def _known_kinds(
+        self, data: StateData, dimension: Dimension, day: date
+    ) -> set[str]:
+        known = {
+            kind
+            for mapping in (data.explicit, data.learned)
+            for dim, kind in mapping
+            if dim == dimension.id and kind is not None
+        }
+        start = day - timedelta(days=dimension.window_days - 1)
+        feature_ids = {dimension.occasion}
+        feature_ids.update(
+            feature for pair in dimension.evidence.values() for feature in pair.values()
+        )
+        known.update(
+            row.kind
+            for feature in feature_ids
+            for row in self._stage1_source.daily_counts(feature, start, day)
+        )
+        return known & {item.value for item in Kind}
+
+    def _refresh_inherited_cutoffs(
+        self,
+        data: StateData,
+        dimension: Dimension,
+        before: dict[str, str | None],
+        cutoff: date,
+    ) -> None:
+        for kind, old_value in before.items():
+            if old_value != self._effective(data, dimension, kind):
+                data.freshness[(dimension.id, kind)] = cutoff
+                data.active.pop((dimension.id, kind), None)
+
     @staticmethod
     def _slot(dimension: str, kind: str | None) -> tuple[str, str | None]:
         return dimension, kind
 
-    def _value(self, data: StateData, dimension: Dimension, kind: str | None) -> str:
-        key = self._slot(dimension.id, kind)
-        if key not in data.values:
-            data.values[key] = self._effective(data, dimension, kind)
-        return data.values[key]
-
     @staticmethod
-    def _effective(data: StateData, dimension: Dimension, kind: str | None) -> str:
+    def _effective(
+        data: StateData, dimension: Dimension, kind: str | None
+    ) -> str | None:
         key = (dimension.id, kind)
         if key in data.explicit:
             return data.explicit[key]
@@ -165,22 +190,24 @@ class Engine:
         if global_value is not None and global_value not in data.undone.get(key, set()):
             return global_value
         blocked = data.undone.get(key, set())
-        return next(
-            (value for value in dimension.values if value not in blocked),
-            dimension.default,
-        )
+        if dimension.default not in blocked:
+            return dimension.default
+        return next((value for value in dimension.values if value not in blocked), None)
 
     def state(self, kind: str | None = None) -> State:
-        _, data = self.store.read()
+        kind = self._kind(kind)
+        if not self._stage1_kind(kind):
+            raise ValueError("custom kinds are unavailable in Stage 1")
+        _, data = self._read()
         return State(
             {
-                d: self._value(data, definition, kind)
+                d: self._effective(data, definition, kind)
                 for d, definition in self.dimensions.items()
             }
         )
 
     def pending_notices(self) -> list[Decision]:
-        _, data = self.store.read()
+        _, data = self._read()
         active = set(data.active.values())
         return [
             deepcopy(d)
@@ -190,71 +217,42 @@ class Engine:
 
     def evaluate(self, session: SessionContext) -> list[Proposal]:
         now = self._now()
-        _, data = self.store.read()
+        _, data = self._read()
         proposals = []
         for dimension in self.dimensions.values():
             if dimension.change_policy != "automatic":
                 continue
-            start = now.date() - timedelta(days=dimension.window_days - 1)
-            feature_ids = {dimension.occasion}
-            feature_ids.update(
-                feature
-                for pair in dimension.evidence.values()
-                for feature in pair.values()
-            )
-            observed_kinds = {
-                row.kind
-                for feature in feature_ids
-                for row in self.source.daily_counts(feature, start, now.date())
-            }
-            kinds = {
-                kind
-                for dim, kind in data.values
-                if dim == dimension.id and kind is not None
-            }
-            kinds.update(observed_kinds)
-            kinds.update(
-                kind
-                for dim, kind in data.explicit
-                if dim == dimension.id and kind is not None
-            )
             if dimension.scope == "global":
-                kinds = set()
-            for kind in sorted(kinds or {None}):
+                evaluation_kinds = [None]
+            else:
+                evaluation_kinds = sorted(
+                    self._known_kinds(data, dimension, now.date())
+                )
+            for kind in evaluation_kinds:
                 key = self._slot(dimension.id, kind)
                 if key in data.explicit:
                     continue
-                current = self._value(data, dimension, kind)
+                current = self._effective(data, dimension, kind)
+                if current is None:
+                    continue
                 belief = evaluate_belief(
                     dimension,
-                    self._source(dimension),
+                    self._stage1_source,
                     current,
-                    kind or "",
+                    kind,
                     now.date(),
                     freshness_cutoff=data.freshness.get(key),
                     undone_values=data.undone.get(key, set()),
                 )
                 if belief.applied_value is None or belief.applied_value == current:
                     continue
-                proposal_seed = (
-                    dimension.id,
-                    kind,
-                    now.date(),
-                    belief.evidence.to_dict(),
-                )
-                proposal_id = ProposalId(
-                    root=f"prop_{uuid5(_NAMESPACE, str(proposal_seed))}"
-                )
-                try:
-                    contract_kind = Kind(kind)
-                except ValueError:
-                    contract_kind = kind
+                proposal_id = self.ids.proposal_id()
                 proposals.append(
                     Proposal(
                         id=proposal_id,
                         source=Source.rule,
                         dimension=dimension.id,
-                        kind=contract_kind,
+                        kind=Kind(kind) if kind is not None else None,
                         to=belief.applied_value,
                         reason=f"Rule evidence for {dimension.id}",
                         evidence={
@@ -280,12 +278,18 @@ class Engine:
         now = self._now()
         if proposal.source is Source.rule and not session.at_boundary:
             return Verdict("deferred", "session boundary required")
-        dimension = self._dim(proposal.dimension)
-        kind = getattr(proposal.kind, "value", proposal.kind)
+        dimension = self.dimensions.get(proposal.dimension)
+        if dimension is None:
+            return Verdict("rejected", "unknown dimension")
+        kind = self._kind(proposal.kind)
+        if not self._stage1_kind(kind):
+            return Verdict("rejected", "custom kinds are unavailable in Stage 1")
         proposal_evidence = proposal.evidence.model_dump(mode="json")
-        revision, data = self.store.read()
+        revision, data = self._read()
         key = self._slot(dimension.id, kind)
-        current = self._value(data, dimension, kind)
+        current = self._effective(data, dimension, kind)
+        if current is None:
+            return Verdict("rejected", "no available value")
         # Check 1: contract value, source/policy and scale adjacency.
         if proposal.to not in dimension.values:
             return Verdict("rejected", "invalid value")
@@ -293,6 +297,8 @@ class Engine:
         if automatic:
             if (dimension.scope == "global") != (kind is None):
                 return Verdict("rejected", "proposal scope mismatch")
+            if proposal.to == current:
+                return Verdict("rejected", "value is already effective")
             if (
                 proposal.change_policy is not ChangePolicy.automatic
                 or dimension.change_policy != "automatic"
@@ -328,9 +334,9 @@ class Engine:
             # Recompute from source so a hand-built proposal cannot bypass the gate.
             belief = evaluate_belief(
                 dimension,
-                self._source(dimension),
+                self._stage1_source,
                 current,
-                kind or "",
+                kind,
                 now.date(),
                 freshness_cutoff=data.freshness.get(key),
                 undone_values=data.undone.get(key, set()),
@@ -344,37 +350,63 @@ class Engine:
                 return Verdict("rejected", "gate not met")
             if now.date() in data.pace:
                 return Verdict("deferred", "daily pace used")
-        decision_id = f"dec_{uuid5(_NAMESPACE, str(proposal.id.root) + str(revision))}"
+        else:
+            return Verdict("rejected", "person changes use explicit settings")
+        inherited_before = (
+            {
+                kind: self._effective(data, dimension, kind)
+                for kind in self._known_kinds(data, dimension, now.date())
+            }
+            if dimension.scale and kind is None
+            else {}
+        )
+        decision_id = self.ids.decision_id()
+        decision_key = str(decision_id.root)
+        gate = belief.gates[judged]
+        decision_evidence = belief.evidence.to_dict()
+        decision_evidence.update(
+            occasions=gate.occasions,
+            conversations=gate.conversations,
+            days=gate.days,
+        )
         decision = Decision(
-            id=DecisionId(root=decision_id),
+            id=decision_id,
             proposal_id=proposal.id,
             dimension=dimension.id,
             kind=proposal.kind,
             **{"from": current},
             to=proposal.to,
             reason=proposal.reason,
-            evidence=proposal_evidence,
+            evidence=decision_evidence,
             dimension_version=dimension.version,
             status=Status.pending,
             created_at=now,
             shown_at=None,
         )
         updated = deepcopy(data)
-        updated.values[key] = proposal.to
         updated.learned[key] = proposal.to
-        updated.decisions[decision_id] = decision
-        updated.active[key] = decision_id
+        updated.decisions[decision_key] = decision
+        updated.active[key] = decision_key
         if automatic:
             updated.pace.add(now.date())
         if dimension.scale and proposal.to != current:
             updated.freshness[key] = now.date()
+            if kind is None:
+                self._refresh_inherited_cutoffs(
+                    updated, dimension, inherited_before, now.date()
+                )
         if not self.store.commit(revision, updated):
             return Verdict("deferred", "state changed")
         return Verdict("admitted", decision=decision)
 
     def acknowledge(self, decision_id: str) -> None:
-        revision, data = self.store.read()
+        revision, data = self._read()
         decision = self._decision(data, decision_id)
+        if (
+            decision.status is not Status.pending
+            or decision_id not in data.active.values()
+        ):
+            return
         data.acknowledged.add(decision_id)
         data.decisions[decision_id] = decision.model_copy(
             update={"status": Status.shown, "shown_at": self._now()}
@@ -383,10 +415,12 @@ class Engine:
             raise RuntimeError("state changed")
 
     def keep(self, decision_id: str) -> Verdict:
-        revision, data = self.store.read()
-        if decision_id not in data.acknowledged:
-            return Verdict("rejected", "decision not acknowledged")
+        revision, data = self._read()
         decision = self._decision(data, decision_id)
+        if decision.status is Status.kept:
+            return Verdict("admitted")
+        if decision.status is not Status.shown or decision_id not in data.acknowledged:
+            return Verdict("rejected", "decision not acknowledged or no longer active")
         data.decisions[decision_id] = decision.model_copy(
             update={"status": Status.kept}
         )
@@ -398,17 +432,34 @@ class Engine:
 
     def undo(self, decision_id: str) -> Verdict:
         now = self._now()
-        revision, data = self.store.read()
+        revision, data = self._read()
         decision = self._decision(data, decision_id)
         key = self._slot(
             decision.dimension, getattr(decision.kind, "value", decision.kind)
         )
         if data.active.get(key) != decision_id:
             return Verdict("rejected", "decision is not active")
-        dimension = self._dim(decision.dimension)
+        dimension = self.dimensions.get(decision.dimension)
+        if dimension is None:
+            return Verdict("rejected", "unknown dimension")
+        if (
+            decision.from_ not in dimension.values
+            or decision.to not in dimension.values
+        ):
+            return Verdict("rejected", "decision value is no longer valid")
+        kind = self._kind(decision.kind)
+        if not self._stage1_kind(kind):
+            return Verdict("rejected", "custom kinds are unavailable in Stage 1")
         if data.frozen or data.locks.get(dimension.area, False):
             return Verdict("rejected", "frozen or locked")
-        data.values[key] = decision.from_
+        inherited_before = (
+            {
+                inherited: self._effective(data, dimension, inherited)
+                for inherited in self._known_kinds(data, dimension, now.date())
+            }
+            if dimension.scale and kind is None
+            else {}
+        )
         data.explicit[key] = decision.from_
         data.undone.setdefault(key, set()).add(decision.to)
         data.decisions[decision_id] = decision.model_copy(
@@ -417,6 +468,10 @@ class Engine:
         data.active.pop(key, None)
         if dimension.scale and decision.from_ != decision.to:
             data.freshness[key] = now.date()
+            if kind is None:
+                self._refresh_inherited_cutoffs(
+                    data, dimension, inherited_before, now.date()
+                )
         return (
             Verdict("admitted")
             if self.store.commit(revision, data)
@@ -428,21 +483,39 @@ class Engine:
 
     def return_to_automatic(self, dimension: str, kind: str | None = None) -> Verdict:
         now = self._now()
-        definition = self._dim(dimension)
+        definition = self.dimensions.get(dimension)
+        if definition is None:
+            return Verdict("rejected", "unknown dimension")
+        kind = self._kind(kind)
+        if not self._stage1_kind(kind):
+            return Verdict("rejected", "custom kinds are unavailable in Stage 1")
         if definition.scope == "global" and kind is not None:
             return Verdict("rejected", "global dimension has no kind setting")
-        revision, data = self.store.read()
+        revision, data = self._read()
+        if data.frozen or data.locks.get(definition.area, False):
+            return Verdict("rejected", "frozen or locked")
         key = self._slot(dimension, kind)
-        old = self._value(data, definition, kind)
+        old = self._effective(data, definition, kind)
+        inherited_before = (
+            {
+                inherited: self._effective(data, definition, inherited)
+                for inherited in self._known_kinds(data, definition, now.date())
+            }
+            if definition.scale and kind is None
+            else {}
+        )
         data.explicit.pop(key, None)
         effective = self._effective(data, definition, kind)
-        data.values[key] = effective
+        if effective is None:
+            return Verdict("rejected", "no available value")
         if definition.scale and old != effective:
             data.freshness[key] = now.date()
         if old != effective:
             data.active.pop(key, None)
-        if data.frozen or data.locks.get(definition.area, False):
-            return Verdict("rejected", "frozen or locked")
+        if definition.scale and kind is None:
+            self._refresh_inherited_cutoffs(
+                data, definition, inherited_before, now.date()
+            )
         return (
             Verdict("admitted")
             if self.store.commit(revision, data)
@@ -451,20 +524,37 @@ class Engine:
 
     def _control(self, dimension: str, kind: str | None, value: str) -> Verdict:
         now = self._now()
-        definition = self._dim(dimension)
+        definition = self.dimensions.get(dimension)
+        if definition is None:
+            return Verdict("rejected", "unknown dimension")
+        kind = self._kind(kind)
+        if not self._stage1_kind(kind):
+            return Verdict("rejected", "custom kinds are unavailable in Stage 1")
         if definition.scope == "global" and kind is not None:
             return Verdict("rejected", "global dimension has no kind setting")
         if value not in definition.values:
             return Verdict("rejected", "invalid value")
-        revision, data = self.store.read()
+        revision, data = self._read()
         if data.frozen or data.locks.get(definition.area, False):
             return Verdict("rejected", "frozen or locked")
         key = self._slot(dimension, kind)
-        old = self._value(data, definition, kind)
-        data.values[key], data.explicit[key] = value, value
+        old = self._effective(data, definition, kind)
+        inherited_before = (
+            {
+                inherited: self._effective(data, definition, inherited)
+                for inherited in self._known_kinds(data, definition, now.date())
+            }
+            if definition.scale and kind is None
+            else {}
+        )
+        data.explicit[key] = value
         data.active.pop(key, None)
         if definition.scale and old != value:
             data.freshness[key] = now.date()
+        if definition.scale and kind is None:
+            self._refresh_inherited_cutoffs(
+                data, definition, inherited_before, now.date()
+            )
         return (
             Verdict("admitted")
             if self.store.commit(revision, data)
@@ -476,7 +566,7 @@ class Engine:
             raise ValueError(f"unknown lock area: {area}")
         if not isinstance(locked, bool):
             raise ValueError("locked must be a boolean")
-        revision, data = self.store.read()
+        revision, data = self._read()
         data.locks[area] = locked
         if not self.store.commit(revision, data):
             raise RuntimeError("state changed")
@@ -484,17 +574,17 @@ class Engine:
     def freeze(self, frozen: bool) -> None:
         if not isinstance(frozen, bool):
             raise ValueError("frozen must be a boolean")
-        revision, data = self.store.read()
+        revision, data = self._read()
         data.frozen = frozen
         if not self.store.commit(revision, data):
             raise RuntimeError("state changed")
 
     def freshness_cutoff(self, kind: str | None, dimension: str) -> date | None:
-        _, data = self.store.read()
+        _, data = self._read()
         return data.freshness.get(self._slot(dimension, kind))
 
     def undone_values(self, kind: str | None, dimension: str) -> set[str]:
-        _, data = self.store.read()
+        _, data = self._read()
         return set(data.undone.get(self._slot(dimension, kind), set()))
 
     @staticmethod
