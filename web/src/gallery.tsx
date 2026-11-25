@@ -28,10 +28,10 @@ export function Gallery({ registry = defaultRegistry }: { registry?: Registry })
     const element = root.current;
     if (!element) return;
     const scale = tokens.derivedTokens.textSize[textSize as keyof typeof tokens.derivedTokens.textSize];
-    const styles = { ...look[mode as "light" | "dark"], ...tokens.sharedPalette[mode as "light" | "dark"], ...tokens.derivedTokens.radius[look.radius as keyof typeof tokens.derivedTokens.radius], ...tokens.derivedTokens.density[density as keyof typeof tokens.derivedTokens.density], "--text-scale": scale["--text-scale"], ...scale.sizes, ...scale.headings };
+    const styles = { ...look[mode as "light" | "dark"], ...tokens.derivedTokens.radius[look.radius as keyof typeof tokens.derivedTokens.radius], ...tokens.derivedTokens.density[density as keyof typeof tokens.derivedTokens.density], "--text-scale": scale["--text-scale"], ...scale.sizes, ...scale.headings };
     for (const [name, value] of Object.entries(styles)) element.style.setProperty(name.startsWith("--") ? name : `--${name}`, value);
-    element.style.setProperty("--font-body", tokens.typefaces[look.typeface.body as keyof typeof tokens.typefaces].family);
-    element.style.setProperty("--font-heading", tokens.typefaces[look.typeface.heading as keyof typeof tokens.typefaces].family);
+    element.style.fontFamily = tokens.typefaces[look.typeface.body as keyof typeof tokens.typefaces].family;
+    for (const heading of element.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6")) heading.style.fontFamily = tokens.typefaces[look.typeface.heading as keyof typeof tokens.typefaces].family;
   }, [look, mode, density, textSize]);
 
   return <main ref={root} className="gallery" data-gallery-root data-look={look.id} data-mode={mode} data-density={density} data-text-size={textSize} data-device-class={deviceClass}>
@@ -46,12 +46,9 @@ export function Gallery({ registry = defaultRegistry }: { registry?: Registry })
     </header>
     <section className="gallery-grid" aria-label="Registered Skeletons">
       {[...registry.entries.values()].flatMap((entry) => entry.meta.galleryStates.map((state) => {
-        const parsed = entry.propsSchema.safeParse({});
-        return <article className="gallery-card" data-skeleton={entry.id} data-gallery-state={state} key={`${entry.id}-${state}`}>
-          <header><h2>{entry.id}</h2><span>{state}</span></header>
-          <div className="gallery-preview">{parsed.success
-            ? <entry.Component props={parsed.data} slots={{}} />
-            : <p role="note">This Skeleton requires props to preview.</p>}</div>
+        return <article className="gallery-card" data-skeleton={entry.id} data-gallery-state={state.id} key={`${entry.id}-${state.id}`}>
+          <header><h2>{entry.id}</h2><span>{state.id}</span></header>
+          <div className="gallery-preview"><entry.Component props={state.props} slots={state.slots ?? {}} /></div>
         </article>;
       }))}
     </section>

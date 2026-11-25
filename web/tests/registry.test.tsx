@@ -172,7 +172,7 @@ describe("registry and renderer", () => {
   });
 
   it("registers and renders a leaf with no slots", async () => {
-    const leafMeta = { ...meta, slots: [] as const };
+    const leafMeta = { ...meta, slots: [] as const, galleryStates: meta.galleryStates.map(({ id, props }) => ({ id, props })) };
     const definition = defineSkeletonDefinition({
       id: "ReviewLeaf",
       props: z.object({ count: z.number() }).strict(),
@@ -209,7 +209,10 @@ describe("registry and renderer", () => {
     const weakSlotEntry = defineSkeleton(weakSlotDefinition, ReviewPanel);
     expect(() => createRegistry([weakSlotEntry], 1)).toThrow(/T3 child ids/);
     expect(() => createRegistry([{ ...ReviewPanelEntry, meta: { ...meta, defaultStates: ["bad state"] } }], 1)).toThrow(/default state id/);
-    expect(() => createRegistry([{ ...ReviewPanelEntry, meta: { ...meta, galleryStates: ["bad state"] } }], 1)).toThrow(/gallery state id/);
+    expect(() => createRegistry([{ ...ReviewPanelEntry, meta: { ...meta, galleryStates: [{ id: "bad state", props: { count: 1 }, slots: { main: [] } }] } } as never], 1)).toThrow(/ReviewPanel.*gallery state id/);
+    expect(() => createRegistry([{ ...ReviewPanelEntry, meta: { ...meta, galleryStates: [{ id: "plain", slots: { main: [] } }] } } as never], 1)).toThrow(/ReviewPanel.*plain.*example props/);
+    expect(() => createRegistry([{ ...ReviewPanelEntry, meta: { ...meta, galleryStates: [{ id: "plain", props: { count: "bad" }, slots: { main: [] } }] } } as never], 1)).toThrow(/ReviewPanel.*plain.*props/);
+    expect(() => createRegistry([{ ...ReviewPanelEntry, meta: { ...meta, galleryStates: [{ id: "plain", props: { count: 1 } }] } } as never], 1)).toThrow(/ReviewPanel.*plain.*props and slots schema/);
     expect(() => createRegistry([{ ...ReviewPanelEntry, id: "bad id" }], 1)).toThrow(/component id/);
   });
 });

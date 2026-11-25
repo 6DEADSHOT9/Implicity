@@ -23,9 +23,11 @@ describe("gallery", () => {
     const { container, root } = await renderGallery(createRegistry(entries, 1));
     for (const entry of entries) {
       for (const state of entry.meta.galleryStates) {
-        expect(container.querySelector(`[data-skeleton='${entry.id}'][data-gallery-state='${state}']`)).not.toBeNull();
+        expect(container.querySelector(`[data-skeleton='${entry.id}'][data-gallery-state='${state.id}']`)).not.toBeNull();
       }
     }
+    expect(container.querySelector("[data-skeleton='ReviewPanel'][data-gallery-state='plain']")?.textContent).toContain("1one");
+    expect(container.querySelector("[data-skeleton='ReviewPanel'][data-gallery-state='busy']")?.textContent).toContain("4twothree");
     await act(async () => root.unmount());
   });
 

@@ -52,6 +52,16 @@ export function validateRegistryDefinitions(entries: readonly SkeletonDefinition
     if (entry.events.some((event) => !eventNames.has(event))) throw new Error(`${entry.id} declares an event not in T3`);
     if (!entry.events.includes("component_shown") || !entry.events.includes("component_seen")) throw new Error(`${entry.id} must declare shown and seen events`);
 
+    const rawStates = (entry.meta as { galleryStates?: unknown } | undefined)?.galleryStates;
+    if (Array.isArray(rawStates)) {
+      for (const state of rawStates) {
+        const stateId = state && typeof state === "object" && "id" in state && typeof state.id === "string" ? state.id : "(unknown)";
+        if (!state || typeof state !== "object" || !("props" in state) || !state.props || typeof state.props !== "object" || Array.isArray(state.props)) {
+          throw new Error(`${entry.id} gallery state ${stateId} is missing example props`);
+        }
+      }
+    }
+
     const meta = skeletonMetaSchema.safeParse(entry.meta);
     if (!meta.success) throw new Error(`${entry.id} metadata is incomplete: ${meta.error.issues.map((issue) => issue.path.join(".")).join(", ")}`);
     const declaredSlots = Object.keys(entry.slotsSchema.shape).sort();
@@ -63,8 +73,13 @@ export function validateRegistryDefinitions(entries: readonly SkeletonDefinition
       if (entry.slotsSchema.safeParse(invalidChildren).success) throw new Error(`${entry.id} slot schema does not enforce T3 child ids`);
     }
     if (meta.data.defaultStates.some((state) => !stateIdValid(state))) throw new Error(`${entry.id} declares a default state id not in T3`);
-    if (meta.data.galleryStates.some((state) => !stateIdValid(state))) throw new Error(`${entry.id} declares a gallery state id not in T3`);
-    if (meta.data.defaultStates.some((state) => !meta.data.galleryStates.includes(state))) throw new Error(`${entry.id} gallery states must include every default state`);
+    if (meta.data.galleryStates.some(({ id }) => !stateIdValid(id))) throw new Error(`${entry.id} declares a gallery state id not in T3`);
+    if (meta.data.defaultStates.some((state) => !meta.data.galleryStates.some(({ id }) => id === state))) throw new Error(`${entry.id} gallery states must include every default state`);
+    for (const state of meta.data.galleryStates) {
+      if (!entry.schema.safeParse({ props: state.props, slots: state.slots ?? {} }).success) {
+        throw new Error(`${entry.id} gallery state ${state.id} example does not match its props and slots schema`);
+      }
+    }
     if (meta.data.commands.some((command) => command.startsWith("cmd_"))) throw new Error(`${entry.id} Command uses reserved cmd_ prefix`);
     if (meta.data.commands.some((command) => !commandValid(command))) throw new Error(`${entry.id} declares a Command not in T3`);
   }

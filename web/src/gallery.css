@@ -2,7 +2,6 @@
   padding: var(--space-6);
   color: var(--foreground);
   background: var(--background);
-  font-family: var(--font-body);
   font-size: var(--text-base);
 }
 
@@ -11,7 +10,7 @@
 .gallery-controls { flex-wrap: wrap; }
 .gallery-control { display: flex; flex-direction: column; gap: var(--space-1); color: var(--muted-foreground); }
 .gallery-control select { min-height: var(--control-height); padding: var(--space-2); color: var(--foreground); background: var(--card); border-radius: var(--radius); }
-.gallery h1, .gallery h2 { color: var(--foreground); font-family: var(--font-heading); }
+.gallery h1, .gallery h2 { color: var(--foreground); }
 .gallery h1 { font-size: var(--heading-1); }
 .gallery h2 { font-size: var(--heading-4); }
 .gallery-kicker { color: var(--muted-foreground); }
