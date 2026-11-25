@@ -40,7 +40,7 @@ def total_memory() -> int:
 
 def _assignment(line: str):
     match = re.fullmatch(
-        r"\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*", line
+        r"\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*[:=]\s*(.*?)\s*", line
     )
     if not match:
         return None
@@ -78,13 +78,21 @@ def _expand(value: str, lookup, depth: int = 0) -> str:
         expression = match[1] or match[2]
         if expression is None:
             return lookup(match[3]) or ""
-        token = re.fullmatch(r"([A-Za-z_][A-Za-z0-9_]*)(?:(:-|-)(.*))?", expression)
+        token = re.fullmatch(
+            r"([A-Za-z_][A-Za-z0-9_]*)(?:(:-|-|:\+|\+)(.*))?", expression
+        )
         if not token:
             return match[0]
         name, operator, default = token.groups()
         current = lookup(name)
         if operator == ":-" and not current or operator == "-" and current is None:
             current = _expand(default, lookup, depth + 1)
+        elif operator in (":+", "+"):
+            current = (
+                _expand(default, lookup, depth + 1)
+                if current is not None and (operator == "+" or current)
+                else ""
+            )
         return current or "" if current is not None else ""
 
     value = re.sub(r"\$\$|\$\{([^}]+)\}|\$([A-Za-z_][A-Za-z0-9_]*)", replace, value)
@@ -150,7 +158,7 @@ def set_env_value(path: Path, key: str, value: str) -> None:
     found = False
     for index in range(len(lines) - 1, -1, -1):
         line = lines[index]
-        if re.fullmatch(rf"\s*(?:export\s+)?{re.escape(key)}\s*=.*", line):
+        if re.fullmatch(rf"\s*(?:export\s+)?{re.escape(key)}\s*[:=].*", line):
             lines[index] = f"{key}={value}"
             found = True
             break
@@ -184,7 +192,7 @@ def ensure_env(
                     i
                     for i in range(len(lines) - 1, -1, -1)
                     if re.fullmatch(
-                        rf"\s*(?:export\s+)?{re.escape(key)}\s*=.*", lines[i]
+                        rf"\s*(?:export\s+)?{re.escape(key)}\s*[:=].*", lines[i]
                     )
                 ),
                 None,
@@ -298,8 +306,6 @@ def _setup() -> int:
             file=sys.stderr,
         )
         return 1
-    print("Memory: OK (at least 16 GB)")
-
     env_path = ROOT / ".env"
     env_existed = env_path.exists()
     old_env = env_path.read_text() if env_existed else ""

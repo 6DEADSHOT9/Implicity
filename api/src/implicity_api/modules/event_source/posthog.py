@@ -26,7 +26,10 @@ class PostHog:
         except urllib.error.HTTPError as error:
             if error.code == 404 and method == "GET":
                 return None
-            detail = error.read().decode(errors="replace")[:500]
+            try:
+                detail = error.read().decode(errors="replace")[:500]
+            except OSError:
+                detail = ""
             raise RuntimeError(
                 f"PostHog API {method} {path} returned HTTP {error.code}: {detail}"
             ) from error
@@ -84,6 +87,12 @@ def ensure_project(client, name: str, allow_sole: bool = True) -> tuple[dict, bo
         return projects[0], False
     if not projects:
         return client.create_project(name), True
+    if not allow_sole:
+        available = ", ".join(item["name"] for item in projects)
+        raise RuntimeError(
+            f"PostHog project {name!r} was not found. Existing projects: {available}. "
+            "Create it in PostHog or set POSTHOG_PROJECT_NAME to an existing project."
+        )
     raise RuntimeError(
         "Multiple PostHog projects found; set POSTHOG_PROJECT_NAME in .env"
     )

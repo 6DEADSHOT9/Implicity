@@ -1,10 +1,12 @@
 import json
 import subprocess
 import threading
+import urllib.error
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from unittest.mock import Mock
 
+import implicity_api.modules.event_source.posthog as posthog_api
 import pytest
 from implicity_api import setup
 from implicity_api.modules.event_source.posthog import PostHog, register_features
@@ -13,6 +15,12 @@ from implicity_api.modules.event_source.posthog import PostHog, register_feature
 def test_memory_requires_at_least_16_gib():
     assert setup.memory_sufficient(16 * 1024**3)
     assert not setup.memory_sufficient(16 * 1024**3 - 1)
+
+
+def test_memory_preflight_reports_success_once(monkeypatch, capsys):
+    monkeypatch.setattr(setup, "total_memory", lambda: 16 * 1024**3)
+    assert setup.memory_check() == 0
+    assert capsys.readouterr().out.count("Memory: OK") == 1
 
 
 def test_compose_export_and_spaced_assignment_are_preserved(tmp_path):
@@ -24,13 +32,40 @@ def test_compose_export_and_spaced_assignment_are_preserved(tmp_path):
     assert env.read_text() == 'export VITE_POSTHOG_API_KEY = "keep-me"\n'
 
 
+def test_compose_colon_assignments_are_resolved_and_filled_in_place(tmp_path):
+    env = tmp_path / ".env"
+    example = tmp_path / ".env.example"
+    env.write_text("export VITE_POSTHOG_API_KEY : phc_existing\nPOSTHOG_PROJECT_ID: \n")
+    example.write_text("VITE_POSTHOG_API_KEY=\nPOSTHOG_PROJECT_ID=\n")
+    assert setup.ensure_env(env, example) == {
+        "VITE_POSTHOG_API_KEY": "phc_existing",
+        "POSTHOG_PROJECT_ID": "",
+    }
+    setup.set_env_value(env, "POSTHOG_PROJECT_ID", "17")
+    assert env.read_text() == (
+        "export VITE_POSTHOG_API_KEY : phc_existing\nPOSTHOG_PROJECT_ID=17\n"
+    )
+
+
+def test_compose_colon_assignment_for_populated_key_is_not_duplicated(tmp_path):
+    env = tmp_path / ".env"
+    example = tmp_path / ".env.example"
+    env.write_text("VITE_POSTHOG_API_KEY: phc_existing\n")
+    example.write_text("VITE_POSTHOG_API_KEY=\n")
+    assert setup.ensure_env(env, example) == {"VITE_POSTHOG_API_KEY": "phc_existing"}
+    assert env.read_text() == "VITE_POSTHOG_API_KEY: phc_existing\n"
+
+
 def test_compose_dotenv_interpolation_quotes_comments_and_shell_precedence(
     tmp_path, monkeypatch
 ):
+    for key in ("PREFIX", "EMPTY", "ALT_EMPTY", "ALT_SET"):
+        monkeypatch.delenv(key, raising=False)
     env = tmp_path / ".env"
     env.write_text(
         'PREFIX=phc\nexport QUOTED = "${PREFIX}_value" # note\n'
         "SINGLE='${PREFIX}_literal' # note\nINLINE=phc_key # note\nHASH=phc#fragment\n"
+        "EMPTY=\nALT_EMPTY=${EMPTY:+phc_alt}\nALT_SET=${PREFIX:+phc_alt}\n"
     )
     _, values = setup._env_lines(env)
     assert values == {
@@ -39,6 +74,9 @@ def test_compose_dotenv_interpolation_quotes_comments_and_shell_precedence(
         "SINGLE": "${PREFIX}_literal",
         "INLINE": "phc_key",
         "HASH": "phc#fragment",
+        "EMPTY": "",
+        "ALT_EMPTY": "",
+        "ALT_SET": "phc_alt",
     }
     monkeypatch.setenv("QUOTED", "shell-value")
     assert setup._env_lines(env)[1]["QUOTED"] == "shell-value"
@@ -145,6 +183,25 @@ def test_event_source_registers_s3_hogql_shape_and_reconciles_idempotently(tmp_p
     assert len(query["variables"]) == 3
     assert register_features(client, 17, feature_dir) == (0, 1)
     assert len(client.writes) == 1
+    binding = next(iter(client.saved["variables"].values()))
+    binding["value"] = "drifted"
+    assert register_features(client, 17, feature_dir) == (1, 0)
+    assert client.writes[-1][0] == "PATCH"
+    assert register_features(client, 17, feature_dir) == (0, 1)
+    assert len(client.writes) == 2
+
+
+def test_named_missing_project_reports_available_projects():
+    class Client:
+        def list_projects(self):
+            return [{"id": 1, "name": "Default project"}]
+
+    with pytest.raises(
+        RuntimeError, match="PostHog project 'Implicity' was not found"
+    ) as error:
+        setup.ensure_project(Client(), "Implicity", allow_sole=False)
+    assert "Existing projects: Default project" in str(error.value)
+    assert "Create it in PostHog" in str(error.value)
 
 
 def test_loader_rejects_invalid_feature_contract(tmp_path):
@@ -168,13 +225,18 @@ def test_loader_rejects_invalid_feature_contract(tmp_path):
 
 def test_posthog_only_treats_lookup_404_as_absence():
     class Handler(BaseHTTPRequestHandler):
-        def do_GET(self):
+        def reply(self):
+            body = b'{"detail":"missing"}'
             self.send_response(404)
+            self.send_header("Content-Length", str(len(body)))
             self.end_headers()
+            self.wfile.write(body)
+
+        def do_GET(self):
+            self.reply()
 
         def do_POST(self):
-            self.send_response(404)
-            self.end_headers()
+            self.reply()
 
         def log_message(self, *args):
             pass
@@ -197,6 +259,40 @@ def test_posthog_only_treats_lookup_404_as_absence():
         server.shutdown()
         thread.join()
         server.server_close()
+
+
+def test_unreadable_posthog_error_body_is_handled_by_setup(
+    tmp_path, monkeypatch, capsys
+):
+    class BrokenBody:
+        def read(self, *args):
+            raise ConnectionResetError("connection closed while reading body")
+
+        def close(self):
+            pass
+
+    def failed_request(request, timeout):
+        raise urllib.error.HTTPError(
+            request.full_url, 500, "server error", {}, BrokenBody()
+        )
+
+    monkeypatch.setattr(posthog_api.urllib.request, "urlopen", failed_request)
+    monkeypatch.setattr(setup, "ROOT", tmp_path)
+    monkeypatch.setattr(setup, "total_memory", lambda: 16 * 1024**3)
+    monkeypatch.setattr(setup, "_healthy_stack", lambda: False)
+    monkeypatch.setattr(setup, "_container_ids", lambda: ())
+    (tmp_path / ".env.example").write_text("POSTHOG_PERSONAL_API_KEY=personal\n")
+    (tmp_path / ".env").write_text("POSTHOG_PERSONAL_API_KEY=personal\n")
+    monkeypatch.setattr(
+        setup,
+        "_run",
+        lambda args, **kwargs: subprocess.CompletedProcess(args, 0, "", ""),
+    )
+
+    assert setup.main() == 1
+    error = capsys.readouterr().err
+    assert "PostHog API GET /api/projects/ returned HTTP 500" in error
+    assert "Traceback" not in error
 
 
 def test_hermes_requires_positive_status_and_recognizes_logged_out():
@@ -420,11 +516,17 @@ def test_setup_entry_drives_http_and_docker_boundaries_and_is_idempotent(
         monkeypatch.setattr(setup, "total_memory", lambda: 16 * 1024**3)
         docker_calls = []
         service_ids = ["api-id", "web-id"]
+        up_calls = 0
 
         def docker(args, **kwargs):
+            nonlocal up_calls
             docker_calls.append(list(args))
             output = ""
-            if args[:3] == ["docker", "compose", "--profile"] and "config" in args:
+            if args == ["make", "up-development"]:
+                up_calls += 1
+                if up_calls == 2:
+                    service_ids[:] = ["rotated-api", "rotated-web"]
+            elif args[:3] == ["docker", "compose", "--profile"] and "config" in args:
                 output = json.dumps(
                     {"services": {"api-development": {}, "web-development": {}}}
                 )
@@ -449,6 +551,8 @@ def test_setup_entry_drives_http_and_docker_boundaries_and_is_idempotent(
         monkeypatch.setenv("IMPLICITY_SETUP_NO_BROWSER", "1")
         monkeypatch.delenv("CI", raising=False)
         assert setup.main() == 0
+        first_output = capsys.readouterr().out
+        assert "Compose: already healthy (no changes)" in first_output
         first_http = state["order"].index("http")
         assert (
             state["order"].index("migration")
@@ -489,8 +593,11 @@ def test_setup_entry_drives_http_and_docker_boundaries_and_is_idempotent(
         )
         assert set(create_response) == {"name", "query"}
         assert setup.main() == 0
+        changed_ids_output = capsys.readouterr().out
+        assert "Compose: started or updated; healthy" in changed_ids_output
+        assert "Compose: already healthy (no changes)" not in changed_ids_output
         assert env.read_bytes() == first_env
-        assert setup._container_ids() == first_ids
+        assert setup._container_ids() == ("rotated-api", "rotated-web")
         assert not any("--force-recreate" in call for call in docker_calls)
         assert docker_calls.count(["make", "up-development"]) == 2
         assert not any(
@@ -511,7 +618,9 @@ def test_setup_entry_drives_http_and_docker_boundaries_and_is_idempotent(
             )
             == 3
         )
-        assert "Compose: already healthy (no changes)" in capsys.readouterr().out
+        assert setup.main() == 0
+        unchanged_output = capsys.readouterr().out
+        assert "Compose: already healthy (no changes)" in unchanged_output
         auth["output"] = "openai-codex: logged out (No Codex credentials stored.)"
         assert setup.main() == 2
         logged_out = capsys.readouterr().out
