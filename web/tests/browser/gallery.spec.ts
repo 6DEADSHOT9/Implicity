@@ -387,7 +387,7 @@ test("production build includes and serves the preview page", async ({ page }) =
   const port = Number((globalThis as typeof globalThis & { process?: { env?: Record<string, string | undefined> } }).process?.env?.GALLERY_PREVIEW_PORT ?? 4174);
   const response = await page.goto(`http://127.0.0.1:${port}/preview.html?entry=missing&state=plain`);
   expect(response?.status()).toBe(200);
-  await page.evaluate(() => window.postMessage({ styles: "", texture: "none" }, location.origin));
+  await page.evaluate(() => window.postMessage({ styles: "", texture: "none", mode: "light" }, location.origin));
   await expect(page.getByRole("alert")).toHaveText("Preview unavailable");
 });
 
