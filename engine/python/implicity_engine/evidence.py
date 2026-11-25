@@ -179,7 +179,7 @@ class Gate:
     def check(
         self,
         value: str,
-        kind: str,
+        kind: str | None,
         evaluation_day: date,
         window_days: int,
         half_life_days: float,
@@ -191,7 +191,7 @@ class Gate:
         rows = [
             r
             for r in evidence.get(occasion, [])
-            if r.kind == kind and start <= r.day <= evaluation_day
+            if (kind is None or r.kind == kind) and start <= r.day <= evaluation_day
         ]
         if any(
             not isinstance(row.happened, int)
@@ -430,7 +430,7 @@ def evaluate_belief(
     dimension: Dimension,
     source: EventSource,
     current: str,
-    kind: str,
+    kind: str | None,
     evaluation_day: date,
     exclude_sessions: Sequence[str] = (),
     freshness_cutoff: date | None = None,

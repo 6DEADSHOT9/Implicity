@@ -242,6 +242,7 @@ source = { editable = "api" }
 dependencies = [
     { name = "alembic" },
     { name = "fastapi" },
+    { name = "httpx" },
     { name = "implicity-contracts" },
     { name = "sqlalchemy" },
     { name = "uvicorn" },
@@ -251,6 +252,7 @@ dependencies = [
 requires-dist = [
     { name = "alembic", specifier = "==1.17.2" },
     { name = "fastapi", specifier = "==0.121.3" },
+    { name = "httpx", specifier = "==0.28.1" },
     { name = "implicity-contracts", editable = "contracts/python" },
     { name = "sqlalchemy", specifier = "==2.0.44" },
     { name = "uvicorn", specifier = "==0.38.0" },

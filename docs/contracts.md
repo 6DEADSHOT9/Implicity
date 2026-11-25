@@ -407,7 +407,7 @@ web/src/registry/DataTable/
   DataTable.test.tsx
 ```
 
-`meta.ts` also lists the states the gallery must show, such as empty, loading, long content and error. The registry is the list of these folders, and adding one raises the registry version.
+`meta.ts` also lists the states the gallery must show, such as empty, loading, long content and error. Each gallery state carries the example props, and slot content where the skeleton has slots, that put the skeleton in that state. Registry validation parses each state's example with the entry's `schema.ts` and fails, naming the folder and the state, when one is missing or invalid. The ticket that adds a skeleton supplies its examples, and the gallery renders each state from its example as given. The registry is the list of these folders, and adding one raises the registry version.
 
 An entry is exactly these files: the component is the named export matching its folder, and `schema.ts`, `events.ts` and `meta.ts` provide the rest. Nothing else is exported for the registry. Generation and loading both fail, naming the folder, when a file or its expected export is missing.
 
@@ -441,13 +441,36 @@ One file in the backend talks to Hermes, and Hermes reaches Implicity only throu
 ```python
 class Agent(Protocol):
     def start_conversation(self, conversation_id: str, context: PromptContext) -> None: ...
-    def send(self, conversation_id: str, message: UserMessage) -> AsyncIterator[StreamPart]: ...
+    def send(self, conversation_id: str, message: UserMessage, turn_type: TurnType = "chat") -> AsyncIterator[StreamPart]: ...
     def cancel(self, conversation_id: str) -> None: ...
-    def run_skill(self, skill: str, inputs: dict) -> SkillResult: ...   # its own short session
+    async def run_skill(self, skill: str, inputs: dict) -> SkillResult: ...   # its own short session, logged as background
     def quota(self) -> Quota: ...
+    def quota_settings(self) -> QuotaSettings: ...
+    def set_quota_settings(self, settings: QuotaSettings) -> QuotaSettings: ...
+    def may_start_background_work(self) -> bool: ...
 ```
 
-`PromptContext` is built by the app and holds only what may enter a prompt: memory, explicit preferences, the four answer-style settings as one sentence, a deleted draft for that turn, and plain instructions derived from the person's current state. `StreamPart` is relayed to the browser in the format the AI SDK chat hook expects.
+`PromptContext` is built by the app and holds only what may enter a prompt: memory, explicit preferences, the four answer-style settings as one sentence, a deleted draft for that turn, and plain instructions derived from the person's current state. `StreamPart` is relayed to the browser in the format the AI SDK chat hook expects. `PromptContext`, `UserMessage`, `SkillResult`, `Quota` and `QuotaSettings` are typed values, not plain strings or dicts; `TurnType` is `chat` or `background`. A conversation's instructions from `start_conversation` are stored in `agent_sessions` with its Hermes session, so they survive a restart. A second `send` on a conversation while one is streaming is refused, so `cancel` always reaches the turn in progress.
+
+**Quota.** `quota()` reads the subscription's usage windows from Hermes and never names a provider (ADR 0023).
+
+```text
+Quota {
+  state: ok | near_limit | limited | unknown
+  windows: [{ label, used_percent, resets_at }]   // as Hermes reports them, account-scoped windows only
+  resets_at: RFC 3339 | null                      // when limited: the latest reset among the full windows, or Hermes's limit reset
+  checked_at: RFC 3339
+}
+```
+
+- **Source.** Hermes's `GET /api/model/options`, on the same port and API key as `/v1/responses`, from the provider row marked `is_current`: its `usage.windows` (each `label`, `used_percent` as percent used, `resets_at`, `scope`) and its `limit` (`scope`, `resets_at`) when present. Windows and limits whose `scope` is not `account` are ignored: a limit on one model does not stop the account.
+- **State.** `limited` when Hermes reports an account-scoped `limit` or any window is at 100%. `near_limit` when any window is at or above the person's near-limit threshold (default 90%). `unknown` when there are no windows, the read failed, or the last good read is more than 15 minutes old. Otherwise `ok`. A failed read is `unknown`, never an error.
+- **When it is read.** On demand (the sidebar footer and Settings) and after each turn ends, at most once a minute; the result is cached. The first read after Hermes starts is usually `unknown`, because Hermes fills its usage cache in the background.
+- **Background work** starts only when `state` is `ok` and today's background tokens in `quota_log` are under the person's daily cap (default 200,000 tokens). The person's chat is never blocked by our code.
+- **A failed turn.** Hermes ends a failed turn with a generic `response.failed`, so the agent module rereads `Quota` at once; when it is `limited`, the person sees that the limit is reached and when it resets, and otherwise the normal error.
+- **Limits the person sets.** The daily background cap and the near-limit threshold are settings in Settings, so a person with a larger plan can raise them. They are stored in the agent module's `quota_settings`, are not dimensions, and send no event.
+- **`quota_log`** holds one row per Hermes turn: time, `chat` or `background`, conversation id, and the input, output and total tokens from the turn's final event that carries usage (`response.completed`, `response.incomplete` or `response.failed`). A cancelled turn that Hermes finishes after the relay disconnects (ADR 0019) is not seen and not logged; only background turns count toward the daily cap, and those are rarely cancelled. It stores no `Quota` snapshots.
+- **Shape test.** A contract test against a fake Hermes pins the fields read above; the Hermes recheck on every upgrade covers the real route, which is a dashboard route rather than Hermes's documented API.
 
 **MCP tools.** Every tool validates its input against the contracts before doing anything.
 
@@ -474,7 +497,7 @@ Each module owns its tables in SQLite, and no module reads another's.
 | Engine | `decisions`, `explicit_settings`, `locks`, `excluded_sessions`, `layout_revisions` | Beliefs are not stored; they are recomputed |
 | Memory | `memory_items`, `projects`, `drafts`, `inferences`, `typing_profiles`, `guest_patterns` | Drafts expire after 30 days, states after 1 day, patterns after 30 |
 | App | `conversations`, `messages`, `message_specs`, `kinds`, `looks`, `widgets`, `schedules`, `workflows`, `files` | `files` holds metadata; bodies live on a local volume |
-| Agent | `agent_sessions`, `quota_log` | Maps conversations to Hermes sessions |
+| Agent | `agent_sessions`, `quota_log`, `quota_settings` | Maps conversations to Hermes sessions with their instructions; logs tokens per turn; holds the person's quota limits |
 
 **Rules.**
 

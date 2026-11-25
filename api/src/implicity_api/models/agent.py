@@ -15,7 +15,12 @@ class OwnedRow:
 class AgentSession(OwnedRow, Base):
     __tablename__ = "agent_sessions"
     session_id: Mapped[str] = mapped_column(String, nullable=False)
+    instructions: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
 
 class QuotaLog(OwnedRow, Base):
     __tablename__ = "quota_log"
+
+
+class QuotaSettings(OwnedRow, Base):
+    __tablename__ = "quota_settings"
