@@ -55,6 +55,12 @@ function Probe({ slot, tag: Tag = "section", onVisible }: ProbeProps) {
   return <Tag ref={ref}>probe</Tag>;
 }
 
+function ActionProbe({ captureRef, onVisible }: { captureRef: (ref: ReturnType<typeof useSeen>) => void; onVisible: () => void }) {
+  const ref = useSeen({ component: "ReviewPanel", defaultState: "plain", onVisible });
+  captureRef(ref);
+  return <section ref={ref}>action probe</section>;
+}
+
 function setup(slot?: string) {
   const capture = recordingCapture();
   const view = render(<CaptureProvider sink={capture.sink}><Probe slot={slot} /></CaptureProvider>);
@@ -105,6 +111,22 @@ describe("useSeen", () => {
     expect(onVisible).not.toHaveBeenCalled();
     setVisible(view.getByText("probe"), true);
     await passTime(3000);
+    expect(onVisible).toHaveBeenCalledOnce();
+  });
+
+  it("rechecks native visibility synchronously before reporting an action", () => {
+    const onVisible = vi.fn();
+    let reportVisible!: ReturnType<typeof useSeen>["reportVisible"];
+    const view = render(<CaptureProvider sink={() => undefined}><ActionProbe captureRef={(ref) => { reportVisible = ref.reportVisible; }} onVisible={onVisible} /></CaptureProvider>);
+    const element = view.getByText("action probe");
+    const checkVisibility = setVisible(element, false);
+    act(() => TestIntersectionObserver.instances.at(-1)!.setRatio(1));
+    expect(reportVisible()).toBe(false);
+    expect(onVisible).not.toHaveBeenCalled();
+    checkVisibility.mockReturnValue(true);
+    expect(reportVisible()).toBe(true);
+    expect(onVisible).toHaveBeenCalledOnce();
+    expect(reportVisible()).toBe(true);
     expect(onVisible).toHaveBeenCalledOnce();
   });
 

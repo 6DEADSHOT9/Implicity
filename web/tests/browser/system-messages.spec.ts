@@ -169,6 +169,30 @@ test("ChangeNotice shown events follow native disclosure and completed opacity r
   await expect.poll(async () => (await events()).some((event) => event.name === "change_shown" && event.decision_id === "dec_423e4567-e89b-42d3-a456-426614174000")).toBe(true);
 });
 
+test("Keep reports an opacity-revealed toast shown before the action", async ({ page }) => {
+  await page.goto("/");
+  await page.addStyleTag({ content: "[data-sonner-toaster] { opacity: 0; transition: opacity 180ms linear; }" });
+  await page.evaluate(async () => {
+    const fixtureUrl = "/tests/browser/system-messages-entry.tsx";
+    const { mountOpacityToast } = await import(/* @vite-ignore */ fixtureUrl) as typeof import("./system-messages-entry");
+    mountOpacityToast();
+  });
+  const host = page.locator("[data-sonner-toaster]").first();
+  await expect(host).toHaveCount(1);
+  const notice = page.getByRole("status", { name: "Opacity toast" });
+  await expect(notice).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.systemMessageEvents.length)).toBe(0);
+  await page.evaluate(() => new Promise<void>((resolve) => {
+    const toaster = document.querySelector<HTMLElement>("[data-sonner-toaster]")!;
+    toaster.addEventListener("transitionend", () => resolve(), { once: true });
+    requestAnimationFrame(() => { toaster.style.opacity = "1"; });
+  }));
+  await notice.getByRole("button", { name: "Keep" }).click();
+  const names = await page.evaluate(() => window.systemMessageEvents.map((event) => event.name));
+  expect(names).toEqual(["component_shown", "change_shown", "change_kept"]);
+  expect(await page.evaluate(() => window.noticeActions)).toEqual(["opacity:keep"]);
+});
+
 test("concurrent Decision toasts stack and route each pointer action to its own Decision", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(async () => {
@@ -180,6 +204,8 @@ test("concurrent Decision toasts stack and route each pointer action to its own 
   const second = page.getByRole("status", { name: "Second decision" });
   await expect(first).toBeVisible();
   await expect(second).toBeVisible();
+  await page.getByLabel("Mode").selectOption("dark");
+  await expect(page.locator("[data-sonner-toaster]").first()).toHaveAttribute("data-sonner-theme", "dark");
   for (const [notice, title] of [[first, "First"], [second, "Second"]] as const) {
     for (const action of ["Keep", "Undo"] as const) {
       const button = notice.getByRole("button", { name: action });

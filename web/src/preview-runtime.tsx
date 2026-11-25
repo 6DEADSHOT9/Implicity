@@ -64,7 +64,7 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
     document.body.dataset.previewState = state?.id;
     root.render(<PreviewMounted onMounted={onMounted} version={version}>{entry && state
       ? <PreviewBoundary label={`${entry.id} · ${state.id}`}><entry.Component props={state.props} slots={state.slots ?? {}} /></PreviewBoundary>
-      : <p role="alert">Preview unavailable</p>}<ChangeNoticeToastHost /></PreviewMounted>);
+      : <p role="alert">Preview unavailable</p>}<ChangeNoticeToastHost mode={config.mode === "dark" ? "dark" : "light"} /></PreviewMounted>);
   };
   window.addEventListener("message", (event: MessageEvent<unknown>) => {
     if (event.origin !== location.origin || event.source !== window.parent || !event.data || typeof event.data !== "object" || !("styles" in event.data) || typeof event.data.styles !== "string" || !("texture" in event.data) || typeof event.data.texture !== "string" || !("look" in event.data) || typeof event.data.look !== "string" || !("mode" in event.data) || typeof event.data.mode !== "string" || !("density" in event.data) || typeof event.data.density !== "string" || !("textSize" in event.data) || typeof event.data.textSize !== "string" || !("deviceClass" in event.data) || typeof event.data.deviceClass !== "string") return;

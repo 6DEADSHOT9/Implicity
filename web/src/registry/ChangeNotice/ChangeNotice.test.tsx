@@ -69,7 +69,7 @@ describe("ChangeNotice", () => {
     expect(entry.meta.galleryStates.map(({ id }) => id)).toEqual(["inline", "toast"]);
     for (const state of entry.meta.galleryStates) {
       expect(entry.schema.safeParse({ props: state.props, slots: {} }).success).toBe(true);
-      const view = render(<><ChangeNoticeToastHost /><entry.Component props={state.props} slots={{}} /></>);
+      const view = render(<><ChangeNoticeToastHost mode="light" /><entry.Component props={state.props} slots={{}} /></>);
       expect(await screen.findByRole("status", { name: String(state.props.title) })).toBeTruthy();
       if (state.id === "toast") {
         const user = userEvent.setup();
@@ -90,13 +90,14 @@ describe("ChangeNotice", () => {
     const oldKeep = vi.fn();
     const newKeep = vi.fn();
     const user = userEvent.setup();
-    const view = render(<><ChangeNoticeToastHost />
+    const view = render(<><ChangeNoticeToastHost mode="light" />
       <ChangeNotice decision_id={decisionId} title="First notice" reason="First reason" presentation="toast" onKeep={oldKeep} />
       <ChangeNotice decision_id="dec_223e4567-e89b-42d3-a456-426614174000" title="Second notice" reason="Second reason" presentation="toast" />
     </>);
 
     expect(await screen.findByRole("status", { name: "First notice" })).toBeTruthy();
     expect(screen.getByRole("status", { name: "Second notice" })).toBeTruthy();
+    act(() => TestObserver.instances.forEach((observer) => observer.setRatio(1)));
     expect(screen.getAllByRole("status")).toHaveLength(2);
     expect(document.querySelectorAll("[data-sonner-toaster]")).toHaveLength(1);
     const notice = screen.getByRole("status", { name: "First notice" });
@@ -106,13 +107,13 @@ describe("ChangeNotice", () => {
     const focused = document.activeElement;
     const ids = [...document.querySelectorAll("[id]")].map(({ id }) => id);
     expect(new Set(ids).size).toBe(ids.length);
-    view.rerender(<><ChangeNoticeToastHost />
+    view.rerender(<><ChangeNoticeToastHost mode="light" />
       <ChangeNotice decision_id={decisionId} title="First notice" reason="First reason" presentation="toast" onKeep={newKeep} />
       <ChangeNotice decision_id="dec_223e4567-e89b-42d3-a456-426614174000" title="Second notice" reason="Second reason" presentation="toast" />
     </>);
     expect(await screen.findByRole("status", { name: "First notice" })).toBe(notice);
     expect(document.activeElement).toBe(focused);
-    view.rerender(<><ChangeNoticeToastHost />
+    view.rerender(<><ChangeNoticeToastHost mode="light" />
       <ChangeNotice decision_id={decisionId} title="Updated notice" reason="Updated reason" presentation="toast" onKeep={newKeep} />
       <ChangeNotice decision_id="dec_223e4567-e89b-42d3-a456-426614174000" title="Second notice" reason="Second reason" presentation="toast" />
     </>);
@@ -129,7 +130,7 @@ describe("ChangeNotice", () => {
     const view = render(<form onSubmit={onSubmit}><ChangeNotice decision_id={decisionId} title="Density changed" reason="Because." presentation="inline" onKeep={vi.fn()} /></form>);
     await user.click(screen.getByRole("button", { name: "Keep" }));
     view.unmount();
-    render(<><ChangeNoticeToastHost /><form onSubmit={onSubmit}><ChangeNotice decision_id={decisionId} title="Density changed" reason="Because." presentation="toast" onKeep={vi.fn()} /></form></>);
+    render(<><ChangeNoticeToastHost mode="light" /><form onSubmit={onSubmit}><ChangeNotice decision_id={decisionId} title="Density changed" reason="Because." presentation="toast" onKeep={vi.fn()} /></form></>);
     await user.click(await screen.findByRole("button", { name: "Keep" }));
     expect(onSubmit).not.toHaveBeenCalled();
   });

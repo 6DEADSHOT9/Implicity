@@ -1,6 +1,5 @@
 import { createRoot } from "react-dom/client";
 import { ChangeNotice } from "../../src/registry/ChangeNotice/ChangeNotice";
-import { ChangeNoticeToastHost } from "../../src/components/change-notice-toast-host";
 import { CaptureProvider, type CapturedEvent } from "../../src/registry";
 
 declare global {
@@ -30,4 +29,14 @@ export function mountVisibilityCases() {
     <div id="opacity-case" style={{ opacity: 0, transition: "opacity 180ms linear" }}><ChangeNotice decision_id="dec_423e4567-e89b-42d3-a456-426614174000" title="Opacity notice" reason="Opacity reason" presentation="inline" /></div>
   </CaptureProvider>);
   window.revealOpacity = () => requestAnimationFrame(() => { document.querySelector<HTMLElement>("#opacity-case")!.style.opacity = "1"; });
+}
+
+export function mountOpacityToast() {
+  window.systemMessageEvents = [];
+  window.noticeActions = [];
+  const root = document.createElement("div");
+  document.body.append(root);
+  createRoot(root).render(<CaptureProvider sink={(event) => window.systemMessageEvents.push(event)}>
+    <ChangeNotice decision_id="dec_523e4567-e89b-42d3-a456-426614174000" title="Opacity toast" reason="Opacity reason" presentation="toast" onKeep={() => window.noticeActions.push("opacity:keep")} />
+  </CaptureProvider>);
 }

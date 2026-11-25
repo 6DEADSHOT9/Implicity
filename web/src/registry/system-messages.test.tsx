@@ -73,7 +73,7 @@ describe("system message seen events", () => {
       root,
       elements: { [root]: { type: "ChangeNotice", props: { decision_id, title, reason: "Because.", presentation: "toast" } } },
     });
-    render(<><ChangeNoticeToastHost />
+    render(<><ChangeNoticeToastHost mode="light" />
       <CaptureProvider sink={first.sink}>{renderMessage(spec("dec_123e4567-e89b-42d3-a456-426614174000", "First", "notice1"), "fallback")}</CaptureProvider>
       <CaptureProvider sink={second.sink}>{renderMessage(spec("dec_223e4567-e89b-42d3-a456-426614174000", "Second", "notice2"), "fallback")}</CaptureProvider>
     </>);
@@ -111,6 +111,21 @@ describe("system message seen events", () => {
     expect(visibleWhenShown).toBe(true);
   });
 
+  it("reports a replacement inline Decision as shown on the same mounted component", async () => {
+    const capture = recordingCapture();
+    const firstId = "dec_123e4567-e89b-42d3-a456-426614174000";
+    const nextId = "dec_223e4567-e89b-42d3-a456-426614174000";
+    const view = render(<CaptureProvider sink={capture.sink}><ChangeNotice decision_id={firstId} title="First" reason="Because." presentation="inline" /></CaptureProvider>);
+    act(() => TestIntersectionObserver.instances.at(-1)!.setRatio(1));
+    expect(capture.events).toContainEqual({ name: "change_shown", decision_id: firstId });
+
+    view.rerender(<CaptureProvider sink={capture.sink}><ChangeNotice decision_id={nextId} title="Next" reason="Because." presentation="inline" /></CaptureProvider>);
+    act(() => TestIntersectionObserver.instances.at(-1)!.setRatio(1));
+    expect(capture.events.filter(({ name }) => name === "change_shown")).toEqual([
+      { name: "change_shown", decision_id: firstId }, { name: "change_shown", decision_id: nextId },
+    ]);
+  });
+
   it("emits component_seen from each public Skeleton after it stays visible", async () => {
     const capture = recordingCapture();
     const examples = [
@@ -140,7 +155,7 @@ describe("system message seen events", () => {
 
   it("does not count a hidden ChangeNotice toast as seen, then counts it when shown", async () => {
     const capture = recordingCapture();
-    const view = render(<CaptureProvider sink={capture.sink}><ChangeNoticeToastHost /><ChangeNotice decision_id="dec_123e4567-e89b-42d3-a456-426614174000" title="Changed" reason="Because." presentation="toast" /></CaptureProvider>);
+    const view = render(<CaptureProvider sink={capture.sink}><ChangeNoticeToastHost mode="light" /><ChangeNotice decision_id="dec_123e4567-e89b-42d3-a456-426614174000" title="Changed" reason="Because." presentation="toast" /></CaptureProvider>);
     await passTime(0);
     const notice = screen.getByRole("status", { name: "Changed" });
     const observer = TestIntersectionObserver.instances.at(-1)!;
@@ -148,7 +163,7 @@ describe("system message seen events", () => {
     const toast = notice.closest("[data-sonner-toast]");
     expect(toast).toBeTruthy();
     toast!.setAttribute("style", "display: none");
-    view.rerender(<CaptureProvider sink={capture.sink}><ChangeNoticeToastHost /><ChangeNotice decision_id="dec_123e4567-e89b-42d3-a456-426614174000" title="Changed" reason="Because." presentation="toast" onKeep={() => undefined} /></CaptureProvider>);
+    view.rerender(<CaptureProvider sink={capture.sink}><ChangeNoticeToastHost mode="light" /><ChangeNotice decision_id="dec_123e4567-e89b-42d3-a456-426614174000" title="Changed" reason="Because." presentation="toast" onKeep={() => undefined} /></CaptureProvider>);
     expect(document.querySelector('[role="status"]')).toBe(notice);
     expect(observer.target).toBe(notice);
     act(() => observer.setRatio(1));
