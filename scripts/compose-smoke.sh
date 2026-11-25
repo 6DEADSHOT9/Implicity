@@ -82,6 +82,13 @@ print(f"{service} running with health={expected}: PASS")
 ' "$service" "$expected_health"
 }
 
+check_api_image_imports() {
+  service=$1
+  image="${project}-${service}"
+  docker run --rm --network none --entrypoint uv "$image" run --locked python -c 'import implicity_api, implicity_contracts, implicity_engine'
+  echo "$service package imports: PASS"
+}
+
 docker compose --profile development config --format json | python3 -c '
 import json, sys
 config = json.load(sys.stdin)
@@ -112,6 +119,7 @@ echo "Unhealthy leaf rejected by Compose --wait: PASS"
 
 project_created=1
 make up-development
+check_api_image_imports api-development
 posthog_port=$(docker compose port posthog-proxy 8000 | sed 's/.*://')
 check_profile_health development
 api_id=$(COMPOSE_PROJECT_NAME="$project" docker compose ps -q api-development)
@@ -239,6 +247,7 @@ print(f"Development memory snapshot: {sum(values) / 1024**3:.2f} GiB")
 
 make down
 make up-production
+check_api_image_imports api-production
 check_profile_health production
 curl -fsSL "http://127.0.0.1:${posthog_port}/" -o /dev/null
 echo "Published PostHog UI request (production profile): HTTP 200"

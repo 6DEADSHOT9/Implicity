@@ -48,8 +48,9 @@ The smoke command uses and removes an isolated Compose project.
 Hermes keeps its configuration in a named volume. After the first start, run
 `docker compose exec hermes hermes setup` to configure it, then complete Codex
 subscription sign-in yourself inside the container. Keep that volume to retain the
-sign-in. The web and API services currently only keep the scaffold runtimes alive;
-T14 and T16 add the applications.
+sign-in. Both API services run the T14 FastAPI app; development mounts `api/src`
+with Uvicorn reload enabled. The web service still keeps its scaffold runtime
+alive: web startup and hot reload depend on T16, which adds the runnable web app.
 
 PostHog serves plain HTTP only on a loopback-bound port; its secure redirect and
 secure cookies are disabled for this local-only endpoint. The capture proxy routes

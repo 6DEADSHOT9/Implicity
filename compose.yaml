@@ -20,9 +20,10 @@ x-api-build: &api-build
     WORKDIR /workspace
     COPY pyproject.toml uv.lock ./
     COPY api/pyproject.toml api/pyproject.toml
-    COPY api/src/ api/src/
     COPY engine/python/pyproject.toml engine/python/pyproject.toml
     COPY contracts/python/ contracts/python/
+    COPY api/src/ api/src/
+    COPY engine/python/implicity_engine/ engine/python/implicity_engine/
     RUN uv sync --all-packages --locked
     CMD ["sleep", "infinity"]
 
@@ -51,18 +52,22 @@ services:
   api-development:
     profiles: [development]
     build: *api-build
+    command: [uv, run, --locked, uvicorn, implicity_api.app:app, --app-dir, api/src, --host, 0.0.0.0, --port, "8000", --reload]
+    volumes:
+      - ./api/src:/workspace/api/src
     networks: [app]
     healthcheck:
       <<: *app-healthcheck
-      test: ["CMD", "python", "-c", "import os; os.kill(1, 0)"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
 
   api-production:
     profiles: [production]
     build: *api-build
+    command: [uv, run, --locked, uvicorn, implicity_api.app:app, --app-dir, api/src, --host, 0.0.0.0, --port, "8000"]
     networks: [app]
     healthcheck:
       <<: *app-healthcheck
-      test: ["CMD", "python", "-c", "import os; os.kill(1, 0)"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
 
   hermes:
     profiles: [development, production]
