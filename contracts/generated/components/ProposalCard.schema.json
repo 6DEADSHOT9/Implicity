@@ -29,14 +29,16 @@
           "minLength": 1
         },
         "preview": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": [
         "proposal_id",
         "proposal_type",
         "title",
-        "description"
+        "description",
+        "preview"
       ],
       "additionalProperties": false
     },

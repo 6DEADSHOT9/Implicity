@@ -27,7 +27,18 @@ test("system message Skeletons render across every gallery setting", async ({ pa
     await expect(card).toHaveCount(1);
     const frame = card.locator("iframe");
     await expect(frame).toHaveAttribute("title", `${id} · ${state}`);
-    await expect(page.frameLocator(`iframe[title='${id} · ${state}']`).locator("button")).toHaveCount(2);
+    await expect.poll(async () => Number(await frame.getAttribute("height"))).toBeGreaterThan(1);
+    const frameBounds = await frame.boundingBox();
+    const preview = page.frameLocator(`iframe[title='${id} · ${state}']`);
+    const buttons = preview.locator("button");
+    await expect(buttons).toHaveCount(2);
+    for (const button of await buttons.all()) {
+      await expect(button).toBeVisible();
+      await expect.poll(async () => {
+        const bounds = await button.boundingBox();
+        return bounds !== null && bounds.x >= frameBounds!.x && bounds.y >= frameBounds!.y && bounds.x + bounds.width <= frameBounds!.x + frameBounds!.width && bounds.y + bounds.height <= frameBounds!.y + frameBounds!.height;
+      }, { message: `${id} ${state} action stays inside its frame` }).toBe(true);
+    }
   }
 
   for (const look of ["default", "focused", "notebook"]) {
@@ -40,6 +51,10 @@ test("system message Skeletons render across every gallery setting", async ({ pa
         await expect(preview.locator("button").first()).toHaveCSS("font-family", new RegExp(look === "notebook" ? "Source Serif 4" : look === "focused" ? "IBM Plex Mono" : "Inter"));
         await expectHeadingToken(id, state);
       }
+      const toast = page.frameLocator("iframe[title='ChangeNotice · toast']");
+      await expect(toast.locator("html")).toHaveAttribute("data-mode", mode);
+      await expect(toast.locator("[data-sonner-toaster]")).toHaveAttribute("data-sonner-theme", mode);
+      await expect(toast.locator("[data-sonner-toast]")).toBeVisible();
     }
   }
   for (const density of ["compact", "comfortable", "spacious"]) {
@@ -58,5 +73,12 @@ test("system message Skeletons render across every gallery setting", async ({ pa
       await expectHeadingToken(id, state);
     }
   }
+  const toast = page.frameLocator("iframe[title='ChangeNotice · toast']");
+  const toastButton = toast.getByRole("button", { name: "Keep" });
+  await expect(toastButton).toBeVisible();
+  await toastButton.scrollIntoViewIfNeeded();
+  const toastRect = await toastButton.boundingBox();
+  expect(toastRect).not.toBeNull();
+  await page.mouse.click(toastRect!.x + toastRect!.width / 2, toastRect!.y + toastRect!.height / 2);
   expect(errors).toEqual([]);
 });

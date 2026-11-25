@@ -17,6 +17,7 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
   let state: SkeletonEntry["meta"]["galleryStates"][number] | undefined;
   let styles: string | undefined;
   let texture: string | undefined;
+  let mode: string | undefined;
   let previousHeight = -1;
   const previewRoot = document.getElementById("root")!;
   const reportHeight = () => {
@@ -33,15 +34,18 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
     document.documentElement.style.cssText = styles;
     document.documentElement.dataset.texture = texture;
     document.body.className = "gallery-preview-root";
+    document.body.dataset.previewState = state?.id;
+    document.documentElement.dataset.mode = mode;
     root.render(entry && state
       ? <PreviewBoundary label={`${entry.id} · ${state.id}`}><entry.Component props={state.props} slots={state.slots ?? {}} /></PreviewBoundary>
       : <p role="alert">Preview unavailable</p>);
     requestAnimationFrame(reportHeight);
   };
   window.addEventListener("message", (event: MessageEvent<unknown>) => {
-    if (event.origin !== location.origin || event.source !== window.parent || !event.data || typeof event.data !== "object" || !("styles" in event.data) || typeof event.data.styles !== "string" || !("texture" in event.data) || typeof event.data.texture !== "string") return;
+    if (event.origin !== location.origin || event.source !== window.parent || !event.data || typeof event.data !== "object" || !("styles" in event.data) || typeof event.data.styles !== "string" || !("texture" in event.data) || typeof event.data.texture !== "string" || !("mode" in event.data) || (event.data.mode !== "light" && event.data.mode !== "dark")) return;
     styles = event.data.styles;
     texture = event.data.texture;
+    mode = event.data.mode;
     render();
   });
   void loadEntry(entryId).then((loaded) => {

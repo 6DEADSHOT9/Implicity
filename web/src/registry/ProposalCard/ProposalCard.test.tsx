@@ -37,7 +37,9 @@ describe("ProposalCard", () => {
   });
 
   it("validates every gallery example and rejects invalid props", () => {
-    expect(propsSchema.safeParse({ proposal_id: proposalId, proposal_type: "dimension", title: "Change", description: "Details" }).success).toBe(true);
+    expect(propsSchema.safeParse({ proposal_id: proposalId, proposal_type: "dimension", title: "Change", description: "Details", preview: "Example." }).success).toBe(true);
+    expect(propsSchema.safeParse({ proposal_id: proposalId, proposal_type: "dimension", title: "Change", description: "Details" }).success).toBe(false);
+    expect(propsSchema.safeParse({ proposal_id: proposalId, proposal_type: "dimension", title: "Change", description: "Details" }).success).toBe(false);
     expect(propsSchema.safeParse({ proposal_id: proposalId, proposal_type: "other", title: "Change", description: "Details" }).success).toBe(false);
     expect(slotsSchema.safeParse({}).success).toBe(true);
     expect(events).toContain("proposal_dismissed");
@@ -49,5 +51,14 @@ describe("ProposalCard", () => {
       view.unmount();
     }
     expect(entry.schema.safeParse({ props: { ...meta.galleryStates[0].props, proposal_type: "unknown" }, slots: {} }).success).toBe(false);
+  });
+
+  it("does not submit an enclosing form when a card action is activated", async () => {
+    const onSubmit = vi.fn((event: React.FormEvent) => event.preventDefault());
+    const user = userEvent.setup();
+    render(<form onSubmit={onSubmit}><ProposalCard proposal_id={proposalId} proposal_type="look" title="Proposal" description="Details" preview="Preview" onDismiss={vi.fn()} /></form>);
+
+    await user.click(screen.getByRole("button", { name: "Dismiss" }));
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 });

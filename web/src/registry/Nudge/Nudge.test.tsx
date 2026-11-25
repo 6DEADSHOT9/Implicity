@@ -42,4 +42,13 @@ describe("Nudge", () => {
     }
     expect(entry.schema.safeParse({ props: { ...meta.galleryStates[0].props, extra: true }, slots: {} }).success).toBe(false);
   });
+
+  it("does not submit an enclosing form when Later is activated", async () => {
+    const onSubmit = vi.fn((event: React.FormEvent) => event.preventDefault());
+    const user = userEvent.setup();
+    render(<form onSubmit={onSubmit}><Nudge title="Prompt" message="Details" actionLabel="Open" onLater={vi.fn()} /></form>);
+
+    await user.click(screen.getByRole("button", { name: "Later" }));
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
 });

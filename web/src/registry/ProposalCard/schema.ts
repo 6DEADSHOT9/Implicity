@@ -5,6 +5,6 @@ export const propsSchema = z.object({
   proposal_type: z.enum(["look", "widget", "workflow", "kind", "schedule", "dimension"]),
   title: z.string().min(1),
   description: z.string().min(1),
-  preview: z.string().optional(),
+  preview: z.string().min(1),
 }).strict();
 export const slotsSchema = z.object({}).strict();

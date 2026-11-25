@@ -57,4 +57,37 @@ describe("ChangeNotice", () => {
     }
     expect(entry.schema.safeParse({ props: { ...meta.galleryStates[0].props, extra: true }, slots: {} }).success).toBe(false);
   });
+
+  it("isolates multiple toast hosts and refreshes content and callbacks", async () => {
+    const oldKeep = vi.fn();
+    const newKeep = vi.fn();
+    const user = userEvent.setup();
+    const view = render(<>
+      <ChangeNotice decision_id={decisionId} title="First notice" reason="First reason" presentation="toast" onKeep={oldKeep} />
+      <ChangeNotice decision_id="dec_223e4567-e89b-42d3-a456-426614174000" title="Second notice" reason="Second reason" presentation="toast" />
+    </>);
+
+    expect(await screen.findByRole("status", { name: "First notice" })).toBeTruthy();
+    expect(screen.getByRole("status", { name: "Second notice" })).toBeTruthy();
+    expect(screen.getAllByRole("status")).toHaveLength(2);
+    const ids = [...document.querySelectorAll("[id]")].map(({ id }) => id);
+    expect(new Set(ids).size).toBe(ids.length);
+    view.rerender(<>
+      <ChangeNotice decision_id={decisionId} title="Updated notice" reason="Updated reason" presentation="toast" onKeep={newKeep} />
+      <ChangeNotice decision_id="dec_223e4567-e89b-42d3-a456-426614174000" title="Second notice" reason="Second reason" presentation="toast" />
+    </>);
+    expect(await screen.findByRole("status", { name: "Updated notice" })).toBeTruthy();
+    await user.click(screen.getAllByRole("button", { name: "Keep" })[0]);
+    expect(oldKeep).not.toHaveBeenCalled();
+    expect(newKeep).toHaveBeenCalledOnce();
+  });
+
+  it("does not submit an enclosing form when an action is activated", async () => {
+    const onSubmit = vi.fn((event: React.FormEvent) => event.preventDefault());
+    const user = userEvent.setup();
+    render(<form onSubmit={onSubmit}><ChangeNotice decision_id={decisionId} title="Density changed" reason="Because." presentation="inline" onKeep={vi.fn()} /></form>);
+
+    await user.click(screen.getByRole("button", { name: "Keep" }));
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
 });
