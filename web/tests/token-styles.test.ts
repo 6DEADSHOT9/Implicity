@@ -8,12 +8,25 @@ const rendererFile = new URL("../src/renderer.tsx", import.meta.url).pathname;
 const galleryFile = new URL("../src/gallery.tsx", import.meta.url).pathname;
 const previewRuntimeFile = new URL("../src/preview-runtime.tsx", import.meta.url).pathname;
 const previewMainFile = new URL("../src/preview-main.tsx", import.meta.url).pathname;
+const primitiveFile = new URL("../src/components/ui/Probe.tsx", import.meta.url).pathname;
 const tokenImport = 'import { token } from "../token"; ';
 
 describe("token-only style guard", () => {
   it("scans both preview runtime files", () => {
     expect(paths).toContain(previewRuntimeFile);
     expect(paths).toContain(previewMainFile);
+  });
+
+  it("scans copied shadcn and AI Elements source folders", () => {
+    expect(paths.some((path) => path.includes("/components/ui/"))).toBe(true);
+    expect(paths.some((path) => path.includes("/components/ai-elements/"))).toBe(true);
+  });
+
+  it("rejects unknown and arbitrary primitive utilities and hard-coded inline styles", () => {
+    expect(tokenStyleViolations('const Probe = () => <div className="bg-not-a-token" />;', primitiveFile)).toContain("unknown or non-token style utility: bg-not-a-token");
+    expect(tokenStyleViolations('const Probe = () => <div className="bg-[#f00]" />;', primitiveFile)).toContain("arbitrary style utility is not allowed: bg-[#f00]");
+    expect(tokenStyleViolations('const Probe = () => <div style={{ color: "#f00" }} />;', primitiveFile)).toContain("color: #f00");
+    expect(tokenStyleViolations('const Probe = () => <div style={{ color: "var(--foreground)" }} />;', primitiveFile)).toEqual([]);
   });
 
   it.each([
@@ -47,12 +60,18 @@ describe("token-only style guard", () => {
   });
 
   it("allows a token-styled Skeleton and layout utilities", () => {
-    expect(tokenStyleViolations(`${tokenImport}export function Probe({ children }: { children: string }) { return <section className="text-primary bg-background rounded-md p-4 font-sans flex grid items-center justify-between" style={{ color: token("--foreground") }}>{children}</section>; }`, componentFile)).toEqual([]);
+    expect(tokenStyleViolations(`${tokenImport}export function Probe({ children }: { children: string }) { return <section className="text-primary bg-background rounded-md p-space-4 font-sans flex grid items-center justify-between" style={{ color: token("--foreground") }}>{children}</section>; }`, componentFile)).toEqual([]);
     expect(tokenStyleViolations('const View = () => <div style={{ color: "var(--foreground)", display: "none" }} />;', componentFile)).toEqual([]);
     expect(tokenStyleViolations('.text { color: var(--foreground); display: none; }', "styles.css")).toEqual([]);
     expect(token("--foreground")).toBe("var(--foreground)");
     expect(token("text-primary")).toBe("text-primary");
     expect(() => token("text-red-500")).toThrow(/Unknown design token/);
+  });
+
+  it("checks every static class in cn and cva variants", () => {
+    const source = 'import { cn } from "cn"; import { cva } from "class-variance-authority"; const variants = cva("flex bg-primary", { variants: { tone: { danger: "text-destructive", bad: "bg-red-500" } } }); const View = ({ className }: { className?: string }) => <div className={cn(variants({ tone: "danger" }), "p-space-4", className)} />;';
+    expect(tokenStyleViolations(source, componentFile)).toContain("unknown or non-token style utility: bg-red-500");
+    expect(tokenStyleViolations(source.replace(', bad: "bg-red-500"', ""), componentFile)).toEqual([]);
   });
 
   it("allows gallery classes only in the gallery and layout keywords only in layout properties", () => {
@@ -65,6 +84,7 @@ describe("token-only style guard", () => {
     expect(tokenStyleViolations('const View = () => <p style={{ color: "#f00" }} />;', previewRuntimeFile)).toContain("color: #f00");
     expect(tokenStyleViolations('const View = () => <p style={{ color: "#f00" }} />;', previewMainFile)).toContain("color: #f00");
     expect(tokenStyleViolations('.probe { color: center; width: center; display: flex; }', "styles.css")).toEqual(["color: center", "width: center"]);
+    expect(tokenStyleViolations('.probe { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }', new URL("../src/gallery.css", import.meta.url).pathname)).toEqual([]);
   });
 
   it("rejects dynamic token names and non-token CSS values", () => {
@@ -85,6 +105,6 @@ describe("token-only style guard", () => {
     expect(tokenNames.has("--font-body")).toBe(true);
     expect(tokenNames.has("--font-heading")).toBe(true);
     expect(tokenNames.has("--gallery-device-width")).toBe(false);
-    expect(tokenNames.has("--code-background")).toBe(false);
+    expect(tokenNames.has("--code-background")).toBe(true);
   });
 });
