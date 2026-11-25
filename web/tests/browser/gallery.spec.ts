@@ -552,8 +552,11 @@ test("Notebook applies its bundled body font, paper texture, and both mode palet
   const root = page.locator("[data-gallery-root]");
   const bodyFont = await root.evaluate((element) => getComputedStyle(element).fontFamily);
   expect(bodyFont).toContain("Source Serif 4");
-  const previewHeading = page.frameLocator("iframe[title='ReviewPanel · plain']").locator("[data-preview-heading]");
-  const previewBodyFont = await page.frameLocator("iframe[title='ReviewPanel · plain']").locator("body").evaluate((element) => getComputedStyle(element).fontFamily);
+  const preview = page.frameLocator("iframe[title='ReviewPanel · plain']");
+  await expect(preview.locator("html")).toHaveAttribute("data-look", "notebook");
+  await expect.poll(() => preview.locator("body").evaluate((element) => getComputedStyle(element).fontFamily)).toBe(bodyFont);
+  const previewHeading = preview.locator("[data-preview-heading]");
+  const previewBodyFont = await preview.locator("body").evaluate((element) => getComputedStyle(element).fontFamily);
   expect(await previewHeading.evaluate((element) => getComputedStyle(element).fontFamily)).toBe(previewBodyFont);
   for (const size of ["1", "2", "3", "4", "5"] as const) {
     await page.getByLabel("Text size").selectOption(size);
