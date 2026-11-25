@@ -62,7 +62,7 @@ TABLES_BY_OWNER = {
         "workflows",
         "files",
     },
-    "agent": {"agent_sessions", "quota_log"},
+    "agent": {"agent_sessions", "quota_log", "quota_settings"},
 }
 DECISION = {
     "id": "dec_550e8400-e29b-41d4-a716-446655440003",
@@ -199,9 +199,26 @@ def test_table_ownership_is_keyed_by_owner_and_matches_storage_contract():
     migration = runpy.run_path(
         str(API_ROOT / "migrations/versions/0001_module_tables.py")
     )
-    assert {
+    migration_tables = {
         owner: set(tables) for owner, tables in migration["TABLES_BY_OWNER"].items()
-    } == TABLES_BY_OWNER
+    }
+    assert migration_tables["agent"] == TABLES_BY_OWNER["agent"] - {"quota_settings"}
+    assert {
+        owner: tables for owner, tables in migration_tables.items() if owner != "agent"
+    } == {
+        owner: tables for owner, tables in TABLES_BY_OWNER.items() if owner != "agent"
+    }
+    quota_settings_migration = runpy.run_path(
+        str(API_ROOT / "migrations/versions/0002_agent_quota_settings.py")
+    )
+    assert quota_settings_migration["down_revision"] == migration["revision"]
+    instructions_migration = runpy.run_path(
+        str(API_ROOT / "migrations/versions/0003_agent_session_instructions.py")
+    )
+    assert (
+        instructions_migration["down_revision"] == quota_settings_migration["revision"]
+    )
+    assert "instructions" in AgentSession.__table__.c
     assert migration["SESSION_REQUIRED"] == {
         "messages",
         "message_specs",
@@ -383,8 +400,7 @@ def test_module_source_violations_are_rejected(tmp_path):
         check_module_boundaries(root)
     (engine / "private_session.py").unlink()
     (engine / "relative_import.py").write_text(
-        "from ...models.app import Conversation\n"
-        "from ..app import store\n"
+        "from ...models.app import Conversation\nfrom ..app import store\n"
     )
     with pytest.raises(AssertionError, match="imports app"):
         check_module_boundaries(root)
