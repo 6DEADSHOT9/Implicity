@@ -449,6 +449,26 @@ class Agent(Protocol):
 
 `PromptContext` is built by the app and holds only what may enter a prompt: memory, explicit preferences, the four answer-style settings as one sentence, a deleted draft for that turn, and plain instructions derived from the person's current state. `StreamPart` is relayed to the browser in the format the AI SDK chat hook expects.
 
+**Quota.** `quota()` reads the subscription's usage windows from Hermes and never names a provider (ADR 0023).
+
+```text
+Quota {
+  state: ok | near_limit | limited | unknown
+  windows: [{ label, used_percent, resets_at }]   // as Hermes reports them, account-scoped windows only
+  resets_at: RFC 3339 | null                      // when limited: the latest reset among the full windows, or Hermes's limit reset
+  checked_at: RFC 3339
+}
+```
+
+- **Source.** Hermes's `GET /api/model/options`, on the same port and API key as `/v1/responses`, from the provider row marked `is_current`: its `usage.windows` (each `label`, `used_percent` as percent used, `resets_at`, `scope`) and its `limit` (`scope`, `resets_at`) when present. Windows whose `scope` is not `account` are ignored.
+- **State.** `limited` when Hermes reports a `limit` or any window is at 100%. `near_limit` when any window is at or above the person's near-limit threshold (default 90%). `unknown` when there are no windows, the read failed, or the last good read is more than 15 minutes old. Otherwise `ok`. A failed read is `unknown`, never an error.
+- **When it is read.** On demand (the sidebar footer and Settings) and after each turn ends, at most once a minute; the result is cached. The first read after Hermes starts is usually `unknown`, because Hermes fills its usage cache in the background.
+- **Background work** starts only when `state` is `ok` and today's background tokens in `quota_log` are under the person's daily cap (default 200,000 tokens). The person's chat is never blocked by our code.
+- **A failed turn.** Hermes ends a failed turn with a generic `response.failed`, so the agent module rereads `Quota` at once; when it is `limited`, the person sees that the limit is reached and when it resets, and otherwise the normal error.
+- **Limits the person sets.** The daily background cap and the near-limit threshold are settings in Settings, so a person with a larger plan can raise them. They are stored in the agent module's `quota_settings`, are not dimensions, and send no event.
+- **`quota_log`** holds one row per Hermes turn: time, `chat` or `background`, conversation id, and the input, output and total tokens from `response.completed`. It stores no `Quota` snapshots.
+- **Shape test.** A contract test against a fake Hermes pins the fields read above; the Hermes recheck on every upgrade covers the real route, which is a dashboard route rather than Hermes's documented API.
+
 **MCP tools.** Every tool validates its input against the contracts before doing anything.
 
 | Tool | Input | Result |
@@ -474,7 +494,7 @@ Each module owns its tables in SQLite, and no module reads another's.
 | Engine | `decisions`, `explicit_settings`, `locks`, `excluded_sessions`, `layout_revisions` | Beliefs are not stored; they are recomputed |
 | Memory | `memory_items`, `projects`, `drafts`, `inferences`, `typing_profiles`, `guest_patterns` | Drafts expire after 30 days, states after 1 day, patterns after 30 |
 | App | `conversations`, `messages`, `message_specs`, `kinds`, `looks`, `widgets`, `schedules`, `workflows`, `files` | `files` holds metadata; bodies live on a local volume |
-| Agent | `agent_sessions`, `quota_log` | Maps conversations to Hermes sessions |
+| Agent | `agent_sessions`, `quota_log`, `quota_settings` | Maps conversations to Hermes sessions; logs tokens per turn; holds the person's quota limits |
 
 **Rules.**
 

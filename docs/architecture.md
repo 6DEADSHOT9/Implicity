@@ -263,7 +263,7 @@ The Act layer lets Implicity do things for the person, always by proposal and al
 
 **Approvals.** Running commands, changing or deleting the person's files, sending anything outside the machine, and changing their saved data always ask first. "Always allow" exists only for read-only actions inside a specific workflow. Personalization never grants permissions.
 
-**Background work.** Labelling chats, extracting memory, drafting proposals and refreshing widgets share the Codex subscription with the person's chats. The person's chat always comes first. Background work runs only when no chat is in progress, has a daily cap, and pauses near the subscription's limit. The quota is shown in the sidebar footer, with detail in Settings.
+**Background work.** Labelling chats, extracting memory, drafting proposals and refreshing widgets share the Codex subscription with the person's chats. The person's chat always comes first. Background work runs only when no chat is in progress and the quota is `ok`: it stops near the subscription's limit (default 90% of any usage window) and at its own daily cap (default 200,000 tokens). Both limits are the person's to change in Settings, for a larger plan. The quota comes from Hermes's usage windows (ADR 0023) and is shown in the sidebar footer, with detail in Settings.
 
 ## Consent, controls and protection
 
