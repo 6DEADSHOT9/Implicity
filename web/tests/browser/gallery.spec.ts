@@ -48,6 +48,21 @@ test("tablet viewport stays fixed when text size changes and previews fit their 
   expect(bounds && displayed && displayed.x + displayed.width).toBeLessThanOrEqual(bounds!.x + bounds!.width + 1);
 });
 
+test("desktop preview scales into its card while keeping a 1440 px viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 1201, height: 900 });
+  await page.goto("/tests/browser/gallery.html");
+  const card = page.locator("[data-skeleton='ReviewPanel'][data-gallery-state='plain'] .gallery-preview");
+  const frame = page.locator("iframe[title='ReviewPanel · plain']");
+  await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentWindow?.innerWidth)).toBe(1440);
+  const [cardBounds, frameBounds] = await Promise.all([card.boundingBox(), frame.boundingBox()]);
+  expect(cardBounds).not.toBeNull();
+  expect(frameBounds).not.toBeNull();
+  expect(frameBounds!.x).toBeGreaterThanOrEqual(cardBounds!.x);
+  expect(frameBounds!.y).toBeGreaterThanOrEqual(cardBounds!.y);
+  expect(frameBounds!.x + frameBounds!.width).toBeLessThanOrEqual(cardBounds!.x + cardBounds!.width + 1);
+  expect(frameBounds!.y + frameBounds!.height).toBeLessThanOrEqual(cardBounds!.y + cardBounds!.height + 1);
+});
+
 test("renders examples and contains a failed Skeleton state to its card", async ({ page }) => {
   await page.goto("/tests/browser/gallery.html");
   await expect(page.frameLocator("iframe[title='ReviewPanel · plain']").locator("body")).toContainText("1one");
