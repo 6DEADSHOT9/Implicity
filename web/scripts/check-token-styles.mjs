@@ -8,7 +8,7 @@ import { tokenNames, tokenUtilities } from "../src/registry/token-values.mjs";
 
 const safeKeywords = new Set(["inherit", "initial", "unset", "currentcolor", "transparent", "normal", "auto", "none"]);
 const layoutKeywords = new Map([
-  ["display", new Set(["flex"])],
+  ["display", new Set(["block", "flex"])],
   ["flex-direction", new Set(["column"])],
   ["flex-wrap", new Set(["wrap"])],
   ["align-items", new Set(["center", "baseline"])],

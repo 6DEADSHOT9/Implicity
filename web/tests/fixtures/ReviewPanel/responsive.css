@@ -1,0 +1,5 @@
+.review-panel { display: flex; }
+
+@media (min-width: 1024px) {
+  .review-panel { display: grid; }
+}

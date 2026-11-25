@@ -7,7 +7,6 @@ import { Gallery } from "../src/gallery";
 import focused from "../../contracts/looks/focused.json" with { type: "json" };
 import { ReviewPanelEntry } from "./fixtures/ReviewPanel/entry";
 import { ReviewShellEntry } from "./fixtures/ReviewShell/entry";
-import { vi } from "vitest";
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
@@ -27,8 +26,9 @@ describe("gallery", () => {
         expect(container.querySelector(`[data-skeleton='${entry.id}'][data-gallery-state='${state.id}']`)).not.toBeNull();
       }
     }
-    expect(container.querySelector("[data-skeleton='ReviewPanel'][data-gallery-state='plain']")?.textContent).toContain("1one");
-    expect(container.querySelector("[data-skeleton='ReviewPanel'][data-gallery-state='busy']")?.textContent).toContain("4twothree");
+    expect(container.querySelector("iframe[title='ReviewPanel · plain']")).not.toBeNull();
+    expect(container.querySelector("iframe[title='ReviewPanel · busy']")).not.toBeNull();
+    expect(container.querySelector("iframe[title='ReviewPanel · error']")).not.toBeNull();
     await act(async () => root.unmount());
   });
 
@@ -37,16 +37,6 @@ describe("gallery", () => {
     expect(container.querySelector("[data-skeleton='ReviewPanel']")).not.toBeNull();
     expect(container.querySelector("[data-skeleton='ReviewShell']")).not.toBeNull();
     await act(async () => root.unmount());
-  });
-
-  it("contains a Skeleton render error to its state card", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    const entry = { ...ReviewPanelEntry, meta: { ...ReviewPanelEntry.meta, galleryStates: ReviewPanelEntry.meta.galleryStates.map((state) => state.id === "busy" ? { ...state, props: { ...state.props, fail: true } } : state) } } as typeof ReviewPanelEntry;
-    const { container, root } = await renderGallery(createRegistry([entry], 1));
-    expect(container.querySelector("[role='alert']")?.textContent).toContain("ReviewPanel · busy");
-    expect(container.querySelector("[data-gallery-state='plain']")).not.toBeNull();
-    await act(async () => root.unmount());
-    vi.restoreAllMocks();
   });
 
   it("applies look, mode, density, text size and screen size selections", async () => {

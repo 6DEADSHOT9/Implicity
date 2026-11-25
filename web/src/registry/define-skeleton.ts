@@ -14,14 +14,14 @@ export const skeletonMetaSchema = z.object({
   galleryStates: z.array(z.object({
     id: z.string(),
     props: z.record(z.string(), z.unknown()),
-    slots: z.record(z.string(), z.unknown()).optional(),
+    slots: z.record(z.string(), z.array(z.string())).optional(),
   }).strict()).min(1),
 }).strict();
 
 export type GalleryState = {
   id: string;
   props: Record<string, unknown>;
-  slots?: Readonly<Record<string, unknown>>;
+  slots?: Readonly<Record<string, readonly string[]>>;
 };
 
 export type SkeletonMeta = {
