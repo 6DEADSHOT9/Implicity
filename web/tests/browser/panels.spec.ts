@@ -139,17 +139,21 @@ test("gallery previews complete panel callbacks, fit overlays, and preserve keyb
   const dialog = docked.getByRole("dialog", { name: "Workspace" });
   await expect(dialog).toBeVisible();
   await expect(docked.getByText("panel_content", { exact: true })).toBeVisible();
+  await expect.poll(() => dialog.evaluate((element) => [...element.querySelectorAll("button, [role=tab], [role=tabpanel]")].filter((node) => {
+    const box = node.getBoundingClientRect();
+    return box.left < 0 || box.right > innerWidth || box.top < 0 || box.bottom > innerHeight;
+  }).length)).toBe(0);
   const geometry = await dialog.evaluate((element) => {
     const rect = element.getBoundingClientRect();
     const height = window.innerHeight;
     const nodes = [...element.querySelectorAll("button, [role=tab], [role=tabpanel]")];
     const buttons = [...element.querySelectorAll("button")].map((button) => button.getBoundingClientRect());
-    return { top: rect.top, bottom: rect.bottom, height, scrollWidth: element.scrollWidth, clientWidth: element.clientWidth, allInside: nodes.every((node) => { const box = node.getBoundingClientRect(); return box.left >= 0 && box.right <= innerWidth && box.top >= 0 && box.bottom <= innerHeight; }), controlsSeparate: buttons[0]?.right <= buttons[1]?.left || buttons[1]?.right <= buttons[0]?.left || buttons[0]?.bottom <= buttons[1]?.top || buttons[1]?.bottom <= buttons[0]?.top };
+    return { top: rect.top, bottom: rect.bottom, height, scrollWidth: element.scrollWidth, clientWidth: element.clientWidth, outside: nodes.flatMap((node) => { const box = node.getBoundingClientRect(); return box.left >= 0 && box.right <= innerWidth && box.top >= 0 && box.bottom <= innerHeight ? [] : [{ element: node.getAttribute("aria-label") ?? node.getAttribute("role"), text: node.textContent, left: box.left, right: box.right, top: box.top, bottom: box.bottom }]; }), controlsSeparate: buttons[0]?.right <= buttons[1]?.left || buttons[1]?.right <= buttons[0]?.left || buttons[0]?.bottom <= buttons[1]?.top || buttons[1]?.bottom <= buttons[0]?.top };
   });
   expect(geometry.top).toBeGreaterThanOrEqual(0);
   expect(geometry.bottom).toBeLessThanOrEqual(geometry.height);
   expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth);
-  expect(geometry.allInside).toBe(true);
+  expect(geometry.outside).toEqual([]);
   expect(geometry.controlsSeparate).toBe(true);
   await docked.getByRole("button", { name: "Close" }).press("Escape");
   await expect(dialog).toHaveCount(0);
