@@ -311,6 +311,10 @@ test("desktop preview scales into its card while keeping a 1440 px viewport", as
   const card = page.locator("[data-skeleton='ReviewPanel'][data-gallery-state='plain'] .gallery-preview");
   const frame = page.locator("iframe[title='ReviewPanel · plain']");
   await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentWindow?.innerWidth)).toBe(1440);
+  await expect.poll(async () => {
+    const [cardBounds, frameBounds] = await Promise.all([card.boundingBox(), frame.boundingBox()]);
+    return !!cardBounds && !!frameBounds && frameBounds.y + frameBounds.height <= cardBounds.y + cardBounds.height + 1;
+  }).toBe(true);
   const [cardBounds, frameBounds] = await Promise.all([card.boundingBox(), frame.boundingBox()]);
   expect(cardBounds).not.toBeNull();
   expect(frameBounds).not.toBeNull();
@@ -512,6 +516,7 @@ test("content skeletons survive every gallery setting combination", async ({ pag
   const sizes = ["1", "2", "3", "4", "5"] as const;
   const modes = ["light", "dark"] as const;
   const devices = ["desktop", "tablet"] as const;
+  const skeletonNames = ["DataTable", "DataChart", "CodeBlock", "MediaPlayer", "ArtifactWorkspace", "Checklist", "List", "Metric", "Tabs", "Card"];
   let combinations = 0;
   for (const look of looks) for (const mode of modes) for (const density of densities) for (const textSize of sizes) for (const device of devices) {
     await page.getByLabel("Look").selectOption(look);
@@ -520,11 +525,11 @@ test("content skeletons survive every gallery setting combination", async ({ pag
     await page.getByLabel("Text size").selectOption(textSize);
     await page.getByLabel("Screen size").selectOption(device);
     const expectedWidth = device === "tablet" ? 800 : 1440;
-    await expect.poll(() => page.locator("iframe").evaluateAll((frames, width) => frames.filter((frame) => frame.getAttribute("title")?.includes(" · ")).every((frame) => (frame as HTMLIFrameElement).contentWindow?.innerWidth === width), expectedWidth)).toBe(true);
-    await expect.poll(() => page.locator("iframe").evaluateAll((frames) => frames.filter((frame) => frame.getAttribute("title")?.includes(" · ")).every((frame) => {
+    await expect.poll(() => page.locator("iframe").evaluateAll((frames, args) => frames.filter((frame) => args.names.some((name) => (frame as HTMLIFrameElement).title.startsWith(`${name} · `))).every((frame) => (frame as HTMLIFrameElement).contentWindow?.innerWidth === args.width), { names: skeletonNames, width: expectedWidth })).toBe(true);
+    await expect.poll(() => page.locator("iframe").evaluateAll((frames, names) => frames.filter((frame) => names.some((name) => (frame as HTMLIFrameElement).title.startsWith(`${name} · `))).every((frame) => {
       const iframe = frame as HTMLIFrameElement;
       return !!iframe.contentDocument?.querySelector("#root")?.children.length;
-    }))).toBe(true);
+    }), skeletonNames)).toBe(true);
     const rendered = await page.locator("iframe").evaluateAll((frames) => frames
       .filter((frame) => ["DataTable", "DataChart", "CodeBlock", "MediaPlayer", "ArtifactWorkspace", "Checklist", "List", "Metric", "Tabs", "Card"].some((name) => (frame as HTMLIFrameElement).title.startsWith(`${name} · `)))
       .filter((frame) => {
