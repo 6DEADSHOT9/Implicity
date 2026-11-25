@@ -2,13 +2,15 @@ import { expect, test, type Locator } from "@playwright/test";
 import tokens from "../../../contracts/looks/tokens.json" with { type: "json" };
 import { tokenNames } from "../../src/registry/token-values.mjs";
 
-async function sampleHeightAcrossFrames(frame: Locator) {
-  return frame.evaluate((element) => {
+async function sampleHeightAcrossFrames(frame: Locator, changeHeightOnFirstFrame = false) {
+  return frame.evaluate((element, changeHeight) => {
     const iframe = element as HTMLIFrameElement;
     const root = iframe.contentDocument?.getElementById("root");
-    if (!root) return { stable: false, height: 0, contentHeight: 0 };
+    if (!root) return { stable: false, height: 0, contentHeight: 0, firstHeight: 0, firstContentHeight: 0 };
     const read = () => ({ height: Number(iframe.height), contentHeight: root.getBoundingClientRect().height });
-    return new Promise<{ stable: boolean; height: number; contentHeight: number }>((resolve) => requestAnimationFrame(() => {
+    return new Promise<{ stable: boolean; height: number; contentHeight: number; firstHeight: number; firstContentHeight: number }>((resolve) => requestAnimationFrame(() => {
+      if (changeHeight) requestAnimationFrame(() => { iframe.height = String(Number(iframe.height) - 30); });
+      if (changeHeight) iframe.height = String(Number(iframe.height) + 30);
       const first = read();
       requestAnimationFrame(() => {
         const second = read();
@@ -16,10 +18,12 @@ async function sampleHeightAcrossFrames(frame: Locator) {
           stable: first.height === second.height && Math.abs(first.height - first.contentHeight) <= 1 && Math.abs(second.height - second.contentHeight) <= 1,
           height: second.height,
           contentHeight: second.contentHeight,
+          firstHeight: first.height,
+          firstContentHeight: first.contentHeight,
         });
       });
     }));
-  });
+  }, changeHeightOnFirstFrame);
 }
 
 async function waitForStableHeight(frame: Locator) {
@@ -458,25 +462,10 @@ test("height stability rejects a mismatch on the first animation frame", async (
   const frame = page.locator("iframe[title='ReviewPanel · plain']");
   await expect(frame.contentFrame().locator(".review-panel")).toBeVisible();
   await waitForStableHeight(frame);
-  await frame.evaluate((element) => {
-    const root = (element as HTMLIFrameElement).contentDocument!.getElementById("root")!;
-    const getBounds = root.getBoundingClientRect.bind(root);
-    let reads = 0;
-    Object.defineProperty(root, "getBoundingClientRect", {
-      configurable: true,
-      value: () => {
-        const bounds = getBounds();
-        return reads++ === 0 ? new DOMRect(bounds.x, bounds.y, bounds.width, bounds.height + 30) : bounds;
-      },
-    });
-  });
-  try {
-    expect((await sampleHeightAcrossFrames(frame)).stable).toBe(false);
-  } finally {
-    await frame.evaluate((element) => {
-      Reflect.deleteProperty((element as HTMLIFrameElement).contentDocument!.getElementById("root")!, "getBoundingClientRect");
-    });
-  }
+  const sample = await sampleHeightAcrossFrames(frame, true);
+  expect(sample.stable).toBe(false);
+  expect(Math.abs(sample.firstHeight - sample.firstContentHeight)).toBeGreaterThan(1);
+  expect(Math.abs(sample.height - sample.contentHeight)).toBeLessThanOrEqual(1);
 });
 
 test("iframe height shrinks after text size changes from 5 to 1", async ({ page }) => {
