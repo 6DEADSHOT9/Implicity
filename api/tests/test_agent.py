@@ -1,13 +1,13 @@
 import asyncio
 import json
-import os
 import socket
 import threading
 import time
 from contextlib import contextmanager
 from dataclasses import asdict
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 import uvicorn
@@ -647,30 +647,32 @@ def test_background_gate_requires_ok_quota(quota_hermes, tmp_path, payload):
     assert not agent.may_start_background_work()
 
 
-def test_background_gate_ignores_yesterday_tokens_in_local_timezone(
-    quota_hermes, tmp_path
+def test_background_gate_uses_the_local_day_not_the_utc_day(
+    quota_hermes, tmp_path, monkeypatch
 ):
     base_url, state = quota_hermes
     state["payload"] = _usage_payload([_window(10)])
     agent, store = _quota_agent(tmp_path, base_url)
-    previous_timezone = os.environ.get("TZ")
-    os.environ["TZ"] = "America/Los_Angeles"
+    monkeypatch.setenv("TZ", "America/Los_Angeles")
     time.tzset()
+
+    class FrozenDateTime(agent_module.datetime):
+        # 2026-06-15 12:00 UTC is 05:00 on the same date in Los Angeles.
+        current = datetime(2026, 6, 15, 12, tzinfo=agent_module.timezone.utc)
+
+        @classmethod
+        def now(cls, tz=None):
+            return cls.current.astimezone(tz)
+
+    monkeypatch.setattr(agent_module, "datetime", FrozenDateTime)
     try:
-        yesterday = datetime.now().astimezone().date() - timedelta(days=1)
-        yesterday_late = datetime(
-            yesterday.year,
-            yesterday.month,
-            yesterday.day,
-            23,
-            59,
-            tzinfo=datetime.now().astimezone().tzinfo,
-        )
+        # 03:00 UTC on the 15th is the 14th, 20:00 in Los Angeles: today in UTC,
+        # yesterday locally, so a UTC-date comparison would count it.
         store.insert(
             QuotaLog(
-                id="yesterday",
+                id="yesterday-locally",
                 data={
-                    "time": yesterday_late.isoformat(),
+                    "time": "2026-06-15T03:00:00+00:00",
                     "type": "background",
                     "conversation_id": "old",
                     "input_tokens": 1_000_000_000,
@@ -681,11 +683,38 @@ def test_background_gate_ignores_yesterday_tokens_in_local_timezone(
         )
         assert agent.may_start_background_work()
     finally:
-        if previous_timezone is None:
-            os.environ.pop("TZ", None)
-        else:
-            os.environ["TZ"] = previous_timezone
+        monkeypatch.undo()  # restores TZ; the C library needs telling
         time.tzset()
+
+
+def test_quota_is_read_again_only_after_the_cache_expires(
+    quota_hermes, tmp_path, monkeypatch
+):
+    base_url, state = quota_hermes
+    state["payload"] = _usage_payload([_window(10)])
+    agent, _ = _quota_agent(tmp_path, base_url)
+    clock = [1_000.0]
+    monkeypatch.setattr(
+        agent_module, "time", SimpleNamespace(monotonic=lambda: clock[0])
+    )
+
+    agent.quota()
+    assert state["reads"] == 1
+    clock[0] += 59.9
+    agent.quota()
+    assert state["reads"] == 1
+    clock[0] += 0.2
+    agent.quota()
+    assert state["reads"] == 2
+
+
+def test_quota_settings_default_to_200000_tokens_and_90_percent(quota_hermes, tmp_path):
+    base_url, _ = quota_hermes
+    agent, _ = _quota_agent(tmp_path, base_url)
+
+    for settings in (QuotaSettings(), agent.quota_settings()):
+        assert settings.daily_background_token_cap == 200_000
+        assert settings.near_limit_threshold_percent == 90
 
 
 def test_quota_cache_staleness_and_settings_take_effect(
@@ -694,7 +723,6 @@ def test_quota_cache_staleness_and_settings_take_effect(
     base_url, state = quota_hermes
     state["payload"] = _usage_payload([_window(92)])
     agent, agent_store = _quota_agent(tmp_path, base_url)
-    assert agent.quota_settings() == QuotaSettings()
     assert agent.quota().state == "near_limit"
     assert agent.quota().state == "near_limit"
     assert state["reads"] == 1
