@@ -419,6 +419,10 @@ web/src/registry/DataTable/
 
 An entry is exactly these files: the component is the named export matching its folder, and `schema.ts`, `events.ts` and `meta.ts` provide the rest. Nothing else is exported for the registry. Generation and loading both fail, naming the folder, when a file or its expected export is missing.
 
+**Schema shape and rules.** An entry's Zod schema in `schema.ts` is the source of truth. Rules that relate fields to each other, such as an active tab being one of the tabs or ids being unique, are written as a Zod refinement on that schema, never by narrowing a field to a fixed list to make them checkable. The exported JSON Schema describes shape only. The registry validator and the browser renderer run the full Zod schema, so a spec that breaks a rule is rejected and falls back to plain text like any invalid spec; the server's `render` checks shape only.
+
+**Tabs and other named parts.** A skeleton that holds a list of named parts, such as tabs, takes `{ id, label }` entries: `id` is an identifier in the same form as a slot, `label` is display text. Each part's content arrives through the slot named by its id. Events name a part by its id, never its label, so display text never enters capture (rule 2). A skeleton may fix its ids when its parts are known views; otherwise any ids are allowed.
+
 **Registry versions** are recorded in append-only snapshot files, `registry-v1.json`, `registry-v2.json` and so on, each listing that version's components. The check needs no git history: the current components must match the file for the current version, and the current version must be the highest file. Adding or removing a component adds a new snapshot file and raises the version. An existing snapshot file is never edited, which review enforces.
 
 **A look** is one file.
