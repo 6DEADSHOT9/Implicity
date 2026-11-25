@@ -122,6 +122,10 @@ Features and dimensions are data files in `contracts`, so adding one needs no en
 
 **A feature** is a pair of daily counts per kind of chat. The setup command registers each one in PostHog as a saved query.
 
+**The setup command** takes a fresh clone to a running system and is safe to re-run: each step reports what it did or skipped. It stops below 16 GB of memory, creates `.env` from `.env.example` without overwriting values, brings up the Compose stack, runs the migrations, and then needs two things only the person can do, each a one-time stop with exact instructions that resumes on the next run:
+- **PostHog.** The person creates their own account in the local PostHog and a personal API key with the scopes setup names, and gives setup the key, which goes in `.env` and is never printed. With it, setup finds or creates the project and its project key and creates or updates each feature's saved query. Setup never creates PostHog users or writes to PostHog's database.
+- **Codex.** The person signs in inside the Hermes container (`hermes auth add openai-codex`). Setup only checks the sign-in and never handles the credential.
+
 ```yaml
 # contracts/features/long_answer_expanded.yaml
 id: long_answer_expanded
@@ -474,10 +478,12 @@ Quota {
 
 **MCP tools.** Every tool validates its input against the contracts before doing anything.
 
+**A rendered spec and its message.** `render` stores a valid message spec unattached, through the app module, and returns its id; it never takes a message or conversation id from the model, because only trusted code assigns identifiers (ADR 0020). When the app saves an assistant turn, it attaches the spec ids from the `render` calls and results it saw in that conversation's relayed stream. Specs left unattached are discarded after a fixed retention period.
+
 | Tool | Input | Result |
 | --- | --- | --- |
 | `catalogue` | Optional role filter | Each component's name, props schema, slots and limits |
-| `render` | A message spec | An id the frontend renders, or a validation error |
+| `render` | A message spec only; no message or conversation id | An id the frontend renders, or a validation error |
 | `propose` | A proposal request with `source: hermes` and no id; the app mints the id | The arbiter's verdict |
 | `memory_save` | Item type, text, scope, sensitive flag | Saved, or queued for the person's confirmation |
 | `label_kind` | Conversation id, kind | Recorded |
