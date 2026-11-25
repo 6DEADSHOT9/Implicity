@@ -5,7 +5,7 @@ from implicity_contracts.codec import decode_contract, encode_contract
 from implicity_contracts.generated import Decision as ContractDecision
 from implicity_contracts.generated import Spec as ContractSpec
 from jsonschema.exceptions import ValidationError as JSONSchemaValidationError
-from sqlalchemy import event
+from sqlalchemy import event, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.sql import visitors
@@ -102,7 +102,26 @@ class ModuleStore:
         with self._session() as session:
             return session.execute(statement).all()
 
+    def list(self, model: type) -> list[Any]:
+        _check_model(model, self.__owner)
+        with self._session() as session:
+            return session.scalars(select(model)).all()
+
     def insert(self, row: Any):
+        self._validate(row)
+        with self._session() as session, session.begin():
+            session.add(row)
+            session.flush()
+        return row
+
+    def put(self, row: Any):
+        self._validate(row)
+        with self._session() as session, session.begin():
+            session.merge(row)
+            session.flush()
+        return row
+
+    def _validate(self, row: Any) -> None:
         model = type(row)
         _check_model(model, self.__owner)
         if isinstance(row, SESSION_REQUIRED) and not row.session_id:
@@ -122,10 +141,6 @@ class ModuleStore:
             if isinstance(value, ContractDecision) and row.id != row.data.get("id"):
                 raise ValueError("Decision row id must match its contract id")
             row.data = json.loads(encode_contract(value))
-        with self._session() as session, session.begin():
-            session.add(row)
-            session.flush()
-        return row
 
     def _session(self) -> Session:
         return sessionmaker(

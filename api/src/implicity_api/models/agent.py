@@ -19,3 +19,7 @@ class AgentSession(OwnedRow, Base):
 
 class QuotaLog(OwnedRow, Base):
     __tablename__ = "quota_log"
+
+
+class QuotaSettings(OwnedRow, Base):
+    __tablename__ = "quota_settings"
