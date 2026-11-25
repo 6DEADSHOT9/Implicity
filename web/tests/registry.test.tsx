@@ -61,7 +61,7 @@ describe("registry and renderer", () => {
         child: { type: "ReviewPanel", props: { count: 3 }, slots: { main: [] } },
       },
     };
-    expect(await markup(renderMessage(spec, "fallback", panelRegistry))).toContain("<strong>7</strong><section class=\"review-panel\"><strong>3</strong>");
+    expect(await markup(renderMessage(spec, "fallback", panelRegistry))).toContain("<strong>7</strong><section class=\"review-panel\" data-count=\"3\"><strong>3</strong>");
   });
 
   it("falls back for inherited, unknown and missing-root component ids", async () => {

@@ -21,7 +21,7 @@ const gallerySource = resolve(dirname(fileURLToPath(import.meta.url)), "../src/g
 const galleryCssPath = resolve(dirname(fileURLToPath(import.meta.url)), "../src/gallery.css");
 const galleryCss = await readFile(galleryCssPath, "utf8");
 const galleryClasses = new Set([...galleryCss.matchAll(/\.([a-z][\w-]*)/g)].map(([, name]) => name));
-const galleryLayout = new Map([["overflow", new Set(["hidden"])], ["position", new Set(["relative", "absolute"])], ["width", new Set(["100%"])], ["inset", new Set(["0 auto auto 0"])], ["border", new Set(["0"])], ["transform-origin", new Set(["top left"])] ]);
+const galleryLayout = new Map([["overflow", new Set(["hidden"])], ["position", new Set(["relative", "absolute"])], ["width", new Set(["100%"])], ["inset", new Set(["0 auto auto 0"])], ["border", new Set(["0"])], ["box-sizing", new Set(["border-box"])], ["margin", new Set(["0"])], ["transform-origin", new Set(["top left"])] ]);
 
 function safeStyleValue(property, value) {
   const normalized = value.toLowerCase();
@@ -232,7 +232,7 @@ async function sourceFiles(path) {
 }
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const paths = [...await sourceFiles(resolve(root, "web/src/registry")), resolve(root, "web/src/renderer.tsx"), resolve(root, "web/src/gallery.tsx"), resolve(root, "web/src/gallery.css")];
+const paths = [...await sourceFiles(resolve(root, "web/src/registry")), resolve(root, "web/src/renderer.tsx"), ...["gallery.tsx", "gallery.css", "preview-runtime.tsx", "preview-main.tsx"].map((file) => resolve(root, `web/src/${file}`))];
 let failed = false;
 for (const path of paths) {
   const violations = tokenStyleViolations(await readFile(path, "utf8"), path);

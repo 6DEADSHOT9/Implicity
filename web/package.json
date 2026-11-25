@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "lint": "eslint . && tsc --noEmit",
-    "test": "vitest run && playwright test",
+    "test": "vitest run && pnpm build && node scripts/check-preview-build.mjs && playwright test",
+    "build": "vite build",
     "install:browsers": "playwright install chromium",
     "dev": "vite --host 127.0.0.1"
   },

@@ -3,3 +3,5 @@
 @media (min-width: 1024px) {
   .review-panel { display: grid; }
 }
+.review-panel[data-count="4"] { min-height: 120px; }
+.review-panel[data-count="99"] { min-height: 1200px; }

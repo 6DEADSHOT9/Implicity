@@ -6,6 +6,7 @@ test("screen size changes actual Skeleton preview width and all allowed tokens a
   const preview = page.frameLocator("iframe[title='ReviewPanel · plain']").locator(".review-panel");
   const desktop = await preview.boundingBox();
   expect(desktop).not.toBeNull();
+  expect(desktop!.width).toBeGreaterThan(1000);
   await page.getByLabel("Screen size").selectOption("tablet");
   const tablet = await preview.boundingBox();
   expect(tablet).not.toBeNull();
@@ -54,6 +55,61 @@ test("renders examples and contains a failed Skeleton state to its card", async 
   await expect(page.frameLocator("iframe[title='ReviewShell · plain']").locator("body")).toContainText("content");
   await expect(page.frameLocator("iframe[title='ReviewPanel · error']").getByRole("alert")).toContainText("ReviewPanel · error: preview failed");
   await expect(page.locator("[data-skeleton='ReviewPanel'][data-gallery-state='plain']")).toBeVisible();
+  const panelResources = await page.locator("iframe[title='ReviewPanel · plain']").evaluate((frame) => (frame as HTMLIFrameElement).contentWindow?.performance.getEntriesByType("resource").map(({ name }) => name) ?? []);
+  const shellResources = await page.locator("iframe[title='ReviewShell · plain']").evaluate((frame) => (frame as HTMLIFrameElement).contentWindow?.performance.getEntriesByType("resource").map(({ name }) => name) ?? []);
+  expect(panelResources.some((url) => url.includes("/ReviewPanel/entry.ts"))).toBe(true);
+  expect(panelResources.some((url) => url.includes("/ReviewShell/entry.ts"))).toBe(false);
+  expect(shellResources.some((url) => url.includes("/ReviewShell/entry.ts"))).toBe(true);
+  expect(shellResources.some((url) => url.includes("/ReviewPanel/entry.ts"))).toBe(false);
+});
+
+test("fits short and tall content by sizing iframes from their document", async ({ page }) => {
+  await page.goto("/tests/browser/gallery.html");
+  for (const [state, comparison] of [["busy", (height: number) => height < 900], ["tall", (height: number) => height > 900]] as const) {
+    const frame = page.locator(`iframe[title='ReviewPanel · ${state}']`);
+    await expect.poll(() => frame.evaluate((element) => {
+      const iframe = element as HTMLIFrameElement;
+      return Number(iframe.height) === iframe.contentDocument?.documentElement.scrollHeight;
+    })).toBe(true);
+    const dimensions = await frame.evaluate((element) => {
+      const iframe = element as HTMLIFrameElement;
+      const stage = iframe.parentElement!;
+      return { height: Number(iframe.height), displayedHeight: iframe.getBoundingClientRect().height, stageHeight: stage.clientHeight };
+    });
+    expect(comparison(dimensions.height)).toBe(true);
+    expect(Math.abs(dimensions.displayedHeight - dimensions.stageHeight)).toBeLessThan(2);
+  }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(await page.evaluate(() => document.documentElement.clientWidth));
+});
+
+test("production build includes and serves the preview page", async ({ page }) => {
+  const port = Number((globalThis as typeof globalThis & { process?: { env?: Record<string, string | undefined> } }).process?.env?.GALLERY_PREVIEW_PORT ?? 4174);
+  const response = await page.goto(`http://127.0.0.1:${port}/preview.html?entry=missing&state=plain`);
+  expect(response?.status()).toBe(200);
+  await page.evaluate(() => window.postMessage({ styles: "", texture: "none" }, location.origin));
+  await expect(page.getByRole("alert")).toHaveText("Preview unavailable");
+});
+
+test("preview ignores styling messages from unrelated same-origin frames", async ({ page }) => {
+  await page.goto("/tests/browser/gallery.html");
+  const frame = page.locator("iframe[title='ReviewPanel · plain']");
+  await expect(page.frameLocator("iframe[title='ReviewPanel · plain']").locator("body")).toContainText("Preview heading");
+  await page.evaluate(async () => {
+    const target = (document.querySelector("iframe[title='ReviewPanel · plain']") as HTMLIFrameElement).contentWindow!;
+    const sender = document.createElement("iframe");
+    sender.src = "/tests/browser/preview-frame.html?entry=missing&state=plain";
+    document.body.append(sender);
+    await new Promise<void>((resolve) => sender.addEventListener("load", () => resolve(), { once: true }));
+    const targetScript = target.document.createElement("script");
+    targetScript.textContent = "window.addEventListener('message', () => document.documentElement.dataset.messageSeen = 'yes', { once: true })";
+    target.document.body.append(targetScript);
+    Object.defineProperty(sender.contentWindow!, "targetPreview", { value: target });
+    const senderScript = sender.contentDocument!.createElement("script");
+    senderScript.textContent = "targetPreview.postMessage({ styles: '--foreground: rgb(255, 0, 0)', texture: 'paper-grain' }, location.origin)";
+    sender.contentDocument!.body.append(senderScript);
+  });
+  await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentDocument?.documentElement.dataset.messageSeen)).toBe("yes");
+  expect(await frame.evaluate((element) => (element as HTMLIFrameElement).contentDocument?.documentElement.dataset.texture)).toBe("none");
 });
 
 test("Notebook applies its bundled body font, paper texture, and both mode palettes without changing Skeleton headings", async ({ page }) => {

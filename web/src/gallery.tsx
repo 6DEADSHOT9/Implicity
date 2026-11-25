@@ -15,6 +15,8 @@ function SkeletonPreview({ entry, state, deviceClass, tokenStyles, texture, prev
   const viewportWidth = deviceClass === "desktop" ? 1440 : 800;
   const previewConfig = useRef({ styles: tokenStyles, texture });
   previewConfig.current = { styles: tokenStyles, texture };
+  const frameHeight = useRef(1);
+  const animationFrame = useRef<number | undefined>(undefined);
 
   function updatePreview() {
     frame.current?.contentWindow?.postMessage(previewConfig.current, location.origin);
@@ -29,23 +31,42 @@ function SkeletonPreview({ entry, state, deviceClass, tokenStyles, texture, prev
     const preview = frame.current;
     if (!container || !preview) return;
     let previousWidth = -1;
+    let scale = 1;
     const resize = () => {
-      if (container.clientWidth === previousWidth) return;
-      previousWidth = container.clientWidth;
-      const scale = Math.min(1, previousWidth / viewportWidth);
-      preview.style.transform = `scale(${scale})`;
-      container.style.height = `${900 * scale}px`;
+      if (container.clientWidth !== previousWidth) {
+        previousWidth = container.clientWidth;
+        scale = Math.min(1, previousWidth / viewportWidth);
+        preview.style.transform = `scale(${scale})`;
+      }
+      container.style.height = `${frameHeight.current * scale}px`;
     };
-    const observer = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(() => requestAnimationFrame(resize));
+    const observer = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(() => {
+      if (animationFrame.current !== undefined) cancelAnimationFrame(animationFrame.current);
+      animationFrame.current = requestAnimationFrame(() => {
+        animationFrame.current = undefined;
+        resize();
+      });
+    });
     observer?.observe(container);
     resize();
-    return () => observer?.disconnect();
+    const onMessage = (event: MessageEvent<unknown>) => {
+      if (event.origin !== location.origin || event.source !== preview.contentWindow || !event.data || typeof event.data !== "object" || !("type" in event.data) || event.data.type !== "preview-height" || !("height" in event.data) || typeof event.data.height !== "number" || !Number.isFinite(event.data.height) || event.data.height < 1) return;
+      frameHeight.current = Math.ceil(event.data.height);
+      preview.height = String(frameHeight.current);
+      resize();
+    };
+    window.addEventListener("message", onMessage);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("message", onMessage);
+      if (animationFrame.current !== undefined) cancelAnimationFrame(animationFrame.current);
+    };
   }, [viewportWidth]);
 
   const params = new URLSearchParams({ entry: entry.id, state: state.id });
   return <>
     <div className="gallery-preview-stage" ref={stage}>
-      <iframe key={deviceClass} ref={frame} className="gallery-preview-frame" title={`${entry.id} · ${state.id}`} data-device-class={deviceClass} width={viewportWidth} height={900} src={`${previewPath}?${params}`} onLoad={updatePreview} />
+      <iframe key={deviceClass} ref={frame} className="gallery-preview-frame" title={`${entry.id} · ${state.id}`} data-device-class={deviceClass} width={viewportWidth} height={1} src={`${previewPath}?${params}`} onLoad={updatePreview} />
     </div>
   </>;
 }

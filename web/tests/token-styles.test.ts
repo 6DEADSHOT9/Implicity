@@ -6,6 +6,8 @@ import { tokenNames } from "../src/registry/token-values.mjs";
 const componentFile = new URL("../src/registry/Probe/Probe.tsx", import.meta.url).pathname;
 const rendererFile = new URL("../src/renderer.tsx", import.meta.url).pathname;
 const galleryFile = new URL("../src/gallery.tsx", import.meta.url).pathname;
+const previewRuntimeFile = new URL("../src/preview-runtime.tsx", import.meta.url).pathname;
+const previewMainFile = new URL("../src/preview-main.tsx", import.meta.url).pathname;
 const tokenImport = 'import { token } from "../token"; ';
 
 describe("token-only style guard", () => {
@@ -55,6 +57,8 @@ describe("token-only style guard", () => {
     expect(tokenStyleViolations('const View = () => <div style={{ display: "flex", alignItems: "center" }} />;', componentFile)).toEqual([]);
     expect(tokenStyleViolations('const View = () => <div style={{ width: "var(--gallery-device-width)" }} />;', componentFile)).toContain("width: var(--gallery-device-width)");
     expect(tokenStyleViolations('const View = () => <div style={{ width: "var(--gallery-device-width)" }} />;', rendererFile)).toContain("width: var(--gallery-device-width)");
+    expect(tokenStyleViolations('const View = () => <p style={{ color: "#f00" }} />;', previewRuntimeFile)).toContain("color: #f00");
+    expect(tokenStyleViolations('const View = () => <p style={{ color: "#f00" }} />;', previewMainFile)).toContain("color: #f00");
     expect(tokenStyleViolations('.probe { color: center; width: center; display: flex; }', "styles.css")).toEqual(["color: center", "width: center"]);
   });
 
