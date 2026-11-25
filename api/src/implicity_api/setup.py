@@ -38,21 +38,84 @@ def total_memory() -> int:
     return os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")
 
 
+def _assignment(line: str):
+    match = re.fullmatch(
+        r"\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*", line
+    )
+    if not match:
+        return None
+    key, value = match.groups()
+    if value.startswith(("'", '"')):
+        quote = value[0]
+        end = next(
+            (
+                i
+                for i in range(1, len(value))
+                if value[i] == quote and value[i - 1] != "\\"
+            ),
+            None,
+        )
+        if end is not None and (
+            not value[end + 1 :].strip() or value[end + 1 :].lstrip().startswith("#")
+        ):
+            content = value[1:end]
+            if quote == "'":
+                return key, content.replace("\\'", "'").replace("\\\\", "\\"), False
+            escapes = {"n": "\n", "r": "\r", "t": "\t", '"': '"', "\\": "\\"}
+            content = re.sub(r"\\([nrt\"\\])", lambda m: escapes[m[1]], content)
+            return key, content, True
+    return key, re.sub(r"\s+#.*$", "", value).strip(), True
+
+
+def _expand(value: str, lookup, depth: int = 0) -> str:
+    if depth > 10:
+        raise ValueError(".env interpolation is nested too deeply")
+    escaped = "\0DOLLAR\0"
+
+    def replace(match):
+        if match[0] == "$$":
+            return escaped
+        expression = match[1] or match[2]
+        if expression is None:
+            return lookup(match[3]) or ""
+        token = re.fullmatch(r"([A-Za-z_][A-Za-z0-9_]*)(?:(:-|-)(.*))?", expression)
+        if not token:
+            return match[0]
+        name, operator, default = token.groups()
+        current = lookup(name)
+        if operator == ":-" and not current or operator == "-" and current is None:
+            current = _expand(default, lookup, depth + 1)
+        return current or "" if current is not None else ""
+
+    value = re.sub(r"\$\$|\$\{([^}]+)\}|\$([A-Za-z_][A-Za-z0-9_]*)", replace, value)
+    return value.replace(escaped, "$")
+
+
 def _env_lines(path: Path) -> tuple[list[str], dict[str, str]]:
     lines = path.read_text().splitlines() if path.exists() else []
-    values = {}
+    parsed = {}
     for line in lines:
-        match = re.fullmatch(
-            r"\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*", line
-        )
-        if match:
-            key, value = match.groups()
-            if value.startswith(("'", '"')) and value.endswith(value[0]):
-                value = value[1:-1]
-            else:
-                value = re.sub(r"\s+#.*$", "", value).strip()
-            values[key] = value
-    return lines, values
+        assignment = _assignment(line)
+        if assignment:
+            key, value, interpolate = assignment
+            parsed[key] = (value, interpolate)
+    resolved = {}
+    resolving = set()
+
+    def lookup(key):
+        if key in os.environ:
+            return os.environ[key]
+        if key in resolved:
+            return resolved[key]
+        if key not in parsed or key in resolving:
+            return None
+        resolving.add(key)
+        value, interpolate = parsed[key]
+        resolved[key] = _expand(value, lookup) if interpolate else value
+        resolving.remove(key)
+        return resolved[key]
+
+    return lines, {key: lookup(key) or "" for key in parsed}
 
 
 def _write_env(path: Path, lines: list[str]) -> None:
@@ -70,6 +133,13 @@ def _write_env(path: Path, lines: list[str]) -> None:
 
 def set_env_value(path: Path, key: str, value: str) -> None:
     lines, values = _env_lines(path)
+    if key in os.environ:
+        if os.environ[key] != value:
+            raise RuntimeError(
+                f"{key} in the environment does not match the project returned "
+                "by PostHog"
+            )
+        return
     if values.get(key):
         if values[key] != value:
             raise RuntimeError(
@@ -103,7 +173,7 @@ def ensure_env(
             if not path.exists():
                 lines.append(line)
             continue
-        if not values.get(key):
+        if not values.get(key) and key not in os.environ:
             generated = value
             if key in SECRET_BYTES:
                 generated = token_hex(SECRET_BYTES[key])
@@ -130,6 +200,13 @@ def ensure_env(
         _write_env(path, lines)
     else:
         os.chmod(path, 0o600)
+    values.update(
+        {
+            key: os.environ[key]
+            for line in template
+            if (key := line.partition("=")[0]) in os.environ
+        }
+    )
     return values
 
 
@@ -278,8 +355,9 @@ def _setup() -> int:
     if not personal_key:
         print(
             f"PostHog needs one-time setup at {posthog_url}: create your account and "
-            "then create a personal API key with project:read, "
-            "project:write, endpoint:read and endpoint:write scopes."
+            "then create a personal API key with project:read, project:write, "
+            "endpoint:read, endpoint:write, insight_variable:read and "
+            "insight_variable:write scopes."
         )
         open_posthog_if_interactive(posthog_url)
         print(
@@ -289,7 +367,10 @@ def _setup() -> int:
         return 2
 
     client = PostHog(posthog_url, personal_key)
-    project, project_created = ensure_project(client, "Implicity")
+    project_name = values.get("POSTHOG_PROJECT_NAME") or "Implicity"
+    project, project_created = ensure_project(
+        client, project_name, allow_sole=not bool(values.get("POSTHOG_PROJECT_NAME"))
+    )
     project_id = int(project["id"])
     print(f"PostHog project: {'created' if project_created else 'found (skipped)'}")
     if values.get("POSTHOG_PROJECT_ID") and values["POSTHOG_PROJECT_ID"] != str(

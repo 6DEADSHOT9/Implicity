@@ -26,8 +26,9 @@ class PostHog:
         except urllib.error.HTTPError as error:
             if error.code == 404 and method == "GET":
                 return None
+            detail = error.read().decode(errors="replace")[:500]
             raise RuntimeError(
-                f"PostHog API {method} {path} returned HTTP {error.code}"
+                f"PostHog API {method} {path} returned HTTP {error.code}: {detail}"
             ) from error
 
     def list_projects(self):
@@ -42,6 +43,19 @@ class PostHog:
 
     def create_project(self, name: str):
         return self.request("POST", "/api/projects/", {"name": name})
+
+    def list_insight_variables(self, project_id: int):
+        response = self.request(
+            "GET", f"/api/environments/{project_id}/insight_variables/"
+        )
+        return response.get("results", []) if response else []
+
+    def create_insight_variable(self, project_id: int, name: str, default: str):
+        return self.request(
+            "POST",
+            f"/api/environments/{project_id}/insight_variables/",
+            {"name": name, "type": "String", "default_value": default},
+        )
 
     def get_endpoint(self, project_id: int, name: str):
         return self.request("GET", f"/api/environments/{project_id}/endpoints/{name}/")
@@ -61,14 +75,21 @@ class PostHog:
         )
 
 
-def ensure_project(client, name: str) -> tuple[dict, bool]:
-    existing = next(
-        (item for item in client.list_projects() if item["name"] == name), None
+def ensure_project(client, name: str, allow_sole: bool = True) -> tuple[dict, bool]:
+    projects = client.list_projects()
+    existing = next((item for item in projects if item["name"] == name), None)
+    if existing:
+        return existing, False
+    if allow_sole and len(projects) == 1:
+        return projects[0], False
+    if not projects:
+        return client.create_project(name), True
+    raise RuntimeError(
+        "Multiple PostHog projects found; set POSTHOG_PROJECT_NAME in .env"
     )
-    return (existing, False) if existing else (client.create_project(name), True)
 
 
-def feature_query(feature) -> dict:
+def feature_query(feature, variables) -> dict:
     def literal(value):
         if isinstance(value, bool):
             return "true" if value else "false"
@@ -100,16 +121,23 @@ def feature_query(feature) -> dict:
         f"{happened_count} AS happened, countIf(event = "
         f"{literal(chance['event'])} AND ({where(chance)})) AS could_have "
         f"FROM events WHERE event IN ({', '.join(literal(event) for event in events)}) "
-        "AND timestamp >= toDateTime({variables.start}) "
-        "AND timestamp < toDateTime({variables.end}) "
-        "AND properties['session_id'] NOT IN {variables.excluded_sessions} "
+        f"AND timestamp >= toDateTime({{variables.{variables['start']['code_name']}}}) "
+        f"AND timestamp < toDateTime({{variables.{variables['end']['code_name']}}}) "
+        f"AND (empty({{variables.{variables['excluded_sessions']['code_name']}}}) OR "
+        f"NOT has(splitByChar(',', "
+        f"{{variables.{variables['excluded_sessions']['code_name']}}}), "
+        "properties['session_id'])) "
         "GROUP BY day, kind ORDER BY day, kind"
     )
-    return {"kind": "HogQLQuery", "query": sql}
+    return {
+        "kind": "HogQLQuery",
+        "query": sql,
+        "variables": {binding["variableId"]: binding for binding in variables.values()},
+    }
 
 
-def ensure_feature(client, project_id: int, feature) -> bool:
-    query = feature_query(feature)
+def ensure_feature(client, project_id: int, feature, variables) -> bool:
+    query = feature_query(feature, variables)
     existing = client.get_endpoint(project_id, feature.id)
     if existing is None:
         client.create_endpoint(project_id, feature.id, query)
@@ -117,10 +145,20 @@ def ensure_feature(client, project_id: int, feature) -> bool:
     current = existing.get("query") or {}
     if isinstance(current, str):
         current = {"kind": "HogQLQuery", "query": current}
+
+    def meaningful(bindings):
+        return {
+            key: {
+                field: value.get(field)
+                for field in ("variableId", "code_name", "value")
+            }
+            for key, value in bindings.items()
+        }
+
     if (
         current.get("kind") == query["kind"]
         and current.get("query") == query["query"]
-        and current.get("variables", {}) == query.get("variables", {})
+        and meaningful(current.get("variables", {})) == meaningful(query["variables"])
     ):
         return False
     client.update_endpoint(project_id, feature.id, query)
@@ -131,5 +169,32 @@ def register_features(client, project_id: int, directory: Path) -> tuple[int, in
     from implicity_engine.evidence import load_feature
 
     features = [load_feature(path) for path in sorted(directory.glob("*.yaml"))]
-    changed = sum(ensure_feature(client, project_id, feature) for feature in features)
+    definitions = {
+        item["name"]: item for item in client.list_insight_variables(project_id)
+    }
+    changed = 0
+    for feature in features:
+        bindings = {}
+        for name, default in (
+            ("start", "2000-01-01"),
+            ("end", "2100-01-01"),
+            ("excluded_sessions", ""),
+        ):
+            variable_name = f"{feature.id} {name}"
+            definition = definitions.get(variable_name)
+            if definition is None:
+                definition = client.create_insight_variable(
+                    project_id, variable_name, default
+                )
+                definitions[variable_name] = definition
+            if definition.get("type") != "String":
+                raise RuntimeError(
+                    f"PostHog variable {variable_name} must have type String"
+                )
+            bindings[name] = {
+                "variableId": definition["id"],
+                "code_name": definition["code_name"],
+                "value": default,
+            }
+        changed += ensure_feature(client, project_id, feature, bindings)
     return changed, len(features) - changed

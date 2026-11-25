@@ -30,10 +30,13 @@ Stage 1, foundation. Three spikes run before any other work: see `docs/spikes`.
 Run `make setup` to check the machine, generate missing local secrets, and start
 the development stack. On first run, create your PostHog account at the printed
 local URL, then create a personal API key with `project:read`, `project:write`,
-`endpoint:read` and `endpoint:write` scopes. Put it in `.env` as
-`POSTHOG_PERSONAL_API_KEY` and run `make setup` again. Setup finds or creates the
-`Implicity` project and stores its project key in `VITE_POSTHOG_API_KEY` for the
-app. If Hermes reports `openai-codex: logged out`, run
+`endpoint:read`, `endpoint:write`, `insight_variable:read` and
+`insight_variable:write` scopes.
+Put it in `.env` as
+`POSTHOG_PERSONAL_API_KEY` and run `make setup` again. Setup reuses the sole
+project on a new account, or the project named by `POSTHOG_PROJECT_NAME`, and
+stores its project key in `VITE_POSTHOG_API_KEY` for the app. If Hermes reports
+`openai-codex: logged out`, run
 `hermes auth add openai-codex` inside its container, finish sign-in and rerun
 setup.
 The PostHog page opens only in an interactive terminal; set

@@ -24,6 +24,47 @@ def test_compose_export_and_spaced_assignment_are_preserved(tmp_path):
     assert env.read_text() == 'export VITE_POSTHOG_API_KEY = "keep-me"\n'
 
 
+def test_compose_dotenv_interpolation_quotes_comments_and_shell_precedence(
+    tmp_path, monkeypatch
+):
+    env = tmp_path / ".env"
+    env.write_text(
+        'PREFIX=phc\nexport QUOTED = "${PREFIX}_value" # note\n'
+        "SINGLE='${PREFIX}_literal' # note\nINLINE=phc_key # note\nHASH=phc#fragment\n"
+    )
+    _, values = setup._env_lines(env)
+    assert values == {
+        "PREFIX": "phc",
+        "QUOTED": "phc_value",
+        "SINGLE": "${PREFIX}_literal",
+        "INLINE": "phc_key",
+        "HASH": "phc#fragment",
+    }
+    monkeypatch.setenv("QUOTED", "shell-value")
+    assert setup._env_lines(env)[1]["QUOTED"] == "shell-value"
+
+
+def test_populated_shell_slot_is_not_written_to_dotenv(tmp_path, monkeypatch):
+    env = tmp_path / ".env"
+    example = tmp_path / ".env.example"
+    env.write_text("VITE_POSTHOG_API_KEY=\n")
+    example.write_text("VITE_POSTHOG_API_KEY=\n")
+    monkeypatch.setenv("VITE_POSTHOG_API_KEY", "phc_shell")
+    setup.ensure_env(env, example)
+    setup.set_env_value(env, "VITE_POSTHOG_API_KEY", "phc_shell")
+    assert env.read_text() == "VITE_POSTHOG_API_KEY=\n"
+
+
+def test_shell_value_without_dotenv_assignment_is_effective(tmp_path, monkeypatch):
+    env = tmp_path / ".env"
+    example = tmp_path / ".env.example"
+    env.write_text("")
+    example.write_text("POSTHOG_PERSONAL_API_KEY=\n")
+    monkeypatch.setenv("POSTHOG_PERSONAL_API_KEY", "phx_shell")
+    assert setup.ensure_env(env, example) == {"POSTHOG_PERSONAL_API_KEY": "phx_shell"}
+    assert env.read_text() == ""
+
+
 def test_missing_and_blank_generated_env_slots_are_filled_without_duplicates(tmp_path):
     env = tmp_path / ".env"
     example = tmp_path / ".env.example"
@@ -59,23 +100,27 @@ def test_event_source_registers_s3_hogql_shape_and_reconciles_idempotently(tmp_p
         "id: daily\nhappened: {event: section_expanded}\n"
         "could_have: {event: component_seen}\ngroup_by: [day, kind]\n"
     )
-    query = {
-        "kind": "HogQLQuery",
-        "query": "SELECT toDate(timestamp) AS day, properties['kind'] AS kind, "
-        "groupUniqArrayIf(properties['conversation_id'], event = "
-        "'component_seen' AND (1)) AS conversation_ids, "
-        "countIf(event = 'section_expanded' AND (1)) AS happened, "
-        "countIf(event = 'component_seen' AND (1)) AS could_have FROM events "
-        "WHERE event IN ('section_expanded', 'component_seen') "
-        "AND timestamp >= toDateTime({variables.start}) "
-        "AND timestamp < toDateTime({variables.end}) "
-        "AND properties['session_id'] NOT IN "
-        "{variables.excluded_sessions} GROUP BY day, kind ORDER BY day, kind",
-    }
 
     class Client:
         saved = None
         writes = []
+        created = 0
+        definitions = []
+
+        def list_insight_variables(self, project_id):
+            return self.definitions
+
+        def create_insight_variable(self, project_id, name, default):
+            self.created += 1
+            item = {
+                "id": f"00000000-0000-0000-0000-{self.created:012d}",
+                "name": name,
+                "code_name": name.replace(" ", "_"),
+                "type": "String",
+                "default_value": default,
+            }
+            self.definitions.append(item)
+            return item
 
         def get_endpoint(self, project_id, name):
             return {"name": name, "query": self.saved} if self.saved else None
@@ -89,10 +134,15 @@ def test_event_source_registers_s3_hogql_shape_and_reconciles_idempotently(tmp_p
             self.saved = body
 
     client = Client()
-    assert set(query) == set(s3["api_calls"][0]["payload"]["query"])
     assert s3["create"]["status"] == 201
     assert register_features(client, 17, feature_dir) == (1, 0)
-    assert client.writes == [("POST", 17, "daily", query)]
+    query = client.writes[0][3]
+    assert query["kind"] == s3["api_calls"][0]["payload"]["query"]["kind"]
+    assert all(
+        f"{{variables.{name}}}" in query["query"]
+        for name in ("daily_start", "daily_end", "daily_excluded_sessions")
+    )
+    assert len(query["variables"]) == 3
     assert register_features(client, 17, feature_dir) == (0, 1)
     assert len(client.writes) == 1
 
@@ -203,7 +253,8 @@ def test_setup_entry_migrates_before_manual_stop_and_prints_exact_instructions(
     assert "upgrade" in calls[migration] and "head" in calls[migration]
     assert (
         "create your account and then create a personal API key with "
-        "project:read, project:write, endpoint:read and endpoint:write scopes." in out
+        "project:read, project:write, endpoint:read, endpoint:write, "
+        "insight_variable:read and insight_variable:write scopes." in out
     )
     assert (
         "Save the key as POSTHOG_PERSONAL_API_KEY in .env, then run make setup again."
@@ -272,6 +323,8 @@ def test_setup_entry_drives_http_and_docker_boundaries_and_is_idempotent(
         "responses": [],
         "order": [],
         "fail_writes": False,
+        "fail_patch": False,
+        "variables": [],
     }
 
     class Handler(BaseHTTPRequestHandler):
@@ -292,11 +345,17 @@ def test_setup_entry_drives_http_and_docker_boundaries_and_is_idempotent(
                     200,
                     {
                         "results": [
-                            {"id": 17, "name": "Implicity", "api_token": "phc_project"}
+                            {
+                                "id": 17,
+                                "name": "Default project",
+                                "api_token": "phc_project",
+                            }
                         ],
                         "next": None,
                     },
                 )
+            if self.path.endswith("/insight_variables/"):
+                return self.reply(200, {"results": state["variables"]})
             name = self.path.rstrip("/").split("/")[-1]
             if name in state["endpoints"]:
                 return self.reply(
@@ -310,6 +369,16 @@ def test_setup_entry_drives_http_and_docker_boundaries_and_is_idempotent(
             state["requests"].append(("POST", self.path, body))
             if state["fail_writes"]:
                 return self.reply(500, {"detail": "write failed"})
+            if self.path.endswith("/insight_variables/"):
+                item = {
+                    "id": f"00000000-0000-0000-0000-{len(state['variables']) + 1:012d}",
+                    "name": body["name"],
+                    "code_name": body["name"].replace(" ", "_"),
+                    "type": body["type"],
+                    "default_value": body["default_value"],
+                }
+                state["variables"].append(item)
+                return self.reply(201, item)
             state["endpoints"][body["name"]] = body["query"]
             return self.reply(201, {"name": body["name"], "query": body["query"]})
 
@@ -318,6 +387,8 @@ def test_setup_entry_drives_http_and_docker_boundaries_and_is_idempotent(
             state["order"].append("http")
             state["requests"].append(("PATCH", self.path, body))
             name = self.path.rstrip("/").split("/")[-1]
+            if state["fail_patch"]:
+                return self.reply(404, {"detail": "missing"})
             state["endpoints"][name] = body["query"]
             return self.reply(200, {"name": name, "query": body["query"]})
 
@@ -330,13 +401,13 @@ def test_setup_entry_drives_http_and_docker_boundaries_and_is_idempotent(
     try:
         monkeypatch.setattr(setup, "ROOT", tmp_path)
         (tmp_path / ".env.example").write_text(
-            "POSTHOG_PERSONAL_API_KEY=personal\nPOSTHOG_PROJECT_ID=\nVITE_POSTHOG_API_KEY=\nPOSTHOG_PORT="
+            "HERMES_API_KEY=populated-secret\nPOSTHOG_PERSONAL_API_KEY=personal\nPOSTHOG_PROJECT_ID=\nVITE_POSTHOG_API_KEY=\nPOSTHOG_PORT="
             + str(server.server_port)
             + "\n"
         )
         env = tmp_path / ".env"
         env.write_text(
-            "POSTHOG_PERSONAL_API_KEY=personal\nPOSTHOG_PORT="
+            "HERMES_API_KEY=populated-secret\nPOSTHOG_PERSONAL_API_KEY=personal\nPOSTHOG_PORT="
             + str(server.server_port)
             + "\n"
         )
@@ -347,25 +418,34 @@ def test_setup_entry_drives_http_and_docker_boundaries_and_is_idempotent(
             "could_have: {event: seen}\ngroup_by: [day, kind]\n"
         )
         monkeypatch.setattr(setup, "total_memory", lambda: 16 * 1024**3)
-        monkeypatch.setattr(setup, "_healthy_stack", lambda: True)
-        service_ids = ("api-id", "web-id")
-        monkeypatch.setattr(setup, "_container_ids", lambda: service_ids)
         docker_calls = []
+        service_ids = ["api-id", "web-id"]
 
         def docker(args, **kwargs):
-            docker_calls.append(args)
+            docker_calls.append(list(args))
+            output = ""
+            if args[:3] == ["docker", "compose", "--profile"] and "config" in args:
+                output = json.dumps(
+                    {"services": {"api-development": {}, "web-development": {}}}
+                )
+            elif "ps" in args and "--format" in args:
+                output = "\n".join(
+                    json.dumps({"State": "running", "Health": "healthy"})
+                    for _ in service_ids
+                )
+            elif "ps" in args and "-q" in args:
+                output = "\n".join(service_ids)
+            elif "--force-recreate" in args:
+                service_ids[:] = ["rotated-api", "rotated-web"]
             if "alembic" in args:
                 state["order"].append("migration")
-            return subprocess.CompletedProcess(args, 0, "", "")
+            if "auth" in args:
+                state["order"].append("auth")
+                output = auth["output"]
+            return subprocess.CompletedProcess(args, 0, output, "")
 
-        monkeypatch.setattr(setup, "_run", docker)
         auth = {"output": "openai-codex: authenticated"}
-
-        def hermes(*args, **kwargs):
-            state["order"].append("auth")
-            return subprocess.CompletedProcess(args[0], 0, auth["output"], "")
-
-        monkeypatch.setattr(setup.subprocess, "run", hermes)
+        monkeypatch.setattr(setup.subprocess, "run", docker)
         monkeypatch.setenv("IMPLICITY_SETUP_NO_BROWSER", "1")
         monkeypatch.delenv("CI", raising=False)
         assert setup.main() == 0
@@ -377,11 +457,25 @@ def test_setup_entry_drives_http_and_docker_boundaries_and_is_idempotent(
         )
         first_env = env.read_bytes()
         first_ids = setup._container_ids()
+        assert first_ids == ("api-id", "web-id")
+        assert docker_calls.count(["make", "up-development"]) == 1
+        assert "populated-secret" in env.read_text()
         assert first_env.count(b"POSTHOG_PROJECT_ID=") == 1
         assert any("upgrade" in call and "head" in call for call in docker_calls)
         assert any(
             "--wait" in call and "web-development" in call for call in docker_calls
         )
+        payload = next(
+            body["query"]
+            for method, path, body in state["requests"]
+            if method == "POST" and path.endswith("/endpoints/")
+        )
+        assert len(payload["variables"]) == 3
+        assert {item["value"] for item in payload["variables"].values()} == {
+            "2000-01-01",
+            "2100-01-01",
+            "",
+        }
         assert any(
             method == "POST"
             and path.endswith("/endpoints/")
@@ -389,13 +483,34 @@ def test_setup_entry_drives_http_and_docker_boundaries_and_is_idempotent(
             for method, path, body in state["requests"]
         )
         create_response = next(
-            data for status, data in state["responses"] if status == 201
+            body
+            for method, path, body in state["requests"]
+            if method == "POST" and path.endswith("/endpoints/")
         )
         assert set(create_response) == {"name", "query"}
         assert setup.main() == 0
         assert env.read_bytes() == first_env
         assert setup._container_ids() == first_ids
-        assert [method for method, _, _ in state["requests"]].count("POST") == 1
+        assert not any("--force-recreate" in call for call in docker_calls)
+        assert docker_calls.count(["make", "up-development"]) == 2
+        assert not any(
+            method == "POST" and path == "/api/projects/"
+            for method, path, _ in state["requests"]
+        )
+        assert (
+            sum(
+                method == "POST" and path.endswith("/endpoints/")
+                for method, path, _ in state["requests"]
+            )
+            == 1
+        )
+        assert (
+            sum(
+                method == "POST" and path.endswith("/insight_variables/")
+                for method, path, _ in state["requests"]
+            )
+            == 3
+        )
         assert "Compose: already healthy (no changes)" in capsys.readouterr().out
         auth["output"] = "openai-codex: logged out (No Codex credentials stored.)"
         assert setup.main() == 2
@@ -426,15 +541,14 @@ def test_setup_entry_drives_http_and_docker_boundaries_and_is_idempotent(
             assert f"{key} in .env does not match" in capsys.readouterr().err
             env.write_text(current)
         assert env.read_text() == original_env
-        (features / "second.yaml").write_text(
-            "id: second\ncould_have: {event: seen}\ngroup_by: [day, kind]\n"
-        )
-        state["fail_writes"] = True
+        state["endpoints"]["daily"] = {"kind": "HogQLQuery", "query": "SELECT 1"}
+        state["fail_patch"] = True
         auth["output"] = "openai-codex: authenticated"
         assert setup.main() == 1
         failed = capsys.readouterr()
         assert "Feature queries:" not in failed.out
-        assert "HTTP 500" in failed.err
+        assert "HTTP 404" in failed.err
+        assert any(method == "PATCH" for method, _, _ in state["requests"])
     finally:
         server.shutdown()
         thread.join()
