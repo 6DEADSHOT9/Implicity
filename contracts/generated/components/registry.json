@@ -1,5 +1,145 @@
 {
-  "registry_version": 2,
-  "components": [],
-  "catalogue": []
+  "registry_version": 3,
+  "components": [
+    "ChangeNotice",
+    "Nudge",
+    "ProposalCard"
+  ],
+  "catalogue": [
+    {
+      "name": "ChangeNotice",
+      "role": "system",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "decision_id": {
+            "type": "string",
+            "pattern": "^dec_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "decision_id",
+          "title",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 64,
+        "minContrast": 4.5
+      }
+    },
+    {
+      "name": "Nudge",
+      "role": "system",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "actionLabel": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "title",
+          "message",
+          "actionLabel"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 88,
+        "minContrast": 4.5
+      }
+    },
+    {
+      "name": "ProposalCard",
+      "role": "system",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "proposal_id": {
+            "type": "string",
+            "pattern": "^prop_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "proposal_type": {
+            "type": "string",
+            "enum": [
+              "look",
+              "widget",
+              "workflow",
+              "kind",
+              "schedule",
+              "dimension"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "preview": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "proposal_id",
+          "proposal_type",
+          "title",
+          "description"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 160,
+        "minContrast": 4.5
+      }
+    }
+  ]
 }

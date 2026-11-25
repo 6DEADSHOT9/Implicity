@@ -1,1 +1,16 @@
-export {};
+import { defineSkeleton, defineSkeletonDefinition } from "./define-skeleton.ts";
+import { ChangeNotice as ChangeNoticeComponent } from "./ChangeNotice/ChangeNotice.tsx";
+import { propsSchema as ChangeNoticeProps, slotsSchema as ChangeNoticeSlots } from "./ChangeNotice/schema.ts";
+import { events as ChangeNoticeEvents } from "./ChangeNotice/events.ts";
+import { meta as ChangeNoticeMeta } from "./ChangeNotice/meta.ts";
+defineSkeleton(defineSkeletonDefinition({ id: "ChangeNotice", props: ChangeNoticeProps, slots: ChangeNoticeSlots, events: ChangeNoticeEvents, meta: ChangeNoticeMeta }), ChangeNoticeComponent);
+import { Nudge as NudgeComponent } from "./Nudge/Nudge.tsx";
+import { propsSchema as NudgeProps, slotsSchema as NudgeSlots } from "./Nudge/schema.ts";
+import { events as NudgeEvents } from "./Nudge/events.ts";
+import { meta as NudgeMeta } from "./Nudge/meta.ts";
+defineSkeleton(defineSkeletonDefinition({ id: "Nudge", props: NudgeProps, slots: NudgeSlots, events: NudgeEvents, meta: NudgeMeta }), NudgeComponent);
+import { ProposalCard as ProposalCardComponent } from "./ProposalCard/ProposalCard.tsx";
+import { propsSchema as ProposalCardProps, slotsSchema as ProposalCardSlots } from "./ProposalCard/schema.ts";
+import { events as ProposalCardEvents } from "./ProposalCard/events.ts";
+import { meta as ProposalCardMeta } from "./ProposalCard/meta.ts";
+defineSkeleton(defineSkeletonDefinition({ id: "ProposalCard", props: ProposalCardProps, slots: ProposalCardSlots, events: ProposalCardEvents, meta: ProposalCardMeta }), ProposalCardComponent);
