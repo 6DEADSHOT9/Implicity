@@ -64,13 +64,14 @@ Stage 1 is 24 tickets after the spikes. Each becomes one GitHub issue with its b
 | --- | --- | --- | --- |
 | T5 | Tokens and looks | The token set on shadcn/ui's theming variables, the three looks with light and dark variants, four bundled typefaces | T1 |
 | T6 | Registry and renderer | The registry entry format, Zod to JSON Schema export, json-render wiring, fallback to plain text and to the baseline layout | T3, T5 |
+| T6b | shadcn/ui base | Tailwind v4 on the token set, shadcn/ui (pinned, copied component sources) and AI Elements, restyled onto tokens; the primitives the skeletons need; token lint covers them; shown in the gallery. Added after the first skeleton build found no base to build on (ADR 0010) | T5, T6, T7 |
 | T7 | Gallery | A page showing every skeleton in every declared state, switchable by look, mode, density, text size and screen size | T6 |
-| T8 | Shell skeletons | AppShell, ConversationNavigation, Composer, ChatHeader, Search, Settings | T7 |
-| T9 | Conversation skeletons | MessageBody, Details, RunActivity, MessageActions, AttachmentTray, Citation, ContextChip, ShortcutChips, ApprovalRequest | T7 |
-| T10 | Content skeletons | DataTable, DataChart, CodeBlock, MediaPlayer, ArtifactWorkspace, Checklist, List, Metric, Tabs, Card | T7 |
-| T11 | Panel skeletons | DockedPanel, SourcesPanel, ProjectPanel | T7 |
-| T12 | Home skeletons | HomeGrid, WidgetFrame, WidgetPicker, the five built-in widgets | T7 |
-| T13 | System message skeletons | ChangeNotice, ProposalCard, Nudge | T7 |
+| T8 | Shell skeletons | AppShell, ConversationNavigation, Composer, ChatHeader, Search, Settings | T7, T6b |
+| T9 | Conversation skeletons | MessageBody, Details, RunActivity, MessageActions, AttachmentTray, Citation, ContextChip, ShortcutChips, ApprovalRequest | T7, T6b |
+| T10 | Content skeletons | DataTable, DataChart, CodeBlock, MediaPlayer, ArtifactWorkspace, Checklist, List, Metric, Tabs, Card | T7, T6b |
+| T11 | Panel skeletons | DockedPanel, SourcesPanel, ProjectPanel | T7, T6b |
+| T12 | Home skeletons | HomeGrid, WidgetFrame, WidgetPicker, the five built-in widgets | T7, T6b |
+| T13 | System message skeletons | ChangeNotice, ProposalCard, Nudge | T7, T6b |
 
 ### Backend and chat
 
@@ -104,7 +105,7 @@ Stage 1 is 24 tickets after the spikes. Each becomes one GitHub issue with its b
 | T23 | Onboarding and access | Intro, the consent screen with three switches, temporary chat that sends no events, passcode from other devices | T16, T18 |
 | T24 | Stage 1 acceptance | The five checks run from a fresh clone, and a README with requirements and setup | All |
 
-**What can run in parallel.** After T1, three tracks are independent: interface (T5 to T13), backend and chat (T14 to T17), and engine (T20a, T20b, T22). T20 was split in two after its review rounds (ADR 0022); the engine follows the Stage 1 Engine rules in `contracts.md`. Session exclusion, offers on ProposalCards, custom kinds, layout validation, preferences said in chat, and judging changes are later-stage rules, finished by the tickets that build them. The six skeleton tickets can all run at once after T7.
+**What can run in parallel.** After T1, three tracks are independent: interface (T5 to T13), backend and chat (T14 to T17), and engine (T20a, T20b, T22). T20 was split in two after its review rounds (ADR 0022); the engine follows the Stage 1 Engine rules in `contracts.md`. Session exclusion, offers on ProposalCards, custom kinds, layout validation, preferences said in chat, and judging changes are later-stage rules, finished by the tickets that build them. The six skeleton tickets can all run at once after T7 and T6b (the shadcn/ui base).
 
 ## Working standards
 
