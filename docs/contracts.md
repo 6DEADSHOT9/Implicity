@@ -40,6 +40,7 @@ Every event has the same shared fields and one of three shapes: an action, a tur
 - Lengths and durations are sent as buckets or statistics, not raw values that could identify content.
 - A temporary chat sends no events at all.
 - Components never call PostHog. They call the capture wrapper, which validates against the schema and adds the shared fields.
+- **How a skeleton emits.** The registry provides a capture context. A skeleton calls `useCapture().emit(name, fields)`, typed so it accepts only events from the closed vocabulary that the skeleton declares in `events.ts`. The default context does nothing; tests use a provider that records what was emitted; the capture wrapper (T18) supplies the real provider. User actions are separate: a control calls a prop callback such as `onAction`, and the app decides what happens.
 
 **Shared fields.**
 
