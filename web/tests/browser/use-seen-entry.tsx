@@ -16,9 +16,10 @@ function App() {
     toggleMount: () => setMounted((current) => !current),
   };
   return <CaptureProvider sink={(event) => window.seenEvents.push(event)}>
-    <div id="opacity-parent"><div id="clip"><div id="target-holder">{mounted && <Probe tag={tag} />}</div></div></div>
+    <div id="opacity-parent" data-visible="true"><div id="clip"><div id="target-holder">{mounted && <Probe tag={tag} />}</div></div></div>
   </CaptureProvider>;
 }
 
 window.seenEvents = [];
+if (new URLSearchParams(location.search).has("below-half")) window.scrollTo(0, 51);
 createRoot(document.getElementById("root")!).render(<App />);

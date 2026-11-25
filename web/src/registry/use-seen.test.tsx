@@ -11,15 +11,24 @@ class TestIntersectionObserver {
   readonly thresholds: number[];
   target?: Element;
   private lastRatio?: number;
+  private nextObserveBatch?: number[];
 
   constructor(private callback: IntersectionObserverCallback, readonly options: ObserverOptions) {
     this.thresholds = Array.isArray(options.threshold) ? options.threshold : [options.threshold];
     TestIntersectionObserver.instances.push(this);
   }
-  observe(target: Element) { this.target = target; }
+  observe(target: Element) {
+    this.target = target;
+    if (this.nextObserveBatch) {
+      const batch = this.nextObserveBatch;
+      this.nextObserveBatch = undefined;
+      this.deliver(batch);
+    } else if (this.lastRatio !== undefined) this.deliver([this.lastRatio]);
+  }
   unobserve() { this.target = undefined; }
   disconnect() { this.target = undefined; }
   takeRecords() { return []; }
+  onNextObserve(ratios: number[]) { this.nextObserveBatch = ratios; }
   setRatio(ratio: number) {
     if (!this.target) return;
     const prior = this.lastRatio;
@@ -28,13 +37,13 @@ class TestIntersectionObserver {
       this.lastRatio = ratio;
       return;
     }
-    this.lastRatio = ratio;
     this.deliver([ratio]);
   }
   deliver(ratios: number[]) {
     if (!this.target) return;
+    this.lastRatio = ratios.at(-1);
     const time = performance.now();
-    this.callback(ratios.map((intersectionRatio, index) => ({
+    this.callback(ratios.map((intersectionRatio) => ({
       target: this.target!, isIntersecting: intersectionRatio > 0, intersectionRatio, time,
     } as IntersectionObserverEntry)), this as unknown as IntersectionObserver);
   }
@@ -50,20 +59,20 @@ function setup(slot?: string) {
   const capture = recordingCapture();
   const view = render(<CaptureProvider sink={capture.sink}><Probe slot={slot} /></CaptureProvider>);
   const element = view.getByText("probe");
-  setBounds(element);
-  return { ...view, capture, element, observer: TestIntersectionObserver.instances.at(-1)! };
+  const checkVisibility = setVisible(element, true);
+  return { ...view, capture, element, checkVisibility, observer: TestIntersectionObserver.instances.at(-1)! };
 }
 
-function setBounds(element: Element) {
-  Object.defineProperty(element, "getBoundingClientRect", { configurable: true, value: () => ({ top: 0, right: 100, bottom: 100, left: 0, width: 100, height: 100, x: 0, y: 0, toJSON() {} }) });
+function setVisible(element: Element, visible: boolean) {
+  const checkVisibility = vi.fn(() => visible);
+  Object.defineProperty(element, "checkVisibility", { configurable: true, value: checkVisibility });
+  return checkVisibility;
 }
 
 beforeEach(() => {
   vi.useFakeTimers();
   TestIntersectionObserver.instances = [];
   vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
-  Object.defineProperty(document.documentElement, "clientWidth", { configurable: true, value: 1000 });
-  Object.defineProperty(document.documentElement, "clientHeight", { configurable: true, value: 1000 });
 });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
@@ -83,9 +92,10 @@ describe("useSeen", () => {
     act(() => observer.setRatio(0.5));
     await passTime(3000);
     expect(capture.events).toEqual([{ ...seen, slot: "main" }]);
+    expect(element.checkVisibility).toHaveBeenCalledWith({ opacityProperty: true, visibilityProperty: true });
   });
 
-  it("does not emit while hidden or under half visible", async () => {
+  it("does not emit when under half visible", async () => {
     const { capture, observer } = setup();
     act(() => observer.setRatio(0));
     await passTime(4000);
@@ -94,30 +104,44 @@ describe("useSeen", () => {
     expect(capture.events).toEqual([]);
   });
 
-  it("resets after leaving and emits once per mount, including across ref replacement", async () => {
-    const { capture, observer, element, rerender, unmount } = setup();
+  it("resets the same target's timer on an exit and re-entry before its deadline", async () => {
+    const { capture, observer } = setup();
     act(() => observer.setRatio(0.8));
-    await passTime(2000);
-    act(() => observer.setRatio(0.2));
-    await passTime(2000);
+    await passTime(1000);
+    act(() => observer.setRatio(0));
+    await passTime(500);
+    act(() => observer.setRatio(0.8));
+    await passTime(2999);
+    expect(capture.events).toEqual([]);
+    await passTime(1);
+    expect(capture.events).toEqual([seen]);
+  });
+
+  it("emits once across ref replacement and once again after a genuine remount", async () => {
+    const { capture, observer, rerender, unmount } = setup();
+    act(() => observer.setRatio(1));
+    await passTime(1000);
     rerender(<CaptureProvider sink={capture.sink}><Probe tag="article" /></CaptureProvider>);
-    const replacement = document.querySelector("article")!;
-    setBounds(replacement);
     const replacementObserver = TestIntersectionObserver.instances.at(-1)!;
-    expect(replacementObserver.target).toBe(replacement);
-    act(() => replacementObserver.setRatio(0.8));
+    expect(replacementObserver.target?.tagName).toBe("ARTICLE");
+    setVisible(replacementObserver.target!, true);
+    act(() => replacementObserver.setRatio(1));
     await passTime(3000);
     expect(capture.events).toEqual([seen]);
+    const observersBeforeReplacement = TestIntersectionObserver.instances.length;
     rerender(<CaptureProvider sink={capture.sink}><Probe /></CaptureProvider>);
-    const sameMountTarget = document.querySelector("section")!;
-    setBounds(sameMountTarget);
-    act(() => TestIntersectionObserver.instances.at(-1)!.setRatio(1));
+    if (TestIntersectionObserver.instances.length > observersBeforeReplacement) {
+      const duplicateObserver = TestIntersectionObserver.instances.at(-1)!;
+      setVisible(duplicateObserver.target!, true);
+      act(() => duplicateObserver.setRatio(1));
+    }
     await passTime(3000);
     expect(capture.events).toEqual([seen]);
     unmount();
     render(<CaptureProvider sink={capture.sink}><Probe /></CaptureProvider>);
-    setBounds(document.querySelector("section")!);
-    act(() => TestIntersectionObserver.instances.at(-1)!.setRatio(0.8));
+    const remountedObserver = TestIntersectionObserver.instances.at(-1)!;
+    setVisible(remountedObserver.target!, true);
+    act(() => remountedObserver.setRatio(1));
     await passTime(3000);
     expect(capture.events).toEqual([seen, seen]);
   });
@@ -132,13 +156,26 @@ describe("useSeen", () => {
     expect(capture.events).toEqual([seen]);
   });
 
-  it("rechecks current CSS visibility when the timer fires", async () => {
+  it("uses the last fresh observation at the deadline", async () => {
+    const { capture, observer } = setup();
+    act(() => observer.setRatio(0.8));
+    observer.onNextObserve([0.8, 0]);
+    await passTime(3000);
+    expect(capture.events).toEqual([]);
+  });
+
+  it("checks native visibility at the deadline and starts a fresh stretch after reveal", async () => {
     const { capture, observer, element } = setup();
     act(() => observer.setRatio(1));
     await passTime(2999);
-    Object.defineProperty(element, "getBoundingClientRect", { configurable: true, value: () => ({ top: 1000, right: 1100, bottom: 1100, left: 1000, width: 100, height: 100, x: 1000, y: 1000, toJSON() {} }) });
+    setVisible(element, false);
     await passTime(1);
     expect(capture.events).toEqual([]);
+    setVisible(element, true);
+    await passTime(3000);
+    expect(capture.events).toEqual([]);
+    await passTime(3000);
+    expect(capture.events).toEqual([seen]);
   });
 
   it("reports the full elapsed interval when the timer callback is delayed", async () => {
