@@ -56,7 +56,7 @@ Stage 1 is 24 tickets after the spikes. Each becomes one GitHub issue with its b
 | T1 | Repository scaffold | The five folders, pnpm and uv, linting, test runners, `CONTEXT.md` and `CLAUDE.md` | S1, S2, S3 |
 | T2 | Compose file | Web, backend, Hermes and the PostHog stack in one file, with development and production profiles | T1 |
 | T3 | Contracts and generation | JSON Schemas for Stage 1 events, proposals, decisions and specs, with the vocabularies in ADR 0020. API bodies are added by the ticket that builds each endpoint. Generated TypeScript types and Pydantic models. Build fails when they are stale | T1 |
-| T4 | Setup command | Memory check, containers up, PostHog project and key, feature registration, Codex sign-in, migrations. Safe to re-run | T2, T3 |
+| T4 | Setup command | Memory check, containers up, migrations, PostHog project and key, feature registration through the event source module's `register_features()`, Codex sign-in. Safe to re-run | T2, T3, T20a |
 
 ### Interface
 
@@ -94,7 +94,7 @@ Stage 1 is 24 tickets after the spikes. Each becomes one GitHub issue with its b
 | --- | --- | --- | --- |
 | T20a | Engine evidence and beliefs | YAML dimension and feature loader with the occasion feature, event source interface with `conversation_ids` and a fake, weighting, belief computation, the gate, value lookup (Engine rules 1–6, 15) | T3 |
 | T20b | Engine arbiter and state | Arbiter with its two Stage 1 paths, automatic decisions and ChangeNotices, Keep, Undo, explicit settings, return to automatic, locks, freeze, pace with session context, freshness cutoffs, the conditional atomic store (Engine rules 7–14) | T20a |
-| T21 | PostHog event source | The saved-endpoint implementation or the query fallback, per S3. Feature registration from `contracts` | T20a, T4 |
+| T21 | PostHog event source | The saved-endpoint implementation or the query fallback, per S3, built on the event source module and query shape that T4's `register_features()` started | T20a, T4 |
 | T22 | Engine React package and demo | Change notice with Keep and Undo, and a demo app with no chat that adapts one toy dimension from canned counts | T20b, T13 |
 
 ### Entry and acceptance
