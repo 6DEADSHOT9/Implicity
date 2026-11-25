@@ -173,6 +173,14 @@ class Engine:
                 data.active.pop((dimension.id, kind), None)
 
     @staticmethod
+    def _inherited_values(
+        data: StateData, dimension: Dimension
+    ) -> dict[str, str | None]:
+        return {
+            kind.value: Engine._effective(data, dimension, kind.value) for kind in Kind
+        }
+
+    @staticmethod
     def _slot(dimension: str, kind: str | None) -> tuple[str, str | None]:
         return dimension, kind
 
@@ -180,6 +188,8 @@ class Engine:
     def _effective(
         data: StateData, dimension: Dimension, kind: str | None
     ) -> str | None:
+        if dimension.scope == "global":
+            kind = None
         key = (dimension.id, kind)
         if key in data.explicit:
             return data.explicit[key]
@@ -353,14 +363,11 @@ class Engine:
         else:
             return Verdict("rejected", "person changes use explicit settings")
         inherited_before = (
-            {
-                kind: self._effective(data, dimension, kind)
-                for kind in self._known_kinds(data, dimension, now.date())
-            }
+            self._inherited_values(data, dimension)
             if dimension.scale and kind is None
             else {}
         )
-        decision_id = self.ids.decision_id()
+        decision_id = deepcopy(self.ids.decision_id())
         decision_key = str(decision_id.root)
         gate = belief.gates[judged]
         decision_evidence = belief.evidence.to_dict()
@@ -371,9 +378,9 @@ class Engine:
         )
         decision = Decision(
             id=decision_id,
-            proposal_id=proposal.id,
+            proposal_id=deepcopy(proposal.id),
             dimension=dimension.id,
-            kind=proposal.kind,
+            kind=deepcopy(proposal.kind),
             **{"from": current},
             to=proposal.to,
             reason=proposal.reason,
@@ -397,7 +404,7 @@ class Engine:
                 )
         if not self.store.commit(revision, updated):
             return Verdict("deferred", "state changed")
-        return Verdict("admitted", decision=decision)
+        return Verdict("admitted", decision=deepcopy(decision))
 
     def acknowledge(self, decision_id: str) -> None:
         revision, data = self._read()
@@ -416,7 +423,9 @@ class Engine:
 
     def keep(self, decision_id: str) -> Verdict:
         revision, data = self._read()
-        decision = self._decision(data, decision_id)
+        decision = data.decisions.get(decision_id)
+        if decision is None:
+            return Verdict("rejected", "unknown decision")
         if decision.status is Status.kept:
             return Verdict("admitted")
         if decision.status is not Status.shown or decision_id not in data.acknowledged:
@@ -453,10 +462,7 @@ class Engine:
         if data.frozen or data.locks.get(dimension.area, False):
             return Verdict("rejected", "frozen or locked")
         inherited_before = (
-            {
-                inherited: self._effective(data, dimension, inherited)
-                for inherited in self._known_kinds(data, dimension, now.date())
-            }
+            self._inherited_values(data, dimension)
             if dimension.scale and kind is None
             else {}
         )
@@ -497,10 +503,7 @@ class Engine:
         key = self._slot(dimension, kind)
         old = self._effective(data, definition, kind)
         inherited_before = (
-            {
-                inherited: self._effective(data, definition, inherited)
-                for inherited in self._known_kinds(data, definition, now.date())
-            }
+            self._inherited_values(data, definition)
             if definition.scale and kind is None
             else {}
         )
@@ -540,10 +543,7 @@ class Engine:
         key = self._slot(dimension, kind)
         old = self._effective(data, definition, kind)
         inherited_before = (
-            {
-                inherited: self._effective(data, definition, inherited)
-                for inherited in self._known_kinds(data, definition, now.date())
-            }
+            self._inherited_values(data, definition)
             if definition.scale and kind is None
             else {}
         )

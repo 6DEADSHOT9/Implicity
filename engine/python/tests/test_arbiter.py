@@ -68,6 +68,23 @@ class DirectStore:
         return True
 
 
+class RetainingStore(DirectStore):
+    def commit(self, revision, state):
+        if self.reject or revision != self.revision:
+            return False
+        self.data = state
+        self.revision += 1
+        return True
+
+
+class UnavailableEventSource:
+    def daily_counts(self, *args, **kwargs):
+        raise OSError("evidence unavailable")
+
+    def session_summaries(self, *args, **kwargs):
+        return []
+
+
 def dimension_file(tmp_path: Path, *, scale: bool = False) -> Path:
     path = tmp_path / "dimension.yaml"
     values = "[compact, comfortable, spacious]" if scale else "[folded, open]"
@@ -491,6 +508,47 @@ def test_global_scale_change_refreshes_only_kinds_whose_value_changed(
     assert engine.return_to_automatic("density", "coding").status == "admitted"
     assert engine.state("coding").values["density"] == "comfortable"
     assert engine.freshness_cutoff("coding", "density") == day2
+
+
+def test_global_scale_cutoff_handles_delayed_counts_without_reading_source(
+    tmp_path: Path,
+) -> None:
+    path = dimension_file(tmp_path, scale=True)
+    path.write_text(path.read_text().replace("scope: kind", "scope: global"))
+
+    class DelayedSource(FakeEventSource):
+        available = False
+
+        def daily_counts(self, *args, **kwargs):
+            if not self.available:
+                raise OSError("evidence unavailable")
+            return super().daily_counts(*args, **kwargs)
+
+    source = DelayedSource({}, [])
+    engine = Engine(
+        [load_dimension(path)],
+        source,
+        InMemoryStore(),
+        FixedClock(STAMP),
+        FixedTestIds(),
+    )
+    assert engine.set_explicit("density", "comfortable").status == "admitted"
+    for kind in Kind:
+        assert engine.freshness_cutoff(kind.value, "density") == TODAY
+    source.available = True
+    source.counts = {
+        feature: [
+            (DailyCount(TODAY, kind, happened, possible, frozenset({kind})), "s")
+            for kind in ("coding", "writing")
+        ]
+        for feature, happened, possible in (
+            ("seen", 0, 1),
+            ("scroll", 9, 10),
+            ("misses", 1, 10),
+            ("comfort", 8, 10),
+        )
+    }
+    assert engine.evaluate(SessionContext("s", True)) == []
 
 
 def test_evaluate_submits_scale_step_with_full_judged_evidence(tmp_path: Path) -> None:
@@ -1021,3 +1079,185 @@ def test_lookup_tracks_later_global_values_and_declared_scale_default(
     assert engine.state("writing").values["long_answers"] == "open"
     assert engine.set_explicit("long_answers", "folded", "writing").status == "admitted"
     assert engine.state("writing").values["long_answers"] == "folded"
+
+
+def test_global_undo_suppresses_global_learned_value_in_every_state_view(
+    tmp_path: Path,
+) -> None:
+    path = dimension_file(tmp_path)
+    path.write_text(path.read_text().replace("scope: kind", "scope: global"))
+    engine = Engine(
+        [load_dimension(path)],
+        FakeEventSource(
+            {
+                "seen": [(DailyCount(TODAY, "coding", 0, 1, frozenset({"c1"})), "s")],
+                "expanded": [
+                    (DailyCount(TODAY, "coding", 9, 10, frozenset({"c1"})), "s")
+                ],
+                "collapsed": [
+                    (DailyCount(TODAY, "coding", 1, 10, frozenset({"c1"})), "s")
+                ],
+            },
+            [],
+        ),
+        InMemoryStore(),
+        FixedClock(STAMP),
+        FixedTestIds(),
+    )
+    proposal = engine.evaluate(SessionContext("s", True))[0]
+    decision_id = str(
+        engine.submit(proposal, SessionContext("s", True)).decision.id.root
+    )
+    assert engine.undo(decision_id).status == "admitted"
+    assert engine.return_to_automatic("long_answers").status == "admitted"
+    assert engine.state().values["long_answers"] == "folded"
+    assert engine.state("writing").values["long_answers"] == "folded"
+
+
+def test_decision_and_proposal_mutations_cannot_alias_retained_store_state(
+    tmp_path: Path,
+) -> None:
+    store = RetainingStore()
+    engine = engine_for(tmp_path, store=store)
+    proposal = engine.evaluate(SessionContext("s", True))[0]
+    proposal_id = str(proposal.id.root)
+    verdict = engine.submit(proposal, SessionContext("s", True))
+    assert verdict.status == "admitted"
+    decision_id = str(verdict.decision.id.root)
+    verdict.decision.from_ = "open"
+    proposal.id.root = "prop_22222222-2222-4222-8222-222222222222"
+    proposal.evidence.features.append({"tampered": True})
+    notice = engine.pending_notices()[0]
+    notice.from_ = "open"
+    stored = store.data.decisions[decision_id]
+    assert str(stored.proposal_id.root) == proposal_id
+    assert stored.from_ == "folded"
+    assert engine.undo(decision_id).status == "admitted"
+    assert engine.state("coding").values["long_answers"] == "folded"
+
+
+def test_keep_returns_rejection_for_unknown_and_all_known_lifecycle_states(
+    tmp_path: Path,
+) -> None:
+    engine = engine_for(tmp_path)
+    assert engine.keep("dec_11111111-1111-4111-8111-111111111111").status == "rejected"
+    assert (
+        engine.submit(make_proposal(), SessionContext("s", True)).status == "admitted"
+    )
+    decision_id = str(engine.pending_notices()[0].id.root)
+    assert engine.keep(decision_id).status == "rejected"
+    engine.acknowledge(decision_id)
+    assert engine.keep(decision_id).status == "admitted"
+    assert engine.keep(decision_id).status == "admitted"
+    other = engine_for(tmp_path)
+    other.submit(make_proposal(), SessionContext("s", True))
+    undone_id = str(other.pending_notices()[0].id.root)
+    other.acknowledge(undone_id)
+    assert other.undo(undone_id).status == "admitted"
+    assert other.keep(undone_id).status == "rejected"
+
+
+def test_unlocked_policy_mismatch_and_hermes_offer_are_rejected(
+    tmp_path: Path,
+) -> None:
+    engine = engine_for(tmp_path)
+    wrong_policy = make_proposal().model_copy(
+        update={"change_policy": ChangePolicy.proposed}
+    )
+    assert engine.submit(wrong_policy, SessionContext("s", True)).status == "rejected"
+    hermes = make_proposal().model_copy(update={"source": Source.hermes})
+    assert engine.submit(hermes, SessionContext("s", True)).status == "rejected"
+
+
+def test_undo_restores_scale_value_as_explicit_until_return_to_automatic(
+    tmp_path: Path,
+) -> None:
+    clock = FixedClock(STAMP)
+    rows = {
+        feature: [
+            (DailyCount(TODAY, "coding", happened, possible, frozenset({"c1"})), "s")
+        ]
+        for feature, happened, possible in (
+            ("seen", 0, 1),
+            ("scroll", 9, 10),
+            ("misses", 1, 10),
+            ("comfort", 8, 10),
+        )
+    }
+    engine = Engine(
+        [load_dimension(dimension_file(tmp_path, scale=True))],
+        FakeEventSource(rows, []),
+        InMemoryStore(),
+        clock,
+        FixedTestIds(),
+    )
+    proposal = engine.evaluate(SessionContext("s", True))[0]
+    decision_id = str(
+        engine.submit(proposal, SessionContext("s", True)).decision.id.root
+    )
+    clock.value += timedelta(days=1)
+    assert engine.undo(decision_id).status == "admitted"
+    clock.value += timedelta(days=1)
+    engine.source.counts = {
+        feature: [
+            (
+                DailyCount(
+                    clock.value.date(), "coding", happened, possible, frozenset({"c2"})
+                ),
+                "s2",
+            )
+        ]
+        for feature, happened, possible in (
+            ("seen", 0, 1),
+            ("scroll", 0, 10),
+            ("misses", 10, 10),
+            ("comfort", 0, 10),
+        )
+    }
+    assert engine.evaluate(SessionContext("s2", True)) == []
+
+
+def test_scale_undo_restores_nondefault_from_as_explicit(
+    tmp_path: Path,
+) -> None:
+    clock = FixedClock(STAMP)
+    source = FakeEventSource({}, [])
+    engine = Engine(
+        [load_dimension(dimension_file(tmp_path, scale=True))],
+        source,
+        InMemoryStore(),
+        clock,
+        FixedTestIds(),
+    )
+
+    def counts(day: date, scroll: int, comfort: int) -> None:
+        source.counts = {
+            "seen": [(DailyCount(day, "coding", 0, 1, frozenset({str(day)})), "s")],
+            "scroll": [
+                (DailyCount(day, "coding", scroll, 10, frozenset({str(day)})), "s")
+            ],
+            "misses": [(DailyCount(day, "coding", 1, 10, frozenset({str(day)})), "s")],
+            "comfort": [
+                (DailyCount(day, "coding", comfort, 10, frozenset({str(day)})), "s")
+            ],
+        }
+
+    counts(TODAY, 1, 9)
+    first = engine.evaluate(SessionContext("s", True))[0]
+    assert first.to == "comfortable"
+    assert engine.submit(first, SessionContext("s", True)).status == "admitted"
+    clock.value += timedelta(days=1)
+    counts(clock.value.date(), 9, 1)
+    second = engine.evaluate(SessionContext("s", True))[0]
+    assert second.to == "spacious"
+    decision_id = str(engine.submit(second, SessionContext("s", True)).decision.id.root)
+    clock.value += timedelta(days=1)
+    assert engine.undo(decision_id).status == "admitted"
+    clock.value += timedelta(days=1)
+    counts(clock.value.date(), 1, 9)
+    assert engine.evaluate(SessionContext("s", True)) == []
+    assert engine.return_to_automatic("density", "coding").status == "admitted"
+    clock.value += timedelta(days=1)
+    counts(clock.value.date(), 1, 9)
+    proposal = engine.evaluate(SessionContext("s", True))[0]
+    assert proposal.to == "comfortable"
