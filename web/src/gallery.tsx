@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Component, useEffect, useRef, useState, type ReactNode } from "react";
 import looks from "../../contracts/looks/default.json" with { type: "json" };
 import focused from "../../contracts/looks/focused.json" with { type: "json" };
 import notebook from "../../contracts/looks/notebook.json" with { type: "json" };
@@ -8,6 +8,18 @@ import "./gallery.css";
 
 const availableLooks = [looks, focused, notebook];
 type Registry = typeof defaultRegistry;
+
+class PreviewBoundary extends Component<{ children: ReactNode; fallback: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children;
+  }
+}
 
 function choices(label: string, value: string, values: readonly string[], onChange: (value: string) => void) {
   return <label className="gallery-control">{label}<select aria-label={label} value={value} onChange={(event) => onChange(event.target.value)}>
@@ -28,13 +40,13 @@ export function Gallery({ registry = defaultRegistry }: { registry?: Registry })
     const element = root.current;
     if (!element) return;
     const scale = tokens.derivedTokens.textSize[textSize as keyof typeof tokens.derivedTokens.textSize];
-    const styles = { ...look[mode as "light" | "dark"], ...tokens.derivedTokens.radius[look.radius as keyof typeof tokens.derivedTokens.radius], ...tokens.derivedTokens.density[density as keyof typeof tokens.derivedTokens.density], "--text-scale": scale["--text-scale"], ...scale.sizes, ...scale.headings };
+    const styles = { ...look[mode as "light" | "dark"], ...tokens.derivedTokens.radius[look.radius as keyof typeof tokens.derivedTokens.radius], ...tokens.derivedTokens.density[density as keyof typeof tokens.derivedTokens.density], "--text-scale": scale["--text-scale"], ...scale.sizes, ...scale.headings, ...tokens.derivedTokens.dimensions, ...tokens.derivedTokens.fontWeights, ...tokens.derivedTokens.lineHeights };
     for (const [name, value] of Object.entries(styles)) element.style.setProperty(name.startsWith("--") ? name : `--${name}`, value);
-    element.style.fontFamily = tokens.typefaces[look.typeface.body as keyof typeof tokens.typefaces].family;
-    for (const heading of element.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6")) heading.style.fontFamily = tokens.typefaces[look.typeface.heading as keyof typeof tokens.typefaces].family;
+    element.style.setProperty("--font-body", JSON.stringify(tokens.typefaces[look.typeface.body as keyof typeof tokens.typefaces].family));
+    element.style.setProperty("--font-heading", JSON.stringify(tokens.typefaces[look.typeface.heading as keyof typeof tokens.typefaces].family));
   }, [look, mode, density, textSize]);
 
-  return <main ref={root} className="gallery" data-gallery-root data-look={look.id} data-mode={mode} data-density={density} data-text-size={textSize} data-device-class={deviceClass}>
+  return <main ref={root} className="gallery" data-gallery-root data-look={look.id} data-mode={mode} data-density={density} data-text-size={textSize} data-texture={look.texture} data-device-class={deviceClass}>
     <header className="gallery-header"><div><p className="gallery-kicker">Implicity · Registry</p><h1>Skeleton gallery</h1></div>
       <div className="gallery-controls">
         {choices("Look", lookId, availableLooks.map(({ id }) => id), setLookId)}
@@ -48,7 +60,7 @@ export function Gallery({ registry = defaultRegistry }: { registry?: Registry })
       {[...registry.entries.values()].flatMap((entry) => entry.meta.galleryStates.map((state) => {
         return <article className="gallery-card" data-skeleton={entry.id} data-gallery-state={state.id} key={`${entry.id}-${state.id}`}>
           <header><h2>{entry.id}</h2><span>{state.id}</span></header>
-          <div className="gallery-preview"><entry.Component props={state.props} slots={state.slots ?? {}} /></div>
+          <div className="gallery-preview"><PreviewBoundary fallback={<p className="gallery-error" role="alert">{entry.id} · {state.id}: preview failed</p>}><entry.Component props={state.props} slots={(state.slots ?? {}) as Record<string, ReactNode>} /></PreviewBoundary></div>
         </article>;
       }))}
     </section>

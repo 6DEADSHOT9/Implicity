@@ -4,6 +4,7 @@ import { token } from "../src/registry/token";
 import { tokenNames } from "../src/registry/token-values.mjs";
 
 const componentFile = new URL("../src/registry/Probe/Probe.tsx", import.meta.url).pathname;
+const rendererFile = new URL("../src/renderer.tsx", import.meta.url).pathname;
 const galleryFile = new URL("../src/gallery.tsx", import.meta.url).pathname;
 const tokenImport = 'import { token } from "../token"; ';
 
@@ -14,6 +15,11 @@ describe("token-only style guard", () => {
     ['const View = () => <div style={{ fontSize: "19px" }} />;', "fontSize"],
     ['const View = () => <div style={{ color: "center" }} />;', "color"],
     ['const View = () => <div style={{ width: "center" }} />;', "width"],
+    ['const View = () => <div style={{ background: "flex" }} />;', "background"],
+    ['const View = () => <div style={{ fontFamily: "column" }} />;', "fontFamily"],
+    ['const View = () => <div style={{ padding: "wrap" }} />;', "padding"],
+    ['const View = () => <div style={{ borderRadius: "baseline" }} />;', "borderRadius"],
+    ['const View = () => <div style={{ boxShadow: "space-between" }} />;', "boxShadow"],
     ['const View = () => <div className="text-red-500" />;', "text-red-500"],
     ['const View = () => <div className={"text-red-500"} />;', "text-red-500"],
     ['const shade = "red"; const View = () => <div className={"text-" + shade + "-500"} />;', "unsupported dynamic className"],
@@ -44,8 +50,10 @@ describe("token-only style guard", () => {
 
   it("allows gallery classes only in the gallery and layout keywords only in layout properties", () => {
     expect(tokenStyleViolations('const View = () => <div className="gallery-control" />;', componentFile).some((message) => message.includes("gallery-control"))).toBe(true);
+    expect(tokenStyleViolations('const View = () => <div className="gallery-control" />;', rendererFile).some((message) => message.includes("gallery-control"))).toBe(true);
     expect(tokenStyleViolations('const View = () => <div className="gallery-control" />;', galleryFile)).toEqual([]);
     expect(tokenStyleViolations('const View = () => <div style={{ display: "flex", alignItems: "center" }} />;', componentFile)).toEqual([]);
+    expect(tokenStyleViolations('.probe { color: center; width: center; display: flex; }', "styles.css")).toEqual(["color: center", "width: center"]);
   });
 
   it("rejects dynamic token names and non-token CSS values", () => {
@@ -63,8 +71,8 @@ describe("token-only style guard", () => {
   });
 
   it("does not accept custom properties that have no CSS token definition", () => {
-    expect(tokenNames.has("--font-body")).toBe(false);
-    expect(tokenNames.has("--font-heading")).toBe(false);
+    expect(tokenNames.has("--font-body")).toBe(true);
+    expect(tokenNames.has("--font-heading")).toBe(true);
     expect(tokenNames.has("--code-background")).toBe(false);
   });
 });

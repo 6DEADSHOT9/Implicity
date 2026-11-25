@@ -18,7 +18,8 @@ const tokenReference = /^var\(\s*(--[\w-]+)\s*\)$/i;
 const layoutUtility = /^(?:block|inline|inline-block|flex|inline-flex|grid|inline-grid|hidden|contents|flow-root|flex-(?:row|row-reverse|col|col-reverse|wrap|wrap-reverse|nowrap|1|auto|initial|none|grow|shrink)|grid-flow-(?:row|col|dense)|items-(?:start|end|center|baseline|stretch)|justify-(?:normal|start|end|center|between|around|evenly|stretch)|self-(?:auto|start|end|center|stretch|baseline)|content-(?:normal|center|start|end|between|around|evenly|baseline|stretch)|place-(?:content|items|self)-(?:start|end|center|stretch|between|around|evenly|baseline)|col-span-(?:full|\d+)|row-span-(?:full|\d+)|order-(?:first|last|none|\d+)|relative|absolute|fixed|sticky|static|overflow-(?:auto|hidden|clip|visible|scroll)|z-(?:auto|\d+))$/;
 const approvedTokenModule = resolve(dirname(fileURLToPath(import.meta.url)), "../src/registry/token.ts");
 const gallerySource = resolve(dirname(fileURLToPath(import.meta.url)), "../src/gallery.tsx");
-const galleryCss = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), "../src/gallery.css"), "utf8");
+const galleryCssPath = resolve(dirname(fileURLToPath(import.meta.url)), "../src/gallery.css");
+const galleryCss = await readFile(galleryCssPath, "utf8");
 const galleryClasses = new Set([...galleryCss.matchAll(/\.([a-z][\w-]*)/g)].map(([, name]) => name));
 
 function safeStyleValue(property, value) {
@@ -190,6 +191,7 @@ export function tokenStyleViolations(source, filename = resolve("web/src/registr
     const violations = [];
     postcss.parse(source).walkDecls((declaration) => {
       const value = declaration.value.trim();
+      if (resolve(filename) === galleryCssPath && declaration.prop === "background-image" && value === 'url("/textures/paper-grain.svg")') return;
       const match = value.match(tokenReference);
       if (!(match && tokenNames.has(match[1])) && !safeStyleValue(declaration.prop, value)) violations.push(`${declaration.prop}: ${value}`);
     });

@@ -76,6 +76,9 @@ export function validateRegistryDefinitions(entries: readonly SkeletonDefinition
     if (meta.data.galleryStates.some(({ id }) => !stateIdValid(id))) throw new Error(`${entry.id} declares a gallery state id not in T3`);
     if (meta.data.defaultStates.some((state) => !meta.data.galleryStates.some(({ id }) => id === state))) throw new Error(`${entry.id} gallery states must include every default state`);
     for (const state of meta.data.galleryStates) {
+      if (Object.keys(entry.slotsSchema.shape).length && state.slots === undefined) {
+        throw new Error(`${entry.id} gallery state ${state.id} is missing example slots`);
+      }
       if (!entry.schema.safeParse({ props: state.props, slots: state.slots ?? {} }).success) {
         throw new Error(`${entry.id} gallery state ${state.id} example does not match its props and slots schema`);
       }

@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "lint": "eslint . && tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run && playwright test",
+    "install:browsers": "playwright install chromium",
     "dev": "vite --host 127.0.0.1"
   },
   "dependencies": {
@@ -16,6 +17,7 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.65.1",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@typescript-eslint/parser": "8.73.0",

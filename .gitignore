@@ -6,6 +6,8 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 dist/
+/web/test-results/
+/web/playwright-report/
 /contracts/python/implicity_contracts.egg-info/
 *.egg-info/
 /data/implicity.db*
