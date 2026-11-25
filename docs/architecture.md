@@ -154,15 +154,15 @@ Everything Implicity adapts is a piece of state, and every change to it passes t
 | Proposals | One per session | |
 | Nudges | One a day | At session start |
 
-Any setting on a scale moves one step per change, and the next step needs fresh evidence gathered after the last one.
+Any automatic change on a scale moves one step, and the next step needs fresh evidence gathered after the last one. The person can set any value directly.
 
 **After a change.**
 
 - **Undo** turns that change off for good. It becomes the person's explicit choice, and only they can turn it back on.
-- **Judging it.** A change is judged by whether it was kept, whether the manual action it replaced stops, and whether the person works against it. A change that is fought reverts itself with a notice.
+- **Judging it.** A change is judged by whether it was kept, whether the manual action it replaced stops, and whether the person works against it. A change that is fought reverts itself with a notice. Judging and self-reverting arrive with Stage 2; the Stage 1 engine never reverts on its own.
 - **Locks.** Look, layout, answer style and Home can each be locked, and one master switch freezes everything.
 - **Manual control.** Every learned setting has a control in Settings. Setting it by hand is recorded as explicit and stops inference for it, and "return to automatic" hands it back.
-- **Said in chat.** "Keep answers short from now on" sets the setting directly, with a chip offering Undo.
+- **Said in chat.** "Keep answers short from now on" sets the setting directly, as an explicit setting through the arbiter, with a chip offering Undo.
 
 ## Know: memory, answer style and drafts
 

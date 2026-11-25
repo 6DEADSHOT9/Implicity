@@ -30,3 +30,7 @@ area you are touching: `docs/architecture.md`, `docs/contracts.md`,
 One branch and one pull request per ticket, with tests. Record a new ADR in
 `docs/adr/` when a decision is hard to reverse, surprising without context, and
 the result of a real trade-off.
+
+Agents never merge, close or approve pull requests, never enable auto-merge,
+and never push to main. Only the owner merges. When work is pushed and the pull
+request is updated, the agent stops and reports.
