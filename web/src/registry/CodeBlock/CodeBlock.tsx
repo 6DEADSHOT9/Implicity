@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { z } from "zod";
 import { createHighlighter, type BundledLanguage } from "shiki";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CodeBlock as CodeBlockPrimitive } from "@/components/ai-elements/code-block";
 import { StackTrace, StackTraceContent, StackTraceError, StackTraceErrorMessage, StackTraceErrorType, StackTraceFrames, StackTraceHeader } from "@/components/ai-elements/stack-trace";
 import { Terminal, TerminalContent, TerminalHeader, TerminalTitle } from "@/components/ai-elements/terminal";
 import { token } from "../token";
@@ -32,5 +33,15 @@ export function CodeBlock({ code, language, variant, state }: Props) {
       <StackTraceContent><StackTraceFrames /></StackTraceContent>
     </StackTrace>
   </div>;
-  return <Card ref={root}><CardHeader><CardTitle className="text-heading-4">{language} · {variant}</CardTitle></CardHeader><CardContent>{state === "error" ? <p role="alert">Code could not be loaded</p> : <pre aria-label={`${language} ${variant}`} tabIndex={0} className="max-h-content-height overflow-auto rounded-md bg-code-background p-space-4 font-mono text-code-foreground"><code>{tokens.length ? tokens.map((line, i) => <span className="block" key={i}>{line.map((part, j) => <span key={j} className={part.color === token("--code-comment") ? "text-code-comment" : part.color === token("--code-keyword") ? "text-code-keyword" : part.color === token("--code-string") ? "text-code-string" : part.color === token("--code-number") ? "text-code-number" : part.color === token("--code-function") ? "text-code-function" : part.color === token("--code-type") ? "text-code-type" : part.color === token("--code-operator") ? "text-code-operator" : "text-code-foreground"}>{part.content}</span>)}</span>) : state === "empty" ? "" : code}</code></pre>}</CardContent></Card>;
+  return <Card ref={root}>
+    <CardHeader><CardTitle className="text-heading-4">{language} · {variant}</CardTitle></CardHeader>
+    <CardContent>
+      {state === "error" ? <p role="alert">Code could not be loaded</p>
+        : <CodeBlockPrimitive aria-label={`${language} ${variant}`} tabIndex={0}>
+          <code>{tokens.length ? tokens.map((line, lineIndex) => <span className="block" key={lineIndex}>
+            {line.map((part, partIndex) => <span key={partIndex} className={part.color === token("--code-comment") ? "text-code-comment" : part.color === token("--code-keyword") ? "text-code-keyword" : part.color === token("--code-string") ? "text-code-string" : part.color === token("--code-number") ? "text-code-number" : part.color === token("--code-function") ? "text-code-function" : part.color === token("--code-type") ? "text-code-type" : part.color === token("--code-operator") ? "text-code-operator" : "text-code-foreground"}>{part.content}</span>)}
+          </span>) : state === "empty" ? "" : code}</code>
+        </CodeBlockPrimitive>}
+    </CardContent>
+  </Card>;
 }

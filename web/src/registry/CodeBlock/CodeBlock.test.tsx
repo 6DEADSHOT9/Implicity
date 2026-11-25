@@ -42,8 +42,17 @@ describe("CodeBlock public registry entry", () => {
  });
  it("keeps the primary content accessible", () => {
   const markup = renderToStaticMarkup(<entry.Component props={entry.meta.galleryStates[0].props} slots={{}} />);
-    expect(markup).toContain('<pre');
+  expect(markup).toContain('data-slot="code-block"');
+  expect(markup).toContain('<pre');
   expect(markup).toContain('tabindex="0"');
   expect(markup).toContain('aria-label="javascript code"');
+ });
+ it("uses readable Stack Trace surfaces and presents inactive paths as text", () => {
+  const state = entry.meta.galleryStates.find(({ id }) => id === "stack_trace")!;
+  const markup = renderToStaticMarkup(<entry.Component props={state.props} slots={{}} />);
+  expect(markup).toContain("bg-code-background");
+  expect(markup).toContain("text-code-foreground");
+  expect(markup).toContain("src/view.ts:12:4");
+  expect(markup).not.toContain("disabled=");
  });
 });

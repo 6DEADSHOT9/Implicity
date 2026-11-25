@@ -441,6 +441,9 @@ test("content controls use their host, preserve list markers, and apply chart to
   await page.keyboard.press("Tab");
   const chartButton = table.getByRole("button", { name: "Chart" });
   await expect(chartButton).toBeFocused();
+  await chartButton.click();
+  await expect(chartButton).toHaveAttribute("aria-pressed", "true");
+  await expect(table.locator("svg")).toBeVisible();
 
   const checklist = page.frameLocator('iframe[title="Checklist · default"]');
   const checkbox = checklist.getByRole("checkbox").nth(1);
@@ -462,6 +465,18 @@ test("content controls use their host, preserve list markers, and apply chart to
   const style = await tooltip.evaluate((element) => ({ padding: element.getAttribute("style"), border: element.getAttribute("style") }));
   expect(style.padding).toContain("var(--space-3)");
   expect(style.border).toContain("var(--border-width)");
+  const fill = await chart.locator(".recharts-bar-rectangle path").first().evaluate((element) => ({ computed: getComputedStyle(element).fill, attr: element.getAttribute("fill") }));
+  const series = await chart.locator("html").evaluate((element) => getComputedStyle(element).getPropertyValue("--chart-1").trim());
+  const normalizedSeries = await chart.locator("html").evaluate((element, value) => {
+    const probe = document.createElement("span");
+    probe.style.color = value;
+    element.append(probe);
+    const color = getComputedStyle(probe).color;
+    probe.remove();
+    return color;
+  }, series);
+  expect(fill.attr).toBe("var(--chart-1)");
+  expect(fill.computed).toBe(normalizedSeries);
 });
 
 test("rendered code, diff, stack trace and terminal text stay readable in every look and mode", async ({ page }) => {
@@ -487,6 +502,9 @@ test("rendered code, diff, stack trace and terminal text stay readable in every 
         if (state === "diff") {
           await expect(code).toContainText("const old");
           await expect(code).toContainText("const current");
+          const colors = await code.locator(":scope > span.block").evaluateAll((lines) => lines.filter((line) => line.textContent?.includes("const old") || line.textContent?.includes("const current")).map((line) => getComputedStyle(line.querySelector("span")!).color));
+          expect(colors).toHaveLength(2);
+          expect(colors[0]).not.toBe(colors[1]);
         }
         const colors = await frame.locator("pre code span[class*='text-code-']").evaluateAll((nodes) => nodes.filter((node) => node.textContent?.trim()).map((node) => ({ color: getComputedStyle(node).color, background: getComputedStyle(node.closest("pre")!).backgroundColor })));
         expect(colors.length, `${look}/${mode}/${state} rendered syntax`).toBeGreaterThan(0);
@@ -500,4 +518,7 @@ test("rendered code, diff, stack trace and terminal text stay readable in every 
       expect(ratio(terminalColors.color, terminalColors.background), `${look}/${mode}/terminal`).toBeGreaterThanOrEqual(4.5);
     }
   }
+  const stackHeader = page.frameLocator('iframe[title="CodeBlock · stack_trace"]').locator("button");
+  await stackHeader.press("Enter");
+  expect(await stackHeader.evaluate((element) => getComputedStyle(element).outlineStyle)).not.toBe("none");
 });
