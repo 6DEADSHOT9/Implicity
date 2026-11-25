@@ -47,6 +47,8 @@ request is updated, the agent stops and reports.
 
 **Reviews.** A review runs from a fresh clone, checks every acceptance criterion and the docs, and proves each check can fail with deliberate failures that are then discarded. It writes `REVIEW.md` in the review worktree, uncommitted, starting with one verdict line: merge, merge after fixes, or do not merge. The builder fixes every finding with a test that fails without the fix; the same reviewer re-reviews until the verdict is merge. The final review is posted on the pull request as a record, with local paths and personal details removed.
 
+**Dependencies.** Pin every new tool, package and image version and commit lockfiles. Never bypass the package manager's release-age guard: pin a version old enough to pass it, and if no usable version does, stop and ask the owner.
+
 **Docker.** Agents that start containers use their own Compose project name and ports, tear down only what they started, and leave other stacks on the machine running.
 
 **Decisions.** When the docs leave a question open, the owner decides it by interview. The answer is written into `CONTEXT.md`, the docs, or an ADR, and merged to main in a docs pull request before builders rely on it. A brief or fix request may state what the docs already settle, but never invents a rule.
