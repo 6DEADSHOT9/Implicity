@@ -232,7 +232,7 @@ async function sourceFiles(path) {
 }
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const paths = [...await sourceFiles(resolve(root, "web/src/registry")), resolve(root, "web/src/renderer.tsx"), ...["gallery.tsx", "gallery.css", "preview-runtime.tsx", "preview-main.tsx"].map((file) => resolve(root, `web/src/${file}`))];
+export const paths = [...await sourceFiles(resolve(root, "web/src/registry")), resolve(root, "web/src/renderer.tsx"), ...["gallery.tsx", "gallery.css", "preview-runtime.tsx", "preview-main.tsx"].map((file) => resolve(root, `web/src/${file}`))];
 let failed = false;
 for (const path of paths) {
   const violations = tokenStyleViolations(await readFile(path, "utf8"), path);

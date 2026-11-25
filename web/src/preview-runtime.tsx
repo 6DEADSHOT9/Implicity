@@ -18,15 +18,16 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
   let styles: string | undefined;
   let texture: string | undefined;
   let previousHeight = -1;
+  const previewRoot = document.getElementById("root")!;
   const reportHeight = () => {
-    const height = document.documentElement.scrollHeight;
+    const height = previewRoot.getBoundingClientRect().height;
     if (height === previousHeight) return;
     previousHeight = height;
     window.parent.postMessage({ type: "preview-height", height }, location.origin);
   };
   const heightObserver = new ResizeObserver(reportHeight);
   heightObserver.observe(document.documentElement);
-  heightObserver.observe(document.getElementById("root")!);
+  heightObserver.observe(previewRoot);
   const render = () => {
     if (styles === undefined || texture === undefined) return;
     document.documentElement.style.cssText = styles;

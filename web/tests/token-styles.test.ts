@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { tokenStyleViolations } from "../scripts/check-token-styles.mjs";
+import { paths, tokenStyleViolations } from "../scripts/check-token-styles.mjs";
 import { token } from "../src/registry/token";
 import { tokenNames } from "../src/registry/token-values.mjs";
 
@@ -11,6 +11,11 @@ const previewMainFile = new URL("../src/preview-main.tsx", import.meta.url).path
 const tokenImport = 'import { token } from "../token"; ';
 
 describe("token-only style guard", () => {
+  it("scans both preview runtime files", () => {
+    expect(paths).toContain(previewRuntimeFile);
+    expect(paths).toContain(previewMainFile);
+  });
+
   it.each([
     ['const View = () => <div style={{ color: "#ff0000" }} />;', "color"],
     ['const View = () => <div style={{ backgroundColor: "rebeccapurple" }} />;', "backgroundColor"],

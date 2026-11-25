@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import { registryVersion } from "../src/registry/version.ts";
 import { validateRegistryDefinitions } from "../src/registry/validate.ts";
+import { catalogueFromEntries } from "../src/registry/catalogue.ts";
 import { checkGeneratedFileSet, checkRegistrySnapshots } from "../src/registry/snapshot.ts";
 import { discoverRegistryFolders } from "../src/registry/discovery.ts";
 
@@ -45,7 +46,11 @@ const folders = await Promise.all(foldersToDiscover.map(async ({ name: id }) => 
   return { id, files, componentExports: namedValueExports(componentSource, join(folder, `${id}.tsx`)), schema, events, metadata };
 }));
 entries.push(...discoverRegistryFolders(folders).map(({ definition }) => definition));
-const snapshot = { registry_version: registryVersion, components: entries.map(({ id }) => id).sort() };
+const snapshot = {
+  registry_version: registryVersion,
+  components: entries.map(({ id }) => id).sort(),
+};
+const currentRegistry = { ...snapshot, catalogue: catalogueFromEntries(entries) };
 validateRegistryDefinitions(entries);
 
 const historyFiles = (await readdir(directory).catch((error) => error.code === "ENOENT" ? [] : Promise.reject(error)))
@@ -66,7 +71,7 @@ if (!check && registryVersion === highestVersion + 1) {
 checkRegistrySnapshots(snapshots, snapshot);
 const artifacts = new Map(entries.map((entry) => [`${entry.id}.schema.json`, `${JSON.stringify(entry.schema.toJSONSchema(), null, 2)}\n`]));
 for (const historical of snapshots) artifacts.set(`registry-v${historical.registry_version}.json`, `${JSON.stringify(historical, null, 2)}\n`);
-artifacts.set("registry.json", `${JSON.stringify(snapshot, null, 2)}\n`);
+artifacts.set("registry.json", `${JSON.stringify(currentRegistry, null, 2)}\n`);
 const typeCheckPath = resolve(sourceDirectory, "registry-props-typecheck.ts");
 const typeCheckSource = entries.length ? [
   'import { defineSkeleton, defineSkeletonDefinition } from "./define-skeleton.ts";',

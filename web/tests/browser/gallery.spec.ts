@@ -69,7 +69,7 @@ test("fits short and tall content by sizing iframes from their document", async 
     const frame = page.locator(`iframe[title='ReviewPanel · ${state}']`);
     await expect.poll(() => frame.evaluate((element) => {
       const iframe = element as HTMLIFrameElement;
-      return Number(iframe.height) === iframe.contentDocument?.documentElement.scrollHeight;
+      return Math.abs(Number(iframe.height) - (iframe.contentDocument?.getElementById("root")?.getBoundingClientRect().height ?? 0)) <= 1;
     })).toBe(true);
     const dimensions = await frame.evaluate((element) => {
       const iframe = element as HTMLIFrameElement;
@@ -80,6 +80,35 @@ test("fits short and tall content by sizing iframes from their document", async 
     expect(Math.abs(dimensions.displayedHeight - dimensions.stageHeight)).toBeLessThan(2);
   }
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(await page.evaluate(() => document.documentElement.clientWidth));
+});
+
+test("iframe height shrinks after text size changes from 5 to 1", async ({ page }) => {
+  await page.goto("/tests/browser/gallery.html");
+  const frame = page.locator("iframe[title='ReviewPanel · plain']");
+  const matchesContent = () => frame.evaluate((element) => {
+    const iframe = element as HTMLIFrameElement;
+    const contentHeight = iframe.contentDocument?.getElementById("root")?.getBoundingClientRect().height ?? 0;
+    return Math.abs(Number(iframe.height) - contentHeight) <= 1;
+  });
+  await page.getByLabel("Text size").selectOption("5");
+  await expect.poll(matchesContent).toBe(true);
+  const largeHeight = await frame.evaluate((element) => Number((element as HTMLIFrameElement).height));
+  await page.getByLabel("Text size").selectOption("1");
+  await expect.poll(matchesContent).toBe(true);
+  const smallHeight = await frame.evaluate((element) => Number((element as HTMLIFrameElement).height));
+  expect(smallHeight).toBeLessThan(largeHeight);
+});
+
+test("ignores forged preview height messages from the parent window", async ({ page }) => {
+  await page.goto("/tests/browser/gallery.html");
+  const frame = page.locator("iframe[title='ReviewPanel · plain']");
+  await expect.poll(() => frame.evaluate((element) => {
+    const iframe = element as HTMLIFrameElement;
+    return Math.abs(Number(iframe.height) - (iframe.contentDocument?.getElementById("root")?.getBoundingClientRect().height ?? 0)) <= 1;
+  })).toBe(true);
+  const height = await frame.evaluate((element) => Number((element as HTMLIFrameElement).height));
+  await page.evaluate(() => window.postMessage({ type: "preview-height", height: 9999 }, location.origin));
+  await expect(frame).toHaveAttribute("height", String(height));
 });
 
 test("production build includes and serves the preview page", async ({ page }) => {

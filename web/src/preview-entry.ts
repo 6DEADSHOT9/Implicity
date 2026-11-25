@@ -1,7 +1,7 @@
 import type { ComponentType, ReactNode } from "react";
 import type { z } from "zod";
 import { defineSkeleton, defineSkeletonDefinition, type SkeletonEntry } from "./registry/define-skeleton";
-import { discoverRegistryFolders } from "./registry/discovery";
+import { discoverRegistryFolders, registryFoldersFromPaths } from "./registry/discovery";
 import { validateRegistryDefinitions } from "./registry/validate";
 
 const components = import.meta.glob<Record<string, ComponentType<never>>>(["./registry/*/*.tsx", "!**/*.test.tsx"]);
@@ -20,9 +20,10 @@ export async function loadPreviewEntry(id: string): Promise<SkeletonEntry | unde
   const [component, schema, events, metadata] = await Promise.all([
     components[componentPath](), schemas[schemaPath]?.(), eventModules[eventPath]?.(), metaModules[metaPath]?.(),
   ]);
+  const folder = registryFoldersFromPaths(modulePaths, "./registry/").find((item) => item.id === id)!;
   const [{ definition }] = discoverRegistryFolders([{
     id,
-    files: modulePaths.filter((path) => path.startsWith(`./registry/${id}/`)).map((path) => path.slice(path.lastIndexOf("/") + 1)),
+    files: folder.files,
     componentExports: Object.keys(component),
     schema,
     events,
