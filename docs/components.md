@@ -62,7 +62,7 @@ These never move. Only additions, such as a new shortcut chip, are allowed.
 
 | Component | What it is | shadcn/ui base | Build |
 | --- | --- | --- | --- |
-| DockedPanel | A side panel that can hold tabs | Resizable, Sheet on small screens, Tabs | Composed |
+| DockedPanel | A side panel that can hold tabs. Docked, it is a resizable pane beside the content; undocked, and on small screens, it opens as a Sheet over the content | Resizable when docked, Sheet when undocked or on small screens, Tabs | Composed |
 | SourcesPanel | Sources for the current answer | Sources | Direct |
 | ProjectPanel | Decisions, constraints and files for a project | Tabs, Item | Composed |
 

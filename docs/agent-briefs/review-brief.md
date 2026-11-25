@@ -9,7 +9,7 @@ Check, with evidence for each finding:
 2. The work matches the docs and ADRs exactly (no invented fields, names or behaviour; glossary terms used exactly) and breaks none of the seven rules in CLAUDE.md.
 3. Scope: nothing another ticket owns; edits to shared root files are minimal and additive.
 4. The checks can actually go red: __PROBES__ Prove each with a deliberate failure in your temp clone, then discard it.
-5. Tests go through public interfaces and would catch a real regression; no test that cannot fail.
+5. Tests go through public interfaces and would catch a real regression; no test that cannot fail. Run new or changed browser tests with `--repeat-each=10`; a test that fails and then passes is a finding.
 6. The PR description's claims match the diff and command output; no secrets; commit and PR text do not mention Claude.
 
 Write your review to `REVIEW.md` at the root of this worktree (do not commit it): a one-line verdict (merge / merge after fixes / do not merge), then findings ranked most severe first, each with file and line, what is wrong, the evidence, and a suggested fix. Nits separate at the end. If a check passes, say so in one line.

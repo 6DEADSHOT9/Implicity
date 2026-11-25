@@ -1,4 +1,4 @@
-import { Component, type ReactNode } from "react";
+import { Component, useEffect, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import type { SkeletonEntry } from "./registry";
 
@@ -6,6 +6,11 @@ class PreviewBoundary extends Component<{ children: ReactNode; label: string }, 
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
   render() { return this.state.failed ? <p style={{ color: "var(--destructive)" }} role="alert">{this.props.label}: preview failed</p> : this.props.children; }
+}
+
+function PreviewMounted({ children, onMounted, version }: { children: ReactNode; onMounted: (version: number) => void; version: number }) {
+  useEffect(() => onMounted(version), [onMounted, version]);
+  return children;
 }
 
 export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | undefined>) {
@@ -17,40 +22,63 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
   let state: SkeletonEntry["meta"]["galleryStates"][number] | undefined;
   let styles: string | undefined;
   let texture: string | undefined;
-  let mode: string | undefined;
+  let config: { look: string; mode: string; density: string; textSize: string; deviceClass: string } | undefined;
   let previousHeight = -1;
+  let mounted = false;
+  let fontsLoaded = false;
+  let entrySettled = false;
+  let renderVersion = 0;
   const previewRoot = document.getElementById("root")!;
   const reportHeight = () => {
+    if (!mounted || !fontsLoaded) return;
     const height = previewRoot.getBoundingClientRect().height;
     if (height === previousHeight) return;
     previousHeight = height;
     window.parent.postMessage({ type: "preview-height", height }, location.origin);
   };
+  const onMounted = (version: number) => {
+    mounted = true;
+    getComputedStyle(previewRoot).fontFamily;
+    previewRoot.getBoundingClientRect();
+    void document.fonts.ready.then(() => {
+      if (version !== renderVersion) return;
+      fontsLoaded = true;
+      reportHeight();
+    });
+  };
   const heightObserver = new ResizeObserver(reportHeight);
   heightObserver.observe(document.documentElement);
   heightObserver.observe(previewRoot);
   const render = () => {
-    if (styles === undefined || texture === undefined) return;
+    if (styles === undefined || texture === undefined || config === undefined || !entrySettled) return;
+    const version = ++renderVersion;
+    mounted = false;
+    fontsLoaded = false;
     document.documentElement.style.cssText = styles;
-    document.documentElement.dataset.texture = texture;
+    Object.assign(document.documentElement.dataset, {
+      texture, look: config.look, mode: config.mode, density: config.density,
+      textSize: config.textSize, deviceClass: config.deviceClass,
+    });
     document.body.className = "gallery-preview-root";
     document.body.dataset.previewState = state?.id;
-    document.documentElement.dataset.mode = mode;
-    root.render(entry && state
+    root.render(<PreviewMounted onMounted={onMounted} version={version}>{entry && state
       ? <PreviewBoundary label={`${entry.id} · ${state.id}`}><entry.Component props={state.props} slots={state.slots ?? {}} /></PreviewBoundary>
-      : <p role="alert">Preview unavailable</p>);
-    requestAnimationFrame(reportHeight);
+      : <p role="alert">Preview unavailable</p>}</PreviewMounted>);
   };
   window.addEventListener("message", (event: MessageEvent<unknown>) => {
-    if (event.origin !== location.origin || event.source !== window.parent || !event.data || typeof event.data !== "object" || !("styles" in event.data) || typeof event.data.styles !== "string" || !("texture" in event.data) || typeof event.data.texture !== "string" || !("mode" in event.data) || (event.data.mode !== "light" && event.data.mode !== "dark")) return;
+    if (event.origin !== location.origin || event.source !== window.parent || !event.data || typeof event.data !== "object" || !("styles" in event.data) || typeof event.data.styles !== "string" || !("texture" in event.data) || typeof event.data.texture !== "string" || !("look" in event.data) || typeof event.data.look !== "string" || !("mode" in event.data) || typeof event.data.mode !== "string" || !("density" in event.data) || typeof event.data.density !== "string" || !("textSize" in event.data) || typeof event.data.textSize !== "string" || !("deviceClass" in event.data) || typeof event.data.deviceClass !== "string") return;
+    config = { look: event.data.look, mode: event.data.mode, density: event.data.density, textSize: event.data.textSize, deviceClass: event.data.deviceClass };
     styles = event.data.styles;
     texture = event.data.texture;
-    mode = event.data.mode;
     render();
   });
   void loadEntry(entryId).then((loaded) => {
     entry = loaded;
     state = entry?.meta.galleryStates.find(({ id }) => id === stateId);
+    entrySettled = true;
     render();
-  }).catch(() => render());
+  }).catch(() => {
+    entrySettled = true;
+    render();
+  });
 }
