@@ -10,5 +10,5 @@ export function List({ items, ordered, state }: Props) {
   const capture = useCapture<(typeof events)[number]>();
   const root = useSkeletonCapture(capture, "List", "default");
   const MarkedList = ordered ? "ol" : "ul";
-  return <Card ref={root} aria-label="List"><CardContent className="pt-space-6">{state === "error" ? <p role="alert">List could not be loaded</p> : state === "empty" || !items.length ? <p>No items</p> : <MarkedList className={ordered ? "list-decimal ps-space-6" : "list-disc ps-space-6"}>{items.map((item, index) => <Item asChild key={`${item}-${index}`}><li><ItemContent><ItemTitle>{item}</ItemTitle></ItemContent></li></Item>)}</MarkedList>}</CardContent></Card>;
+  return <Card ref={root} aria-label="List"><CardContent className="pt-space-6">{state === "error" ? <p role="alert">List could not be loaded</p> : state === "empty" || !items.length ? <p>No items</p> : <MarkedList className={ordered ? "list-decimal ps-space-6" : "list-disc ps-space-6"}>{items.map((item, index) => <li key={`${item}-${index}`}><Item><ItemContent><ItemTitle>{item}</ItemTitle></ItemContent></Item></li>)}</MarkedList>}</CardContent></Card>;
 }

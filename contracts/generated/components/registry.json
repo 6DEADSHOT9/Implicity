@@ -91,11 +91,25 @@
         ],
         "additionalProperties": false
       },
-      "slots": [],
+      "slots": [
+        "content"
+      ],
       "slots_schema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
-        "properties": {},
+        "properties": {
+          "content": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            }
+          }
+        },
+        "required": [
+          "content"
+        ],
         "additionalProperties": false
       },
       "limits": {
@@ -418,6 +432,14 @@
               "video"
             ]
           },
+          "sourceKind": {
+            "default": "attachment",
+            "type": "string",
+            "enum": [
+              "youtube",
+              "attachment"
+            ]
+          },
           "source": {
             "type": "string",
             "format": "uri"
@@ -436,6 +458,7 @@
         "required": [
           "title",
           "mediaType",
+          "sourceKind",
           "state"
         ],
         "additionalProperties": false
@@ -465,6 +488,24 @@
           },
           "value": {
             "type": "string"
+          },
+          "progress": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "number",
+                "minimum": 0
+              },
+              "max": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              }
+            },
+            "required": [
+              "value",
+              "max"
+            ],
+            "additionalProperties": false
           },
           "context": {
             "type": "string"

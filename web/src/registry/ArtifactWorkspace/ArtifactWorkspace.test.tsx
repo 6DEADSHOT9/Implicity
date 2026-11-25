@@ -46,4 +46,10 @@ describe("ArtifactWorkspace public registry entry", () => {
   expect(markup).toContain('aria-label="Recipe"');
   expect(markup).toContain('data-slot="card-title"');
  });
+ it("renders long document content as readable paragraphs", () => {
+  const state = entry.meta.galleryStates.find(({ id }) => id === "long_content")!;
+  const markup = renderToStaticMarkup(<entry.Component props={state.props} slots={{}} />);
+  expect((markup.match(/<p>/g) ?? []).length).toBe(12);
+  expect(markup).toContain("whitespace-pre-wrap");
+ });
 });

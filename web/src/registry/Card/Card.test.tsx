@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -44,5 +45,9 @@ describe("Card public registry entry", () => {
   const markup = renderToStaticMarkup(<entry.Component props={entry.meta.galleryStates[0].props} slots={{}} />);
     expect(markup).toContain('data-slot="card"');
   expect(markup).toContain('data-slot="card-title"');
+ });
+ it("renders content supplied through its declared registry slot", () => {
+  const markup = renderToStaticMarkup(<entry.Component props={entry.meta.galleryStates[0].props} slots={{ content: [createElement("strong", { key: "nested" }, "Nested skeleton")] }} />);
+  expect(markup).toContain("Nested skeleton");
  });
 });

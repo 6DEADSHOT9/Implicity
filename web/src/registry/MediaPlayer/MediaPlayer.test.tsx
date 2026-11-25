@@ -43,8 +43,9 @@ describe("MediaPlayer public registry entry", () => {
  });
  it("keeps the primary content accessible", () => {
   const markup = renderToStaticMarkup(<entry.Component props={entry.meta.galleryStates[0].props} slots={{}} />);
-    expect(markup).toContain('<audio');
-  expect(markup).toContain('controls=""');
-  expect(markup).toContain('aria-label="Sample audio"');
+  expect(markup).toContain('aria-label="Attached file audio preview"');
+  expect(markup).toContain('aria-label="Playback position"');
+  expect(markup).not.toContain('<audio');
+  expect(entry.meta.galleryStates.map(({ id }) => id)).toEqual(expect.arrayContaining(["youtube_audio", "attached_video", "youtube_video"]));
  });
 });

@@ -50,6 +50,17 @@ describe("Checklist public registry entry", () => {
   expect(onAction).toHaveBeenCalledWith("checklist_toggle", 0);
   act(() => root.unmount());
  });
+ it("uses unique per-instance ids and associates each label with its checkbox", () => {
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  const state = entry.meta.galleryStates[0].props;
+  act(() => root.render(<><entry.Component props={state} slots={{}} /><entry.Component props={state} slots={{}} /></>));
+  const checkboxes = [...host.querySelectorAll("[role=checkbox]")];
+  const ids = checkboxes.map((checkbox) => checkbox.id);
+  expect(new Set(ids).size).toBe(ids.length);
+  for (const checkbox of checkboxes) expect(host.querySelector(`label[for="${checkbox.id}"]`)).not.toBeNull();
+  act(() => root.unmount());
+ });
  it("keeps the primary content accessible", () => {
   const markup = renderToStaticMarkup(<entry.Component props={entry.meta.galleryStates[0].props} slots={{}} />);
     expect(markup).toContain('type="checkbox"');

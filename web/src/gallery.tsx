@@ -14,8 +14,8 @@ function SkeletonPreview({ entry, state, deviceClass, tokenStyles, texture, prev
   const frame = useRef<HTMLIFrameElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const viewportWidth = deviceClass === "desktop" ? 1440 : 800;
-  const previewConfig = useRef({ styles: tokenStyles, texture });
-  previewConfig.current = { styles: tokenStyles, texture };
+  const previewConfig = useRef({ styles: tokenStyles, texture, mode: "light", viewportWidth });
+  previewConfig.current = { styles: tokenStyles, texture, mode: document.documentElement.dataset.mode ?? "light", viewportWidth };
   const frameHeight = useRef(1);
   const animationFrame = useRef<number | undefined>(undefined);
 
@@ -25,7 +25,7 @@ function SkeletonPreview({ entry, state, deviceClass, tokenStyles, texture, prev
 
   useEffect(() => {
     updatePreview();
-  }, [tokenStyles, texture]);
+  }, [tokenStyles, texture, viewportWidth]);
 
   useEffect(() => {
     const container = stage.current;
@@ -67,7 +67,7 @@ function SkeletonPreview({ entry, state, deviceClass, tokenStyles, texture, prev
   const params = new URLSearchParams({ entry: entry.id, state: state.id });
   return <>
     <div className="gallery-preview-stage" ref={stage}>
-      <iframe key={deviceClass} ref={frame} className="gallery-preview-frame" title={`${entry.id} · ${state.id}`} data-device-class={deviceClass} width={viewportWidth} height={1} src={`${previewPath}?${params}`} onLoad={updatePreview} />
+      <iframe ref={frame} className="gallery-preview-frame" title={`${entry.id} · ${state.id}`} data-device-class={deviceClass} width={viewportWidth} height={1} src={`${previewPath}?${params}`} onLoad={updatePreview} />
     </div>
   </>;
 }

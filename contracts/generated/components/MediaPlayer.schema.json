@@ -15,6 +15,14 @@
             "video"
           ]
         },
+        "sourceKind": {
+          "default": "attachment",
+          "type": "string",
+          "enum": [
+            "youtube",
+            "attachment"
+          ]
+        },
         "source": {
           "type": "string",
           "format": "uri"
@@ -33,6 +41,7 @@
       "required": [
         "title",
         "mediaType",
+        "sourceKind",
         "state"
       ],
       "additionalProperties": false

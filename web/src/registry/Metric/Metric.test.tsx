@@ -44,5 +44,7 @@ describe("Metric public registry entry", () => {
   const markup = renderToStaticMarkup(<entry.Component props={entry.meta.galleryStates[0].props} slots={{}} />);
     expect(markup).toContain('aria-label="Tasks completed"');
   expect(markup).toContain('<data value="18">18</data>');
+  expect(markup).toContain('data-slot="progress"');
+  expect(markup).toContain('value="18" max="30"');
  });
 });

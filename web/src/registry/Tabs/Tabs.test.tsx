@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
+import userEvent from "@testing-library/user-event";
 import { CaptureProvider, recordingCapture } from "../capture";
 import { registry } from "../index";
 import { propsSchema } from "./schema";
@@ -41,24 +42,25 @@ describe("Tabs public registry entry", () => {
   act(() => root.unmount());
  });
 
- it("leaves tab selection to the host callback", () => {
+ it("leaves tab selection to the host callback", async () => {
   const onAction = vi.fn();
   const host = document.createElement("div");
   const root = createRoot(host);
   act(() => root.render(<entry.Component props={entry.meta.galleryStates[0].props} slots={{}} onAction={onAction} />));
-  act(() => (host.querySelectorAll("[role=tab]")[1] as HTMLButtonElement).click());
+  await userEvent.setup().click(host.querySelectorAll("[role=tab]")[1] as HTMLButtonElement);
   expect(onAction).toHaveBeenCalledWith("tab_select", "details");
   act(() => root.unmount());
  });
 
- it("supports arrow-key tab navigation", () => {
+ it("supports arrow-key tab navigation", async () => {
   const onAction = vi.fn();
   const host = document.createElement("div");
   document.body.append(host);
   const root = createRoot(host);
   act(() => root.render(<entry.Component props={entry.meta.galleryStates[0].props} slots={{}} onAction={onAction} />));
   const firstTab = host.querySelector("[role=tab]") as HTMLButtonElement;
-  act(() => firstTab.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true })));
+  await userEvent.setup().click(firstTab);
+  await userEvent.setup().keyboard("{ArrowRight}");
   expect(onAction).toHaveBeenCalledWith("tab_select", "details");
   act(() => root.unmount());
   host.remove();

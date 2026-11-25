@@ -33,7 +33,19 @@
     },
     "slots": {
       "type": "object",
-      "properties": {},
+      "properties": {
+        "content": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          }
+        }
+      },
+      "required": [
+        "content"
+      ],
       "additionalProperties": false
     }
   },

@@ -11,6 +11,24 @@
         "value": {
           "type": "string"
         },
+        "progress": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "number",
+              "minimum": 0
+            },
+            "max": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "required": [
+            "value",
+            "max"
+          ],
+          "additionalProperties": false
+        },
         "context": {
           "type": "string"
         },
