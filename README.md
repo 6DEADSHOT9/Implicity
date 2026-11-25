@@ -27,15 +27,24 @@ Stage 1, foundation. Three spikes run before any other work: see `docs/spikes`.
 
 ## Development
 
+Run `make setup` to check the machine, generate missing local secrets, and start
+the development stack. On first run, create your PostHog account and an
+`Implicity` project at the printed local URL, then create a personal API key with
+`project:read`, `project:write`, `endpoint:read` and `endpoint:write` scopes. Put
+it in `.env` as `POSTHOG_PERSONAL_API_KEY` and run `make setup` again. If Hermes
+needs Codex sign-in, run `hermes auth add openai-codex` inside its container and
+rerun setup. Setup keeps the project key in `VITE_POSTHOG_API_KEY` for the app.
+The PostHog page opens only in an interactive terminal; set
+`IMPLICITY_SETUP_NO_BROWSER=1` to keep it closed (also suppressed when `CI=1`).
+
 Install the pinned workspaces with `make install`; run `make lint` and `make test`.
 The TypeScript workspace uses the Node.js version in `.node-version` and npm;
 the Python workspace uses uv 0.11.25 with the version in `.python-version`.
 
-Copy `.env.example` to `.env` and replace the four secret placeholders with
-URI-safe values from `openssl rand -hex 32`, and the encryption salt with
-`openssl rand -hex 16`; retain the port settings unless they conflict with
-another local service. Start the containerized
-stack with `make up-development` or `make up-production`; each command waits up to
+To start the stack without running setup, copy `.env.example` to `.env` and
+replace its secret placeholders with URI-safe values; retain the port settings
+unless they conflict with another local service. Start the containerized stack
+with `make up-development` or `make up-production`; each command waits up to
 30 minutes for healthy services. Check health with `docker compose --profile development ps`
 (or the `production` profile), then run `make down` to stop it. The Compose
 project is named `implicity-6deadshot9-local`.
