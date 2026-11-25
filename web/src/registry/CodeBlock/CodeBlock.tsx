@@ -20,7 +20,17 @@ export function CodeBlock({ code, language, variant, state }: Props) {
     if (state === "empty") { setTokens([]); return; }
     void highlighter.then((instance) => setTokens(instance.codeToTokens(code, { lang: languages.includes(language) ? language as BundledLanguage : "text", theme: "registry-tokens" }).tokens.map((line) => line.map((part) => ({ content: part.content, color: part.color })))));
   }, [code, language, state]);
-  if (variant === "terminal") return <div ref={root}><Terminal output={state === "empty" ? "" : code} role="region" aria-label="Terminal output"><TerminalHeader><TerminalTitle /></TerminalHeader><TerminalContent /></Terminal></div>;
-  if (variant === "stack_trace") return <div ref={root}><StackTrace trace={state === "empty" ? "" : code} defaultOpen><StackTraceHeader><StackTraceError><StackTraceErrorType /><StackTraceErrorMessage /></StackTraceError></StackTraceHeader><StackTraceContent><StackTraceFrames /></StackTraceContent></StackTrace></div>;
+  if (variant === "terminal") return <div ref={root}>
+    <Terminal output={state === "empty" ? "" : code} role="region" aria-label="Terminal output">
+      <TerminalHeader><TerminalTitle /></TerminalHeader>
+      <TerminalContent className="bg-code-background text-code-foreground" />
+    </Terminal>
+  </div>;
+  if (variant === "stack_trace") return <div ref={root}>
+    <StackTrace trace={state === "empty" ? "" : code} defaultOpen>
+      <StackTraceHeader><StackTraceError><StackTraceErrorType /><StackTraceErrorMessage className="text-code-foreground" /></StackTraceError></StackTraceHeader>
+      <StackTraceContent><StackTraceFrames /></StackTraceContent>
+    </StackTrace>
+  </div>;
   return <Card ref={root}><CardHeader><CardTitle className="text-heading-4">{language} · {variant}</CardTitle></CardHeader><CardContent>{state === "error" ? <p role="alert">Code could not be loaded</p> : <pre aria-label={`${language} ${variant}`} tabIndex={0} className="max-h-content-height overflow-auto rounded-md bg-code-background p-space-4 font-mono text-code-foreground"><code>{tokens.length ? tokens.map((line, i) => <span className="block" key={i}>{line.map((part, j) => <span key={j} className={part.color === token("--code-comment") ? "text-code-comment" : part.color === token("--code-keyword") ? "text-code-keyword" : part.color === token("--code-string") ? "text-code-string" : part.color === token("--code-number") ? "text-code-number" : part.color === token("--code-function") ? "text-code-function" : part.color === token("--code-type") ? "text-code-type" : part.color === token("--code-operator") ? "text-code-operator" : "text-code-foreground"}>{part.content}</span>)}</span>) : state === "empty" ? "" : code}</code></pre>}</CardContent></Card>;
 }

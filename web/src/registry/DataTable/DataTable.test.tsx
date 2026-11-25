@@ -17,6 +17,7 @@ describe("DataTable public registry entry", () => {
  it("validates props and declares only its supported events", () => {
   expect(propsSchema.safeParse(entry.meta.galleryStates[0].props).success).toBe(true);
   expect(propsSchema.safeParse({ unexpected: true }).success).toBe(false);
+  expect(propsSchema.safeParse({ columns: ["Name", "Value"], rows: [["Loss", "-1"]], chartValues: [-1, 2] }).success).toBe(false);
   expect(entry.events).toEqual(["component_shown", "component_seen", "representation_switched"]);
  });
 
@@ -40,7 +41,7 @@ describe("DataTable public registry entry", () => {
   expect(recorder.events[1]).toEqual({ name: "component_seen", component: "DataTable", default_state: "default", seconds_visible: 3 });
   act(() => root.unmount());
  });
- it("emits a closed-vocabulary event when the representation changes", () => {
+ it("records a switch only after the displayed representation changes", () => {
   const recorder = recordingCapture();
   const host = document.createElement("div");
   const root = createRoot(host);
@@ -48,8 +49,18 @@ describe("DataTable public registry entry", () => {
   act(() => root.render(<CaptureProvider sink={recorder.sink}><entry.Component props={entry.meta.galleryStates[0].props} slots={{}} onAction={onAction} /></CaptureProvider>));
   act(() => (host.querySelectorAll("button")[1] as HTMLButtonElement).click());
   expect(onAction).toHaveBeenCalledWith("representation", "chart");
-  expect(recorder.events.at(-1)).toEqual({ name: "representation_switched", dimension: "data_form", from: "table", to: "chart" });
+  expect(recorder.events.some(({ name }) => name === "representation_switched")).toBe(false);
+  act(() => root.render(<CaptureProvider sink={recorder.sink}><entry.Component props={{ ...entry.meta.galleryStates[0].props, form: "chart" }} slots={{}} onAction={onAction} /></CaptureProvider>));
+  expect(recorder.events).toContainEqual({ name: "representation_switched", dimension: "data_form", from: "table", to: "chart" });
   act(() => root.unmount());
+ });
+ it("renders signed chart values without clamping them to progress", () => {
+  const state = { props: { columns: ["Name", "Value"], rows: [["Loss", "-10"], ["Flat", "0"], ["Gain", "10"]], chartValues: [-10, 0, 10], form: "chart" }, slots: {} };
+  const markup = renderToStaticMarkup(<entry.Component props={state.props} slots={state.slots} />);
+  expect(markup).toContain("Loss: -10");
+  expect(markup).toContain("Flat: 0");
+  expect(markup).toContain("Gain: 10");
+  expect(markup).not.toContain('data-slot="progress"');
  });
  it("keeps the primary content accessible", () => {
   const markup = renderToStaticMarkup(<entry.Component props={entry.meta.galleryStates[0].props} slots={{}} />);

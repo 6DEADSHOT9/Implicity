@@ -7,10 +7,35 @@ import { useCapture } from "../capture";
 import { useSkeletonCapture } from "../capture-lifecycle";
 import { events } from "./events";
 import { propsSchema } from "./schema";
+
 type Props = z.infer<typeof propsSchema>;
+
 export function DataChart({ title, labels, values, chartType, state }: Props) {
   const capture = useCapture<(typeof events)[number]>();
   const root = useSkeletonCapture(capture, "DataChart", "default");
-  const data = useMemo(() => labels.map((label, index) => ({ label, value: values[index] ?? 0 })), [labels, values]);
-  return <Card ref={root}><CardHeader><CardTitle className="text-heading-4">{title}</CardTitle></CardHeader><CardContent>{state === "loading" ? <p aria-busy="true">Loading chart</p> : state === "error" ? <p role="alert">Chart could not be loaded</p> : state === "empty" || !data.length ? <p>No data</p> : <div role="img" aria-label={title} className="w-full" style={{ height: token("--content-max-height") }}><ResponsiveContainer width="100%" height="100%">{chartType === "line" ? <LineChart data={data}><CartesianGrid stroke={token("--border")} /><XAxis dataKey="label" stroke={token("--muted-foreground")} /><YAxis stroke={token("--muted-foreground")} /><Tooltip contentStyle={{ backgroundColor: token("--popover"), color: token("--popover-foreground"), borderColor: token("--border") }} /><Line dataKey="value" stroke={token("--chart-1")} /></LineChart> : <BarChart data={data}><CartesianGrid stroke={token("--border")} /><XAxis dataKey="label" stroke={token("--muted-foreground")} /><YAxis stroke={token("--muted-foreground")} /><Tooltip contentStyle={{ backgroundColor: token("--popover"), color: token("--popover-foreground"), borderColor: token("--border") }} /><Bar dataKey="value" fill={token("--chart-1")} /></BarChart>}</ResponsiveContainer></div>}</CardContent></Card>;
+  const data = useMemo(() => labels.map((label, index) => ({ label, value: values[index] })), [labels, values]);
+  const axes = <>
+    <CartesianGrid stroke={token("--border")} strokeDasharray={token("--border-width")} />
+    <XAxis dataKey="label" stroke={token("--muted-foreground")} axisLine={{ stroke: token("--border") }} tickLine={{ stroke: token("--border") }} tick={{ fill: token("--muted-foreground"), fontSize: token("--text-sm"), fontFamily: token("--font-body") }} />
+    <YAxis stroke={token("--muted-foreground")} axisLine={{ stroke: token("--border") }} tickLine={{ stroke: token("--border") }} tick={{ fill: token("--muted-foreground"), fontSize: token("--text-sm"), fontFamily: token("--font-body") }} />
+    <Tooltip cursor={{ fill: token("--muted") }} contentStyle={{ backgroundColor: token("--popover"), color: token("--popover-foreground"), borderColor: token("--border"), borderRadius: token("--radius"), borderWidth: token("--border-width"), padding: token("--space-3") }} itemStyle={{ color: token("--popover-foreground"), padding: token("--space-1"), fontFamily: token("--font-body") }} />
+  </>;
+  const plot = chartType === "line"
+    ? <LineChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>{axes}<Line dataKey="value" stroke={token("--chart-1")} strokeWidth={token("--border-width")} dot={false} /></LineChart>
+    : <BarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>{axes}<Bar dataKey="value" fill={token("--chart-1")} /></BarChart>;
+
+  return <Card ref={root}>
+    <CardHeader><CardTitle className="text-heading-4">{title}</CardTitle></CardHeader>
+    <CardContent>
+      {state === "loading" ? <p aria-busy="true">Loading chart</p>
+        : state === "error" ? <p role="alert">Chart could not be loaded</p>
+          : state === "empty" || !data.length ? <p>No data</p>
+            : <>
+              <div role="img" aria-label={title} className="w-full" style={{ height: token("--content-max-height") }}>
+                <ResponsiveContainer width="100%" height="100%">{plot}</ResponsiveContainer>
+              </div>
+              <ul className="visually-hidden">{data.map(({ label, value }) => <li key={label}>{label}: {value}</li>)}</ul>
+            </>}
+    </CardContent>
+  </Card>;
 }

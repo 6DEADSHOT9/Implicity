@@ -17,6 +17,7 @@ describe("DataChart public registry entry", () => {
  it("validates props and declares only its supported events", () => {
   expect(propsSchema.safeParse(entry.meta.galleryStates[0].props).success).toBe(true);
   expect(propsSchema.safeParse({ unexpected: true }).success).toBe(false);
+  expect(propsSchema.safeParse({ title: "mismatch", labels: ["A"], values: [] }).success).toBe(false);
   expect(entry.events).toEqual(["component_shown", "component_seen"]);
  });
 

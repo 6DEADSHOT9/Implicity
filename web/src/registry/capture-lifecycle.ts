@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { useCapture } from "./capture";
 
+// TODO(#74): replace this local seen observer with the shared useSeen() helper when PR #75 lands.
 type LifecycleCapture = ReturnType<typeof useCapture<"component_shown" | "component_seen">>;
 
 export function useSkeletonCapture(capture: LifecycleCapture, component: string, defaultState: string) {
