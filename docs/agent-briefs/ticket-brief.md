@@ -10,7 +10,7 @@ Working rules:
 - Never merge, close, approve or enable auto-merge on any pull request, and never push to main. Only the user merges.
 - Test-first where there is behaviour: write a failing test, make it pass, one slice at a time. Tests go through public interfaces, not internals.
 - Work on this worktree's branch only. Commit messages must not mention Claude. Do not touch main.
-- Pin any new tool or image versions; commit lockfiles.
+- Pin any new tool or image versions; commit lockfiles. Never bypass the release-age guard: pin a version old enough to pass it, or stop and ask.
 - Before finishing, from a clean state run install, lint and test (and any command this ticket adds), and include the output.
 - Push the branch and open a pull request against main titled "__TITLE__" whose body says `Closes #__NUM__` and uses this layout: Summary (smallest visual: file tree, diagram or diff sketch), Evidence (command output, before/after where it applies), Merge Danger (one-way or two-way door, blast radius), and lists any choices the docs did not fix. The PR body must not mention Claude.
 - If you are blocked on something only a human can do, stop and say exactly what is needed.
