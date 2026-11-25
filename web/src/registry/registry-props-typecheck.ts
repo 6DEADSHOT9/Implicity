@@ -1,1 +1,16 @@
-export {};
+import { defineSkeleton, defineSkeletonDefinition } from "./define-skeleton.ts";
+import { DockedPanel as DockedPanelComponent } from "./DockedPanel/DockedPanel.tsx";
+import { propsSchema as DockedPanelProps, slotsSchema as DockedPanelSlots } from "./DockedPanel/schema.ts";
+import { events as DockedPanelEvents } from "./DockedPanel/events.ts";
+import { meta as DockedPanelMeta } from "./DockedPanel/meta.ts";
+defineSkeleton(defineSkeletonDefinition({ id: "DockedPanel", props: DockedPanelProps, slots: DockedPanelSlots, events: DockedPanelEvents, meta: DockedPanelMeta }), DockedPanelComponent);
+import { ProjectPanel as ProjectPanelComponent } from "./ProjectPanel/ProjectPanel.tsx";
+import { propsSchema as ProjectPanelProps, slotsSchema as ProjectPanelSlots } from "./ProjectPanel/schema.ts";
+import { events as ProjectPanelEvents } from "./ProjectPanel/events.ts";
+import { meta as ProjectPanelMeta } from "./ProjectPanel/meta.ts";
+defineSkeleton(defineSkeletonDefinition({ id: "ProjectPanel", props: ProjectPanelProps, slots: ProjectPanelSlots, events: ProjectPanelEvents, meta: ProjectPanelMeta }), ProjectPanelComponent);
+import { SourcesPanel as SourcesPanelComponent } from "./SourcesPanel/SourcesPanel.tsx";
+import { propsSchema as SourcesPanelProps, slotsSchema as SourcesPanelSlots } from "./SourcesPanel/schema.ts";
+import { events as SourcesPanelEvents } from "./SourcesPanel/events.ts";
+import { meta as SourcesPanelMeta } from "./SourcesPanel/meta.ts";
+defineSkeleton(defineSkeletonDefinition({ id: "SourcesPanel", props: SourcesPanelProps, slots: SourcesPanelSlots, events: SourcesPanelEvents, meta: SourcesPanelMeta }), SourcesPanelComponent);
