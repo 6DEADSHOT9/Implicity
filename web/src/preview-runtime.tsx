@@ -1,4 +1,4 @@
-import { Component, useState, type ReactNode } from "react";
+import { Component, useEffect, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import type { SkeletonEntry } from "./registry";
 
@@ -8,17 +8,23 @@ class PreviewBoundary extends Component<{ children: ReactNode; label: string }, 
   render() { return this.state.failed ? <p style={{ color: "var(--destructive)" }} role="alert">{this.props.label}: preview failed</p> : this.props.children; }
 }
 
+function PreviewMounted({ children, onMounted, version }: { children: ReactNode; onMounted: (version: number) => void; version: number }) {
+  useEffect(() => onMounted(version), [onMounted, version]);
+  return children;
+}
+
 function InteractivePreview({ entry, state }: { entry: SkeletonEntry; state: SkeletonEntry["meta"]["galleryStates"][number] }) {
   const [props, setProps] = useState<Record<string, unknown>>(() => ({ ...state.props }));
   const update = (key: string) => (value: unknown) => setProps((current) => ({ ...current, [key]: value }));
-  const slots = entry.id === "ProjectPanel"
-    ? entry.meta.galleryStates.find(({ props: example }) => example.activeTab === props.activeTab)?.slots ?? state.slots
-    : state.slots;
-  return <entry.Component props={props} interactions={{
+  const selectedState = entry.id === "ProjectPanel"
+    ? entry.meta.galleryStates.find(({ props: example }) => example.activeTab === props.activeTab)
+    : undefined;
+  const slots = selectedState?.slots ?? state.slots ?? {};
+  return <entry.Component props={props} slots={slots} interactions={{
     ...(Object.hasOwn(props, "activeTab") ? { onTabChange: update("activeTab") } : {}),
     ...(Object.hasOwn(props, "open") ? { onOpenChange: update("open") } : {}),
     ...(Object.hasOwn(props, "docked") ? { onDockChange: update("docked") } : {}),
-  }} slots={slots ?? {}} />;
+  }} />;
 }
 
 export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | undefined>) {
@@ -30,40 +36,79 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
   let state: SkeletonEntry["meta"]["galleryStates"][number] | undefined;
   let styles: string | undefined;
   let texture: string | undefined;
-  let mode: string | undefined;
+  let config: { look: string; mode: string; density: string; textSize: string; deviceClass: string } | undefined;
   let previousHeight = -1;
+  let mounted = false;
+  let fontsLoaded = false;
+  let entrySettled = false;
+  let renderVersion = 0;
+  let heightReportPending = false;
   const previewRoot = document.getElementById("root")!;
   const reportHeight = () => {
-    const height = Math.max(previewRoot.getBoundingClientRect().height, document.querySelector<HTMLElement>('[role="dialog"]')?.scrollHeight ?? 0);
-    if (height === previousHeight) return;
-    previousHeight = height;
-    window.parent.postMessage({ type: "preview-height", height }, location.origin);
+    if (!mounted || !fontsLoaded || heightReportPending) return;
+    heightReportPending = true;
+    const firstHeight = Math.max(previewRoot.getBoundingClientRect().height, document.querySelector<HTMLElement>('[role="dialog"]')?.scrollHeight ?? 0);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      heightReportPending = false;
+      if (!mounted || !fontsLoaded) return;
+      const height = Math.max(previewRoot.getBoundingClientRect().height, document.querySelector<HTMLElement>('[role="dialog"]')?.scrollHeight ?? 0);
+      if (height !== firstHeight) {
+        reportHeight();
+        return;
+      }
+      if (height === previousHeight) return;
+      previousHeight = height;
+      window.parent.postMessage({ type: "preview-height", height }, location.origin);
+    }));
+  };
+  const onMounted = (version: number) => {
+    mounted = true;
+    getComputedStyle(previewRoot).fontFamily;
+    previewRoot.getBoundingClientRect();
+    void document.fonts.ready.then(() => {
+      if (version !== renderVersion) return;
+      fontsLoaded = true;
+      reportHeight();
+    });
   };
   const heightObserver = new ResizeObserver(reportHeight);
   heightObserver.observe(document.documentElement);
   heightObserver.observe(previewRoot);
-  new MutationObserver(() => requestAnimationFrame(reportHeight)).observe(document.body, { childList: true, subtree: true });
+  const portalObserver = new MutationObserver(() => {
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
+    if (dialog) heightObserver.observe(dialog);
+    reportHeight();
+  });
+  portalObserver.observe(document.body, { childList: true, subtree: true });
   const render = () => {
-    if (styles === undefined || texture === undefined || mode === undefined) return;
+    if (styles === undefined || texture === undefined || config === undefined || !entrySettled) return;
+    const version = ++renderVersion;
+    mounted = false;
+    fontsLoaded = false;
     document.documentElement.style.cssText = styles;
-    document.documentElement.dataset.texture = texture;
-    document.documentElement.dataset.mode = mode;
+    Object.assign(document.documentElement.dataset, {
+      texture, look: config.look, mode: config.mode, density: config.density,
+      textSize: config.textSize, deviceClass: config.deviceClass,
+    });
     document.body.className = "gallery-preview-root";
-    root.render(entry && state
+    root.render(<PreviewMounted onMounted={onMounted} version={version}>{entry && state
       ? <PreviewBoundary label={`${entry.id} · ${state.id}`}><InteractivePreview entry={entry} state={state} /></PreviewBoundary>
-      : <p role="alert">Preview unavailable</p>);
-    requestAnimationFrame(reportHeight);
+      : <p role="alert">Preview unavailable</p>}</PreviewMounted>);
   };
   window.addEventListener("message", (event: MessageEvent<unknown>) => {
-    if (event.origin !== location.origin || event.source !== window.parent || !event.data || typeof event.data !== "object" || !("styles" in event.data) || typeof event.data.styles !== "string" || !("texture" in event.data) || typeof event.data.texture !== "string" || !("mode" in event.data) || !["light", "dark"].includes(String(event.data.mode))) return;
+    if (event.origin !== location.origin || event.source !== window.parent || !event.data || typeof event.data !== "object" || !("styles" in event.data) || typeof event.data.styles !== "string" || !("texture" in event.data) || typeof event.data.texture !== "string" || !("look" in event.data) || typeof event.data.look !== "string" || !("mode" in event.data) || typeof event.data.mode !== "string" || !("density" in event.data) || typeof event.data.density !== "string" || !("textSize" in event.data) || typeof event.data.textSize !== "string" || !("deviceClass" in event.data) || typeof event.data.deviceClass !== "string") return;
+    config = { look: event.data.look, mode: event.data.mode, density: event.data.density, textSize: event.data.textSize, deviceClass: event.data.deviceClass };
     styles = event.data.styles;
     texture = event.data.texture;
-    mode = String(event.data.mode);
     render();
   });
   void loadEntry(entryId).then((loaded) => {
     entry = loaded;
     state = entry?.meta.galleryStates.find(({ id }) => id === stateId);
+    entrySettled = true;
     render();
-  }).catch(() => render());
+  }).catch(() => {
+    entrySettled = true;
+    render();
+  });
 }
