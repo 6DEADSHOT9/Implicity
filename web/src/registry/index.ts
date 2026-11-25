@@ -20,3 +20,5 @@ export function createRegistry(entries: readonly SkeletonEntry[], version: numbe
 
 export const registry = createRegistry(entries, registryVersion);
 export const getSkeleton = (id: string) => registry.getSkeleton(id);
+export { CaptureProvider, useCapture, recordingCapture } from "./capture";
+export type { CaptureSink, CapturedEvent, EventName } from "./capture";

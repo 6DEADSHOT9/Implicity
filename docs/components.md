@@ -83,7 +83,7 @@ Other widgets, such as a CI tracker or supplier watch, are a DataTable, DataChar
 | --- | --- | --- | --- |
 | ChangeNotice | "This changed because…" with Keep and Undo | Marker inside a conversation, Toast outside one | Composed |
 | ProposalCard | A proposed look, widget, workflow, schedule, kind of chat or setting change, with Keep and Dismiss and a preview | Card, Button | Composed |
-| Nudge | The once-a-day in-app prompt at session start | Alert, Button | Composed |
+| Nudge | The once-a-day in-app prompt at session start. Stage 1 builds the skeleton only, with `onAction` and `onLater` callbacks and the `component_shown` and `component_seen` events; its action and dismissal events arrive with the nudges feature (Later) | Alert, Button | Composed |
 
 ### Features that are not separate components
 
@@ -99,8 +99,10 @@ Other widgets, such as a CI tracker or supplier watch, are a DataTable, DataChar
 Each registry entry carries four things beyond its code, and the rest of the system relies on them.
 
 1. **A schema** for its props and slots, so an invalid layout is rejected before it renders.
-2. **The events it emits**, including when it was actually shown. Capture comes from this, so a new component brings its own signals.
+2. **The events it emits**, including when it was actually shown. Capture comes from this, so a new component brings its own signals. A skeleton emits through the registry's capture context (`useCapture().emit`) and only events it declares from the closed vocabulary; its controls call prop callbacks, and the app decides what they do (docs/contracts.md).
 3. **Token-only styling.** It uses the design tokens and has no styles of its own. A lint enforces this by allowing only known-good forms: a `style` value must be `var(--token)` or a safe keyword such as `inherit` or `auto`; colour, size, font, spacing, radius and shadow utilities in `className` must be names generated from the token set, while layout-only utilities such as `flex` and `items-center` are free; dynamic values in `style` or `className` are an error unless they go through the one helper that accepts only token names. The lint guarantees that no hard-coded colour, size, font, spacing, radius or shadow reaches a skeleton through `style` or `className`. Whether a skeleton looks right in every look, mode and screen size is checked in review and in the gallery, not by the lint.
+
+   **The shadcn/ui primitives** (copied sources, ADR 0010) follow the same guarantee by a different route. Tailwind's default theme is cleared and its theme is defined only from the tokens, so every colour, spacing, radius, font, size or shadow utility that exists resolves to a token. In the primitives' folder the lint accepts a class only if Tailwind generates it from that theme, rejects arbitrary values such as `bg-[#f00]` or `p-[13px]`, allows inline `style` only as `var(--token)`, and leaves layout-only properties such as `grid-template-columns` free. Primitives whose styling is computed at runtime (charts, code highlighting) are adapted by the skeleton ticket that uses them, through the token helper, not copied into the base.
 4. **Its limits**: minimum sizes and contrast that no adaptation may break.
 
 Widgets declare two more: where their data comes from, and how they refresh. That is what lets each one show its last update and its source.
