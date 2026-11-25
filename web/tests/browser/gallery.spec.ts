@@ -26,16 +26,122 @@ test("base primitives stay in the gallery across token selections", async ({ pag
   const gallery = page.locator("[data-gallery-root]");
   await expect(page.getByRole("region", { name: "Base primitives" })).toBeVisible();
   await expect(gallery.getByText("Inputs and settings")).toBeVisible();
+  const marker = page.getByRole("note", { name: "Remembered from your earlier conversation about travel" });
   for (const [label, value, attribute] of [
-    ["Look", "notebook", "data-look"],
-    ["Mode", "dark", "data-mode"],
-    ["Density", "spacious", "data-density"],
-    ["Text size", "5", "data-text-size"],
-    ["Screen size", "tablet", "data-device-class"],
+    ["Look", "default", "data-look"], ["Look", "focused", "data-look"], ["Look", "notebook", "data-look"],
+    ["Mode", "light", "data-mode"], ["Mode", "dark", "data-mode"],
+    ["Density", "compact", "data-density"], ["Density", "comfortable", "data-density"], ["Density", "spacious", "data-density"],
+    ["Text size", "1", "data-text-size"], ["Text size", "2", "data-text-size"], ["Text size", "3", "data-text-size"], ["Text size", "4", "data-text-size"], ["Text size", "5", "data-text-size"],
+    ["Screen size", "desktop", "data-device-class"], ["Screen size", "tablet", "data-device-class"],
   ]) {
     await page.getByLabel(label).selectOption(value);
     await expect(gallery).toHaveAttribute(attribute, value);
+    await expect(marker).toBeVisible();
+    await marker.scrollIntoViewIfNeeded();
+    const bounds = await marker.boundingBox();
+    expect(bounds).not.toBeNull();
+    expect(bounds!.width).toBeGreaterThan(0);
+    expect(bounds!.height).toBeGreaterThan(0);
+    expect(bounds!.x).toBeGreaterThanOrEqual(0);
+    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(await page.evaluate(() => innerWidth));
+    expect(bounds!.y).toBeGreaterThanOrEqual(0);
+    expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(await page.evaluate(() => innerHeight));
   }
+});
+
+test("focus rings are painted with 3:1 contrast on shared controls in every look and mode", async ({ page }) => {
+  await page.goto("/tests/browser/gallery.html");
+  const marker = page.getByRole("note", { name: "Remembered from your earlier conversation about travel" });
+  await expect(marker).toBeVisible();
+  await expect(marker).toContainText("This answer used saved context.");
+  await expect(page.getByRole("button", { name: "Undo marker" })).toBeVisible();
+  const parse = (color: string) => {
+    const rgb = color.match(/rgba?\(([^)]+)\)/)?.[1];
+    if (rgb) return rgb.split(",").slice(0, 3).map((value) => Number.parseFloat(value));
+    return color.match(/[\da-f]{2}/gi)!.map((value) => Number.parseInt(value, 16));
+  };
+  const ratio = (foreground: number[], background: number[], details: string) => {
+    const luminance = (rgb: number[]) => rgb.map((value) => {
+      const channel = value / 255;
+      return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+    }).reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index], 0);
+    const values = [luminance(foreground), luminance(background)];
+    const result = (Math.max(...values) + 0.05) / (Math.min(...values) + 0.05);
+    expect(result, details).toBeGreaterThanOrEqual(3);
+    return result;
+  };
+  for (const look of ["default", "focused", "notebook"]) {
+    await page.getByLabel("Look").selectOption(look);
+    for (const mode of ["light", "dark"]) {
+      await page.getByLabel("Mode").selectOption(mode);
+      const controls = [
+        page.getByRole("button", { name: "Continue" }),
+        page.getByRole("textbox", { name: "Email" }),
+        page.getByRole("textbox", { name: "Notes" }),
+        page.getByRole("textbox", { name: "Message" }),
+        page.getByRole("checkbox", { name: "Remember this device" }),
+        page.getByRole("switch", { name: "Enable notifications" }),
+        page.getByRole("combobox", { name: "Theme" }),
+        page.getByRole("tab", { name: "Overview" }),
+        page.getByRole("slider", { name: "Volume" }),
+        page.getByRole("tabpanel", { name: "Overview" }),
+        page.getByRole("button", { name: "Undo marker" }),
+      ];
+      for (const control of controls) {
+        await control.focus();
+        await page.keyboard.press("Tab");
+        await page.keyboard.press("Shift+Tab");
+        await expect(control).toBeFocused();
+        const style = await control.evaluate((element) => {
+          const computed = getComputedStyle(element);
+          const shadows = [...computed.boxShadow.matchAll(/(rgba?\([^)]+\))\s+-?[\d.]+px\s+-?[\d.]+px\s+-?[\d.]+px\s+(-?[\d.]+)px/g)];
+          let surface = element.parentElement;
+          while (surface) {
+            const color = getComputedStyle(surface).backgroundColor;
+            if (!color.startsWith("rgba(") || Number.parseFloat(color.slice(color.lastIndexOf(",") + 1)) > 0) break;
+            surface = surface.parentElement;
+          }
+          return { name: element.getAttribute("aria-label") ?? element.textContent?.trim(), focusVisible: element.matches(":focus-visible"), outlineStyle: computed.outlineStyle, outlineWidth: computed.outlineWidth, outlineColor: computed.outlineColor, shadows: shadows.map(([, color, spread]) => ({ color, spread: Number.parseFloat(spread) })), background: surface ? getComputedStyle(surface).backgroundColor : getComputedStyle(document.documentElement).backgroundColor };
+        });
+        expect(style.focusVisible).toBe(true);
+        const shadow = style.shadows.at(-1);
+        const outlineVisible = style.outlineStyle !== "none" && !style.outlineColor.endsWith(", 0)");
+        if (outlineVisible) {
+          expect(Number.parseFloat(style.outlineWidth)).toBeGreaterThan(0);
+          ratio(parse(style.outlineColor), parse(style.background), JSON.stringify(style));
+        }
+        if (style.shadows.length >= 2) {
+          expect(shadow!.spread - style.shadows[0].spread, JSON.stringify(style)).toBeGreaterThan(0);
+          ratio(parse(shadow!.color), parse(style.background), JSON.stringify(style));
+        } else {
+          expect(outlineVisible, JSON.stringify(style)).toBe(true);
+          expect(Number.parseFloat(style.outlineWidth)).toBeGreaterThan(0);
+          ratio(parse(style.outlineColor), parse(style.background), JSON.stringify(style));
+        }
+      }
+    }
+  }
+});
+
+test("Marker truncates long labels without horizontal scrolling at 320 px", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 900 });
+  await page.goto("/tests/browser/gallery.html");
+  const marker = page.getByRole("note", { name: "Remembered from your earlier conversation about travel" });
+  await marker.evaluate((element) => {
+    document.querySelector(".gallery-header")?.remove();
+    const card = element.closest(".primitive-gallery-grid > *");
+    const grid = card?.parentElement;
+    if (grid && card) for (const child of [...grid.children]) if (child !== card) child.remove();
+    document.querySelector('[aria-label="Registered Skeletons"]')?.remove();
+  });
+  const bounds = await marker.boundingBox();
+  expect(bounds).not.toBeNull();
+  expect(bounds!.width).toBeGreaterThan(0);
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(320);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(320);
+  const label = marker.locator('[data-slot="badge"]');
+  expect(await label.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+  await expect(label).toHaveCSS("text-overflow", "ellipsis");
 });
 
 test("desktop Sidebar responds to the token breakpoint", async ({ page }) => {

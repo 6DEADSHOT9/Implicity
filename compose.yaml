@@ -20,6 +20,8 @@ x-api-build: &api-build
     WORKDIR /workspace
     COPY pyproject.toml uv.lock ./
     COPY api/pyproject.toml api/pyproject.toml
+    COPY api/alembic.ini api/alembic.ini
+    COPY api/migrations/ api/migrations/
     COPY engine/python/pyproject.toml engine/python/pyproject.toml
     COPY contracts/python/ contracts/python/
     COPY contracts/generated/ contracts/generated/
@@ -37,6 +39,8 @@ services:
   web-development:
     profiles: [development]
     build: *web-build
+    environment:
+      VITE_POSTHOG_API_KEY: ${VITE_POSTHOG_API_KEY:-}
     networks: [app]
     healthcheck:
       <<: *app-healthcheck
@@ -45,6 +49,8 @@ services:
   web-production:
     profiles: [production]
     build: *web-build
+    environment:
+      VITE_POSTHOG_API_KEY: ${VITE_POSTHOG_API_KEY:-}
     networks: [app]
     healthcheck:
       <<: *app-healthcheck
@@ -58,6 +64,7 @@ services:
       MCP_ALLOWED_HOSTS: api-development:8000
     volumes:
       - ./api/src:/workspace/api/src
+      - api-data:/workspace/data
     networks: [app]
     healthcheck:
       <<: *app-healthcheck
@@ -67,6 +74,8 @@ services:
     profiles: [production]
     build: *api-build
     command: [uv, run, --locked, uvicorn, implicity_api.app:app, --app-dir, api/src, --host, 0.0.0.0, --port, "8000"]
+    volumes:
+      - api-data:/workspace/data
     environment:
       MCP_ALLOWED_HOSTS: api-production:8000
     networks: [app]
@@ -249,7 +258,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 30
-      start_period: 20m
+      start_period: 30m
     volumes:
       - posthog-data:/var/lib/posthog
 
@@ -286,7 +295,7 @@ services:
       interval: 3s
       timeout: 5s
       retries: 3
-      start_period: 60s
+      start_period: 30m
 
   posthog-capture:
     profiles: [development, production]
@@ -378,6 +387,7 @@ services:
       retries: 12
 
 volumes:
+  api-data:
   hermes-data:
   posthog-db:
   posthog-redis:
