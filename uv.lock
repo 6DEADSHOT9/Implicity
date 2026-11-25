@@ -276,13 +276,17 @@ requires-dist = [
 [[package]]
 name = "implicity-engine"
 version = "0.1.0"
-source = { virtual = "engine/python" }
+source = { editable = "engine/python" }
 dependencies = [
     { name = "implicity-contracts" },
+    { name = "pyyaml" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "implicity-contracts", editable = "contracts/python" }]
+requires-dist = [
+    { name = "implicity-contracts", editable = "contracts/python" },
+    { name = "pyyaml", specifier = "==6.0.4" },
+]
 
 [[package]]
 name = "implicity-workspace"
