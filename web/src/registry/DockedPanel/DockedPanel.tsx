@@ -5,6 +5,7 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useCapture } from "../capture";
+import { useSeen } from "../use-seen";
 import { events } from "./events";
 import tokens from "../../../../contracts/looks/tokens.json" with { type: "json" };
 
@@ -29,6 +30,7 @@ export function DockedPanel({ title, tabs, activeTab, open, docked, slots, onTab
   emitRef.current = emit;
   const defaultState = !open ? "closed" : docked ? "open_docked" : "open_undocked";
   const initialState = useRef(defaultState);
+  const seenRef = useSeen({ component: "DockedPanel", defaultState: initialState.current });
   const previous = useRef({ open, docked });
   useEffect(() => {
     emitRef.current("component_shown", { component: "DockedPanel", default_state: initialState.current });
@@ -54,7 +56,7 @@ export function DockedPanel({ title, tabs, activeTab, open, docked, slots, onTab
 
   if (isMobile || !docked) {
     return <Sheet open={open} onOpenChange={(next) => onOpenChange?.(next)}>
-      <SheetTrigger asChild><Button variant="outline" className="bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground" style={{ minHeight: "var(--target-min-size)" }}>{open ? title : `Open ${title}`}</Button></SheetTrigger>
+      <SheetTrigger asChild><Button ref={seenRef} variant="outline" className="bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground" style={{ minHeight: "var(--target-min-size)" }}>{open ? title : `Open ${title}`}</Button></SheetTrigger>
       <SheetContent side="right" aria-label={title} showCloseButton={false} className="overflow-y-auto">
         <header className="flex flex-col gap-space-3 px-space-4 pt-space-4">
           <SheetTitle className="text-heading-3">{title}</SheetTitle>
@@ -66,7 +68,7 @@ export function DockedPanel({ title, tabs, activeTab, open, docked, slots, onTab
     </Sheet>;
   }
 
-  if (!open) return <Button variant="outline" className="bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground" style={{ minHeight: "var(--target-min-size)" }} onClick={() => onOpenChange?.(true)}>Open {title}</Button>;
+  if (!open) return <Button ref={seenRef} variant="outline" className="bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground" style={{ minHeight: "var(--target-min-size)" }} onClick={() => onOpenChange?.(true)}>Open {title}</Button>;
 
   return <ResizablePanelGroup id={groupId} defaultLayout={{ [workspaceId]: 64, [panelId]: 36 }} orientation="horizontal" className="min-w-panel">
     <ResizablePanel id={workspaceId} minSize="30%">
@@ -74,7 +76,7 @@ export function DockedPanel({ title, tabs, activeTab, open, docked, slots, onTab
     </ResizablePanel>
     <ResizableHandle withHandle aria-label="Resize workspace and panel" />
     <ResizablePanel id={panelId} minSize={tokens.derivedTokens.dimensions["--panel-min-width"]} maxSize="70%" className="overflow-auto">
-      <section aria-label={title} className="flex h-full flex-col gap-space-4 bg-card p-space-4 text-card-foreground">
+      <section ref={seenRef} aria-label={title} className="flex h-full flex-col gap-space-4 bg-card p-space-4 text-card-foreground">
         <div className="flex flex-wrap items-center justify-between gap-space-2">
           <h2 className="text-heading-3">{title}</h2>
           {controls}

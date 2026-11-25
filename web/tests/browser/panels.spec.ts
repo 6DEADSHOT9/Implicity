@@ -45,6 +45,7 @@ test("panel gallery states render with the selected settings across every config
       const iframe = frame as HTMLIFrameElement;
       const document = iframe.contentDocument;
       const view = document?.defaultView;
+      if (!document || !view) return { title: iframe.title, ready: false };
       const buttons = [...(document?.querySelectorAll("button") ?? [])].filter((button) => button.getClientRects().length > 0).map((button) => {
         const style = view!.getComputedStyle(button);
         const foreground = style.color.match(/[\d.]+/g)!.map(Number);
@@ -58,6 +59,7 @@ test("panel gallery states render with the selected settings across every config
       const headingToken = document?.documentElement.style.getPropertyValue("--heading-3").trim();
       return {
         title: iframe.title,
+        ready: true,
         background: view?.getComputedStyle(document!.documentElement).getPropertyValue("--background").trim(),
         space: view?.getComputedStyle(document!.documentElement).getPropertyValue("--space-1").trim(),
         text: view?.getComputedStyle(document!.documentElement).getPropertyValue("--text-base").trim(),
@@ -71,7 +73,7 @@ test("panel gallery states render with the selected settings across every config
         controlsMeetContrast: buttons.every(({ contrast }) => contrast >= 4.5),
       };
       }).filter(({ title }) => names.includes(title));
-      return previews.length === names.length && previews.every((preview) => preview.background === tokens.background && preview.space === tokens.space && preview.text === tokens.text && preview.target === tokens.target && preview.mode === expectedMode && preview.width === width && preview.content && preview.healthy && preview.headingsMatchToken && preview.controlsMeetTarget && preview.controlsMeetContrast);
+      return previews.length === names.length && previews.every((preview) => preview.ready && preview.background === tokens.background && preview.space === tokens.space && preview.text === tokens.text && preview.target === tokens.target && preview.mode === expectedMode && preview.width === width && preview.content && preview.healthy && preview.headingsMatchToken && preview.controlsMeetTarget && preview.controlsMeetContrast);
     }, {
       expectedTitles: titles,
       expectedContent,

@@ -3,6 +3,7 @@ import { Empty, EmptyTitle } from "@/components/ui/empty";
 import { Item, ItemContent, ItemGroup } from "@/components/ui/item";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCapture } from "../capture";
+import { useSeen } from "../use-seen";
 import { events } from "./events";
 
 export function ProjectPanel({ title, tabs, activeTab, slots, onTabChange }: {
@@ -16,11 +17,12 @@ export function ProjectPanel({ title, tabs, activeTab, slots, onTabChange }: {
   const emitRef = useRef(emit);
   emitRef.current = emit;
   const initialState = useRef(activeTab);
+  const seenRef = useSeen({ component: "ProjectPanel", defaultState: initialState.current });
   useEffect(() => {
     emitRef.current("component_shown", { component: "ProjectPanel", default_state: initialState.current });
   }, []);
 
-  return <section aria-label={title} className="flex flex-col gap-space-4 bg-card p-space-4 text-card-foreground">
+  return <section ref={seenRef} aria-label={title} className="flex flex-col gap-space-4 bg-card p-space-4 text-card-foreground">
     <h2 className="text-heading-3">{title}</h2>
     <Tabs value={activeTab} onValueChange={(value) => onTabChange?.(value as typeof activeTab)} orientation="vertical">
       <TabsList className="w-full flex-wrap">

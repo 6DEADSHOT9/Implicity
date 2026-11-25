@@ -432,7 +432,7 @@ test("waits for fonts requested by a new look before reporting height", async ({
   expect(await messageCount()).toBe(initialMessageCount);
   releaseFont();
   await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentDocument?.fonts.status)).toBe("loaded");
-  expect(await messageCount()).toBeGreaterThan(initialMessageCount);
+  await expect.poll(messageCount).toBeGreaterThan(initialMessageCount);
   const sample = await waitForStableHeight(frame);
   expect(Math.abs(sample.height - sample.contentHeight)).toBeLessThanOrEqual(1);
 });

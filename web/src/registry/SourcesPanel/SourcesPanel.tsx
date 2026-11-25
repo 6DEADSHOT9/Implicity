@@ -3,6 +3,7 @@ import { Source, Sources, SourcesContent, SourcesTrigger } from "@/components/ai
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyTitle } from "@/components/ui/empty";
 import { useCapture } from "../capture";
+import { useSeen } from "../use-seen";
 import { events } from "./events";
 
 export function SourcesPanel({ docked, sources = [], onDockChange }: {
@@ -15,6 +16,7 @@ export function SourcesPanel({ docked, sources = [], onDockChange }: {
   emitRef.current = emit;
   const defaultState = docked ? "docked" : "closed";
   const initialState = useRef(defaultState);
+  const seenRef = useSeen({ component: "SourcesPanel", defaultState: initialState.current });
   const previousDocked = useRef(docked);
   useEffect(() => {
     emitRef.current("component_shown", { component: "SourcesPanel", default_state: initialState.current });
@@ -23,7 +25,7 @@ export function SourcesPanel({ docked, sources = [], onDockChange }: {
     if (previousDocked.current !== docked) emit(docked ? "panel_opened" : "panel_closed", { component: "SourcesPanel" });
     previousDocked.current = docked;
   }, [docked, emit]);
-  return <section aria-label="Sources" className="flex flex-col gap-space-2 bg-card p-space-4 text-card-foreground">
+  return <section ref={seenRef} aria-label="Sources" className="flex flex-col gap-space-2 bg-card p-space-4 text-card-foreground">
     <h2 className="text-heading-3">Sources</h2>
     <Sources open={docked} onOpenChange={(next) => onDockChange?.(next)}>
       <SourcesTrigger asChild count={sources.length}>

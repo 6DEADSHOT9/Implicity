@@ -85,6 +85,7 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
     const version = ++renderVersion;
     mounted = false;
     fontsLoaded = false;
+    previousHeight = -1;
     document.documentElement.style.cssText = styles;
     Object.assign(document.documentElement.dataset, {
       texture, look: config.look, mode: config.mode, density: config.density,
