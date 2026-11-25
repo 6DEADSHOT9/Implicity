@@ -5,7 +5,7 @@ from implicity_contracts.codec import decode_contract, encode_contract
 from implicity_contracts.generated import Decision as ContractDecision
 from implicity_contracts.generated import Spec as ContractSpec
 from jsonschema.exceptions import ValidationError as JSONSchemaValidationError
-from sqlalchemy import event, select
+from sqlalchemy import delete, event, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.sql import visitors
@@ -25,7 +25,7 @@ TABLE_OWNERS = {
     for table in metadata.tables.values()
 }
 OWNER_BY_METADATA = {metadata: owner for owner, metadata in METADATA.items()}
-SESSION_REQUIRED = (Message, MessageSpec, AgentSession)
+SESSION_REQUIRED = (Message, AgentSession)
 CONTRACT_PAYLOADS = {
     Decision: ContractDecision,
     MessageSpec: ContractSpec,
@@ -120,6 +120,25 @@ class ModuleStore:
             session.merge(row)
             session.flush()
         return row
+
+    def put_many(self, rows: list[Any]) -> list[Any]:
+        for row in rows:
+            self._validate(row)
+        with self._session() as session, session.begin():
+            for row in rows:
+                session.merge(row)
+            session.flush()
+        return rows
+
+    def delete_unattached_message_specs_before(self, cutoff) -> int:
+        if self.__owner != "app":
+            raise PermissionError("Only the app store owns message specs")
+        statement = delete(MessageSpec).where(
+            MessageSpec.session_id.is_(None), MessageSpec.created_at < cutoff
+        )
+        _check_tables(statement, self.__owner)
+        with self._session() as session, session.begin():
+            return session.execute(statement).rowcount
 
     def _validate(self, row: Any) -> None:
         model = type(row)

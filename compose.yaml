@@ -22,6 +22,7 @@ x-api-build: &api-build
     COPY api/pyproject.toml api/pyproject.toml
     COPY engine/python/pyproject.toml engine/python/pyproject.toml
     COPY contracts/python/ contracts/python/
+    COPY contracts/generated/ contracts/generated/
     COPY api/src/ api/src/
     COPY engine/python/implicity_engine/ engine/python/implicity_engine/
     RUN uv sync --all-packages --locked
@@ -53,6 +54,8 @@ services:
     profiles: [development]
     build: *api-build
     command: [uv, run, --locked, uvicorn, implicity_api.app:app, --app-dir, api/src, --host, 0.0.0.0, --port, "8000", --reload]
+    environment:
+      MCP_ALLOWED_HOSTS: api-development:8000
     volumes:
       - ./api/src:/workspace/api/src
     networks: [app]
@@ -64,6 +67,8 @@ services:
     profiles: [production]
     build: *api-build
     command: [uv, run, --locked, uvicorn, implicity_api.app:app, --app-dir, api/src, --host, 0.0.0.0, --port, "8000"]
+    environment:
+      MCP_ALLOWED_HOSTS: api-production:8000
     networks: [app]
     healthcheck:
       <<: *app-healthcheck
