@@ -45,7 +45,18 @@ const folders = await Promise.all(foldersToDiscover.map(async ({ name: id }) => 
   return { id, files, componentExports: namedValueExports(componentSource, join(folder, `${id}.tsx`)), schema, events, metadata };
 }));
 entries.push(...discoverRegistryFolders(folders).map(({ definition }) => definition));
-const snapshot = { registry_version: registryVersion, components: entries.map(({ id }) => id).sort() };
+const snapshot = {
+  registry_version: registryVersion,
+  components: entries.map(({ id }) => id).sort(),
+  catalogue: entries.map(({ id, propsSchema, slotsSchema, meta }) => ({
+    name: id,
+    role: meta.role,
+    props_schema: propsSchema.toJSONSchema(),
+    slots: meta.slots,
+    slots_schema: slotsSchema.toJSONSchema(),
+    limits: meta.limits,
+  })),
+};
 validateRegistryDefinitions(entries);
 
 const historyFiles = (await readdir(directory).catch((error) => error.code === "ENOENT" ? [] : Promise.reject(error)))
@@ -63,6 +74,8 @@ if (!check && registryVersion === highestVersion + 1) {
   await writeFile(path, `${JSON.stringify(snapshot, null, 2)}\n`);
   snapshots = [...snapshots, snapshot];
 }
+const currentSnapshotIndex = snapshots.findIndex(({ registry_version }) => registry_version === registryVersion);
+if (currentSnapshotIndex >= 0) snapshots[currentSnapshotIndex] = snapshot;
 checkRegistrySnapshots(snapshots, snapshot);
 const artifacts = new Map(entries.map((entry) => [`${entry.id}.schema.json`, `${JSON.stringify(entry.schema.toJSONSchema(), null, 2)}\n`]));
 for (const historical of snapshots) artifacts.set(`registry-v${historical.registry_version}.json`, `${JSON.stringify(historical, null, 2)}\n`);

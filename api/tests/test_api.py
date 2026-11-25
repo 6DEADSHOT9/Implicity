@@ -90,7 +90,7 @@ from implicity_api.app import app
 with TestClient(app) as client:
     response = client.get("/health")
     assert (response.status_code, response.json()) == (200, {"status": "ok"})
-    assert {route.path for route in app.routes} == {"/health"}
+    assert {route.path for route in app.routes} == {"/health", ""}
     snapshot = Path(os.environ["T14_SNAPSHOT_PATH"])
     deadline = time.monotonic() + 3
     while not snapshot.exists() and time.monotonic() < deadline:

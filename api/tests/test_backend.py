@@ -218,16 +218,19 @@ def test_table_ownership_is_keyed_by_owner_and_matches_storage_contract():
     assert (
         instructions_migration["down_revision"] == quota_settings_migration["revision"]
     )
+    message_spec_migration = runpy.run_path(
+        str(API_ROOT / "migrations/versions/0004_unattached_message_specs.py")
+    )
+    assert message_spec_migration["down_revision"] == instructions_migration["revision"]
     assert "instructions" in AgentSession.__table__.c
     assert migration["SESSION_REQUIRED"] == {
         "messages",
         "message_specs",
         "agent_sessions",
     }
-    assert all(
-        not model.__table__.c.session_id.nullable
-        for model in (Message, MessageSpec, AgentSession)
-    )
+    assert not Message.__table__.c.session_id.nullable
+    assert MessageSpec.__table__.c.session_id.nullable
+    assert not AgentSession.__table__.c.session_id.nullable
 
 
 def test_contracts_are_a_direct_api_dependency():
@@ -243,11 +246,16 @@ def test_session_derived_rows_require_session_id(tmp_path):
     agent_store = create_store("agent", bind)
     for row, store in (
         (Message(id="message", session_id=None, data={}), app_store),
-        (MessageSpec(id="spec", session_id=None, data=SPEC), app_store),
         (AgentSession(id="agent-session", session_id=None, data={}), agent_store),
     ):
         with pytest.raises(ValueError, match="requires session_id"):
             store.insert(row)
+    assert (
+        app_store.insert(
+            MessageSpec(id="unattached", session_id=None, data=SPEC)
+        ).session_id
+        is None
+    )
 
 
 def test_default_database_and_backup_path_are_anchored_to_the_repository(monkeypatch):
@@ -366,8 +374,12 @@ def test_contract_payloads_round_trip_and_reject_invalid_decisions_and_specs(tmp
         engine_store.insert(Decision(id="different", session_id=None, data=DECISION))
     with pytest.raises(ValueError):
         engine_store.insert(Decision(id=DECISION["id"], session_id=None, data=[]))
-    with pytest.raises(ValueError):
-        app_store.insert(MessageSpec(id="bad", session_id=None, data=SPEC))
+    assert (
+        app_store.insert(
+            MessageSpec(id="unattached", session_id=None, data=SPEC)
+        ).session_id
+        is None
+    )
     with pytest.raises(ValueError):
         app_store.insert(
             MessageSpec(

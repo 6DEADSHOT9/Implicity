@@ -25,7 +25,7 @@ TABLE_OWNERS = {
     for table in metadata.tables.values()
 }
 OWNER_BY_METADATA = {metadata: owner for owner, metadata in METADATA.items()}
-SESSION_REQUIRED = (Message, MessageSpec, AgentSession)
+SESSION_REQUIRED = (Message, AgentSession)
 CONTRACT_PAYLOADS = {
     Decision: ContractDecision,
     MessageSpec: ContractSpec,
@@ -120,6 +120,22 @@ class ModuleStore:
             session.merge(row)
             session.flush()
         return row
+
+    def put_many(self, rows: list[Any]) -> list[Any]:
+        for row in rows:
+            self._validate(row)
+        with self._session() as session, session.begin():
+            for row in rows:
+                session.merge(row)
+            session.flush()
+        return rows
+
+    def delete(self, row: Any) -> None:
+        _check_model(type(row), self.__owner)
+        with self._session() as session, session.begin():
+            current = session.get(type(row), row.id)
+            if current is not None:
+                session.delete(current)
 
     def _validate(self, row: Any) -> None:
         model = type(row)

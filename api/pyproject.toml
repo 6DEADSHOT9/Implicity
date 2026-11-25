@@ -7,6 +7,7 @@ dependencies = [
     "fastapi==0.121.3",
     "httpx==0.28.1",
     "implicity-contracts",
+    "mcp==2.3.0",
     "sqlalchemy==2.0.44",
     "uvicorn==0.38.0",
 ]
