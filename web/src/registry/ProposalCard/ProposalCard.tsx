@@ -2,6 +2,7 @@ import { useEffect, useId, useRef } from "react";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../../components/ui/card";
 import { useCapture } from "../capture";
+import { useSeen } from "../use-seen";
 import { events } from "./events";
 
 type ProposalType = "look" | "widget" | "workflow" | "kind" | "schedule" | "dimension";
@@ -19,14 +20,14 @@ export function ProposalCard({ proposal_id, proposal_type, title, description, p
   const { emit } = useCapture<(typeof events)[number]>();
   const emitRef = useRef(emit);
   const titleId = useId();
-  const rootRef = useRef<HTMLDivElement>(null);
+  const seenRef = useSeen({ component: "ProposalCard", defaultState: "preview" });
   emitRef.current = emit;
   useEffect(() => {
     emitRef.current("component_shown", { component: "ProposalCard", default_state: "preview" });
     emitRef.current("proposal_shown", { proposal_id, proposal_type });
   }, [proposal_id, proposal_type]);
 
-  return <Card ref={rootRef} role="region" aria-labelledby={titleId}>
+  return <Card ref={seenRef} role="region" aria-labelledby={titleId}>
     <CardHeader>
       <CardTitle><h2 style={{ fontSize: "var(--heading-4)" }} id={titleId}>{title}</h2></CardTitle>
       <CardDescription>{description}</CardDescription>

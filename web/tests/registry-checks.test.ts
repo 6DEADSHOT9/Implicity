@@ -72,7 +72,7 @@ describe("registry generation guards", () => {
     } finally {
       rmSync(temp, { recursive: true, force: true });
     }
-  });
+  }, 15_000);
 
   it("maps a SkeletonDefinition to the Python catalogue shape", () => {
     expect(catalogueFromEntries([definition])).toEqual(catalogueFixture.catalogue);

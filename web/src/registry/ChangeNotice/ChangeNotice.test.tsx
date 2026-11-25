@@ -29,6 +29,7 @@ describe("ChangeNotice", () => {
     expect(onUndo).toHaveBeenCalledOnce();
     expect(recorder.events).toEqual([
       { name: "component_shown", component: "ChangeNotice", default_state: "inline" },
+      { name: "change_shown", decision_id: decisionId },
       { name: "change_kept", decision_id: decisionId },
       { name: "change_undone", decision_id: decisionId },
     ]);
