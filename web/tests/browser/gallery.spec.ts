@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
 import tokens from "../../../contracts/looks/tokens.json" with { type: "json" };
+import defaultLook from "../../../contracts/looks/default.json" with { type: "json" };
+import focusedLook from "../../../contracts/looks/focused.json" with { type: "json" };
+import notebookLook from "../../../contracts/looks/notebook.json" with { type: "json" };
 import { tokenNames } from "../../src/registry/token-values.mjs";
 
 test("screen size changes actual Skeleton preview width and all allowed tokens are set", async ({ page }) => {
@@ -272,6 +275,7 @@ test("ignores forged preview height messages from the parent window", async ({ p
     const iframe = element as HTMLIFrameElement;
     return Math.abs(Number(iframe.height) - (iframe.contentDocument?.getElementById("root")?.getBoundingClientRect().height ?? 0)) <= 1;
   })).toBe(true);
+  await expect.poll(() => frame.evaluate((element) => Number((element as HTMLIFrameElement).height))).toBeGreaterThan(50);
   const height = await frame.evaluate((element) => Number((element as HTMLIFrameElement).height));
   await page.evaluate(() => window.postMessage({ type: "preview-height", height: 9999 }, location.origin));
   await expect(frame).toHaveAttribute("height", String(height));
@@ -367,4 +371,113 @@ test("content skeletons render every declared gallery state across gallery setti
   await expect(page.locator("[data-gallery-root]")).toHaveAttribute("data-device-class", "tablet");
   await expect(page.frameLocator('iframe[title="DataTable · default"]').locator("table")).toBeVisible();
   await expect(page.frameLocator('iframe[title="Tabs · default"]').getByRole("tablist")).toBeVisible();
+  await expect(page.frameLocator('iframe[title="DataTable · chart"]').locator('[data-slot="progress"]').first()).toBeVisible();
+  await expect(page.frameLocator('iframe[title="DataChart · long_content"]').locator("svg")).toBeVisible();
+  await expect(page.frameLocator('iframe[title="CodeBlock · diff"]').locator("pre")).toContainText("current");
+  await expect(page.frameLocator('iframe[title="CodeBlock · stack_trace"]').getByRole("button", { name: /TypeError/ })).toBeVisible();
+  await expect(page.frameLocator('iframe[title="CodeBlock · terminal"]').locator(".bg-terminal-background")).toContainText("All tests passed");
+  for (const device of ["desktop", "tablet"] as const) {
+    await page.getByLabel("Screen size").selectOption(device);
+    for (const name of names) {
+      const frame = page.locator(`iframe[title^="${name} · "]`).first();
+      await expect(frame).toBeVisible();
+      await expect(frame.contentFrame().locator("#root")).not.toContainText("Preview unavailable");
+      await expect(frame.contentFrame().locator("#root")).not.toContainText("preview failed");
+    }
+  }
+});
+
+
+test("content skeletons survive every gallery setting combination", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => page.locator("iframe").evaluateAll((frames) => frames.some((frame) => frame.getAttribute("title")?.startsWith("DataTable ·")) && frames.filter((frame) => ["DataTable", "DataChart", "CodeBlock", "MediaPlayer", "ArtifactWorkspace", "Checklist", "List", "Metric", "Tabs", "Card"].some((name) => frame.getAttribute("title")?.startsWith(`${name} · `))).every((frame) => {
+    const root = (frame as HTMLIFrameElement).contentDocument?.querySelector("#root");
+    return !!root && !/Preview unavailable|preview failed/.test(root.textContent ?? "");
+  })), { timeout: 30000 }).toBe(true);
+  const looks = [defaultLook, focusedLook, notebookLook];
+  const densities = ["compact", "comfortable", "spacious"] as const;
+  const sizes = ["1", "2", "3", "4", "5"] as const;
+  const modes = ["light", "dark"] as const;
+  const devices = ["desktop", "tablet"] as const;
+  let combinations = 0;
+  for (const look of looks) for (const mode of modes) for (const density of densities) for (const textSize of sizes) for (const device of devices) {
+    const scale = tokens.derivedTokens.textSize[textSize];
+    const dimensions = {
+      ...look[mode],
+      ...Object.fromEntries(Object.entries(tokens.sharedPalette[mode]).map(([name, value]) => [`--${name}`, value])),
+      ...tokens.derivedTokens.radius[look.radius as keyof typeof tokens.derivedTokens.radius],
+      ...tokens.derivedTokens.density[density],
+      "--text-scale": scale["--text-scale"],
+      ...scale.sizes,
+      ...scale.headings,
+      ...tokens.derivedTokens.dimensions,
+      ...tokens.derivedTokens.motionDurations,
+      ...tokens.derivedTokens.motionEasing,
+      ...tokens.derivedTokens.motionAnimations,
+      ...tokens.derivedTokens.fontWeights,
+      ...tokens.derivedTokens.lineHeights,
+      "--font-body": JSON.stringify(tokens.typefaces[look.typeface.body as keyof typeof tokens.typefaces].family),
+      "--font-heading": JSON.stringify(tokens.typefaces[look.typeface.heading as keyof typeof tokens.typefaces].family),
+      "--font-serif": JSON.stringify(tokens.typefaces.serif.family),
+      "--font-informal": JSON.stringify(tokens.typefaces.informal.family),
+      "--font-mono": JSON.stringify(tokens.typefaces.mono.family),
+    };
+    const styles = Object.entries(dimensions).map(([name, value]) => `${name.startsWith("--") ? name : `--${name}`}:${value}`).join(";");
+    const rendered = await page.evaluate(async ({ styles, lookId, mode, density, textSize, texture, device }) => {
+      const names = ["DataTable", "DataChart", "CodeBlock", "MediaPlayer", "ArtifactWorkspace", "Checklist", "List", "Metric", "Tabs", "Card"];
+      const frames = [...document.querySelectorAll<HTMLIFrameElement>("iframe")].filter((frame) => names.some((name) => frame.title.startsWith(`${name} · `)));
+      for (const frame of frames) {
+        frame.dataset.deviceClass = device;
+        const root = frame.contentDocument?.documentElement;
+        if (!root) continue;
+        root.style.cssText = styles;
+        root.dataset.look = lookId;
+        root.dataset.mode = mode;
+        root.dataset.density = density;
+        root.dataset.textSize = textSize;
+        root.dataset.texture = texture;
+        frame.contentDocument!.body.className = "gallery-preview-root";
+      }
+      await Promise.all(frames.map((frame) => new Promise((resolve) => frame.contentWindow?.requestAnimationFrame(resolve))));
+      return frames.filter((frame) => !frame.contentDocument?.querySelector("#root")).map((frame) => frame.title);
+    }, { styles, lookId: look.id, mode, density, textSize, texture: look.texture, device });
+    expect(rendered, `${look.id}/${mode}/${density}/${textSize}/${device}`).toEqual([]);
+    combinations++;
+  }
+  expect(combinations).toBe(180);
+});
+
+test("code and terminal palette contrast passes in Chromium for every look and mode", async ({ page }) => {
+  await page.goto("/");
+  const ratio = (foreground: string, background: string) => {
+    const luminance = (input: string) => {
+      const rgb = input.match(/[\d.]+/g)?.slice(0, 3).map(Number);
+      if (!rgb || rgb.length !== 3) return 0;
+      const channels = rgb.map((channel) => { const value = channel / 255; return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4; });
+      return 0.2126 * channels[0]! + 0.7152 * channels[1]! + 0.0722 * channels[2]!;
+    };
+    const a = luminance(foreground); const b = luminance(background);
+    return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+  };
+  for (const look of ["default", "focused", "notebook"]) {
+    await page.getByLabel("Look").selectOption(look);
+    for (const mode of ["light", "dark"]) {
+      await page.getByLabel("Mode").selectOption(mode);
+      const palette = await page.frameLocator('iframe[title="CodeBlock · default"]').locator("html").evaluate((element) => {
+        return ["text-code-foreground", "text-code-comment", "text-code-keyword", "text-code-string", "text-code-number", "text-code-function", "text-code-type", "text-code-operator", "text-terminal-foreground", "text-terminal-success", "text-terminal-warning", "text-terminal-error", "text-terminal-info", "text-terminal-prompt"].map((className) => {
+          const probe = document.createElement("span");
+          probe.className = className;
+          element.append(probe);
+          const color = getComputedStyle(probe).color;
+          probe.remove();
+          return color;
+        });
+      });
+      const background = await page.frameLocator('iframe[title="CodeBlock · default"]').locator("pre").evaluate((element) => getComputedStyle(element).backgroundColor);
+      expect(palette).toHaveLength(14);
+      for (const foreground of palette.slice(0, 8)) expect(ratio(foreground, background), `${look}/${mode}: ${foreground} on ${background}`).toBeGreaterThanOrEqual(4.5);
+      const terminalBackground = await page.frameLocator('iframe[title="CodeBlock · terminal"]').locator(".bg-terminal-background").evaluate((element) => getComputedStyle(element).backgroundColor);
+      for (const foreground of palette.slice(8)) expect(ratio(foreground, terminalBackground), `${look}/${mode}: ${foreground} on ${terminalBackground}`).toBeGreaterThanOrEqual(4.5);
+    }
+  }
 });

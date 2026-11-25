@@ -53,8 +53,8 @@ describe("DataTable public registry entry", () => {
  });
  it("keeps the primary content accessible", () => {
   const markup = renderToStaticMarkup(<entry.Component props={entry.meta.galleryStates[0].props} slots={{}} />);
-    expect(markup).toContain('role="region"');
+    expect(markup).toContain('data-slot="table"');
   expect(markup).toContain('scope="col"');
-  expect(markup).toContain('role="group"');
+  expect(markup).toContain('aria-label="Data representation"');
  });
 });

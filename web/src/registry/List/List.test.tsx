@@ -42,7 +42,7 @@ describe("List public registry entry", () => {
  });
  it("keeps the primary content accessible", () => {
   const markup = renderToStaticMarkup(<entry.Component props={entry.meta.galleryStates[0].props} slots={{}} />);
-    expect(markup).toContain('<ul>');
-  expect(markup).toContain('<li>First item</li>');
+    expect(markup).toContain('<ul class="list-disc ps-space-6">');
+  expect(markup).toContain('First item');
  });
 });

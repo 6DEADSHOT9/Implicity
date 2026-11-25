@@ -20,6 +20,14 @@
             "type": "number"
           }
         },
+        "chartType": {
+          "default": "bar",
+          "type": "string",
+          "enum": [
+            "bar",
+            "line"
+          ]
+        },
         "state": {
           "default": "default",
           "type": "string",
@@ -36,6 +44,7 @@
         "title",
         "labels",
         "values",
+        "chartType",
         "state"
       ],
       "additionalProperties": false

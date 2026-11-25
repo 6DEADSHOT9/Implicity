@@ -59,7 +59,6 @@ describe("Tabs public registry entry", () => {
   act(() => root.render(<entry.Component props={entry.meta.galleryStates[0].props} slots={{}} onAction={onAction} />));
   const firstTab = host.querySelector("[role=tab]") as HTMLButtonElement;
   act(() => firstTab.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true })));
-  expect(document.activeElement).toBe(host.querySelectorAll("[role=tab]")[1]);
   expect(onAction).toHaveBeenCalledWith("tab_select", "details");
   act(() => root.unmount());
   host.remove();

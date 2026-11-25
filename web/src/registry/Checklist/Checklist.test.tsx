@@ -46,14 +46,14 @@ describe("Checklist public registry entry", () => {
   const host = document.createElement("div");
   const root = createRoot(host);
   act(() => root.render(<entry.Component props={entry.meta.galleryStates[0].props} slots={{}} onAction={onAction} />));
-  act(() => (host.querySelector("input") as HTMLInputElement).click());
+  act(() => (host.querySelector("[role=checkbox]") as HTMLButtonElement).click());
   expect(onAction).toHaveBeenCalledWith("checklist_toggle", 0);
   act(() => root.unmount());
  });
  it("keeps the primary content accessible", () => {
   const markup = renderToStaticMarkup(<entry.Component props={entry.meta.galleryStates[0].props} slots={{}} />);
     expect(markup).toContain('type="checkbox"');
-  expect(markup).toContain('<label>');
+  expect(markup).toContain('data-slot="label"');
   expect(markup).toContain('checked=""');
  });
 });

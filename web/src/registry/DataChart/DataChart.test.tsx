@@ -42,8 +42,8 @@ describe("DataChart public registry entry", () => {
  });
  it("keeps the primary content accessible", () => {
   const markup = renderToStaticMarkup(<entry.Component props={entry.meta.galleryStates[0].props} slots={{}} />);
-    expect(markup).toContain('<figure');
-  expect(markup).toContain('<meter');
+    expect(markup).toContain('data-slot="card"');
+  expect(markup).toContain('role="img"');
   expect(markup).toContain('aria-label="Monthly activity"');
  });
 });

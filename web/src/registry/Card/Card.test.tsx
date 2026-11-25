@@ -42,7 +42,7 @@ describe("Card public registry entry", () => {
  });
  it("keeps the primary content accessible", () => {
   const markup = renderToStaticMarkup(<entry.Component props={entry.meta.galleryStates[0].props} slots={{}} />);
-    expect(markup).toContain('<article');
-  expect(markup).toContain('<h2>Project update</h2>');
+    expect(markup).toContain('data-slot="card"');
+  expect(markup).toContain('data-slot="card-title"');
  });
 });
