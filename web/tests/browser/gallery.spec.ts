@@ -20,6 +20,23 @@ test("screen size changes actual Skeleton preview width and all allowed tokens a
   expect(missing).toEqual([]);
 });
 
+test("base primitives stay in the gallery across token selections", async ({ page }) => {
+  await page.goto("/tests/browser/gallery.html");
+  const gallery = page.locator("[data-gallery-root]");
+  await expect(page.getByRole("region", { name: "Base primitives" })).toBeVisible();
+  await expect(gallery.getByText("Inputs and settings")).toBeVisible();
+  for (const [label, value, attribute] of [
+    ["Look", "notebook", "data-look"],
+    ["Mode", "dark", "data-mode"],
+    ["Density", "spacious", "data-density"],
+    ["Text size", "5", "data-text-size"],
+    ["Screen size", "tablet", "data-device-class"],
+  ]) {
+    await page.getByLabel(label).selectOption(value);
+    await expect(gallery).toHaveAttribute(attribute, value);
+  }
+});
+
 test("tablet changes the viewport and media-query layout seen by Skeletons", async ({ page }) => {
   await page.goto("/tests/browser/gallery.html");
   const previewFrame = page.locator("iframe[title='ReviewPanel · plain']");

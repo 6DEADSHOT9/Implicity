@@ -106,7 +106,11 @@ function sourceUrls(value) {
 
 function parseFontStylesheet(css) {
   const stylesheet = postcss.parse(css, { from: "tokens.css" });
-  const nodes = stylesheet.nodes.filter((node) => node.type !== "comment");
+  expect(stylesheet.nodes.filter((node) => node.type === "atrule" && node.name.toLowerCase() === "import")
+    .every((node) => node.params === '"tailwindcss"')).toBe(true);
+  expect(stylesheet.nodes.every((node) => node.type === "comment" ||
+    (node.type === "atrule" && ["import", "custom-variant", "theme", "utility", "font-face"].includes(node.name.toLowerCase())))).toBe(true);
+  const nodes = stylesheet.nodes.filter((node) => node.type === "atrule" && node.name.toLowerCase() === "font-face");
   expect(nodes).toHaveLength(4);
   const faces = [];
   for (const rule of nodes) {
@@ -255,11 +259,11 @@ describe("look contracts", () => {
       cssLength(density["--row-gap"], ["rem"]);
       cssLength(density["--section-gap"], ["rem"]);
     }
-    const dimensionKeys = ["--sidebar-width", "--sidebar-width-mobile", "--panel-width", "--panel-min-width", "--panel-max-width", "--sheet-width", "--media-control-size", "--media-control-gap", "--media-track-height", "--content-max-width"].sort();
+    const dimensionKeys = ["--attachment-preview-size", "--attachment-thumbnail-size", "--border-width", "--content-max-height", "--content-max-width", "--content-min-height", "--focus-ring-width", "--icon-size", "--media-control-gap", "--media-control-size", "--media-track-height", "--panel-max-width", "--panel-min-width", "--panel-width", "--sheet-width", "--sidebar-width", "--sidebar-width-icon", "--sidebar-width-mobile"].sort();
     const dimensions = tokenSet.derivedTokens.dimensions;
     expect(Object.keys(dimensions).sort()).toEqual(dimensionKeys);
     for (const key of dimensionKeys) {
-      cssLength(dimensions[key], [key === "--sheet-width" ? "vw" : key === "--content-max-width" ? "ch" : "rem"]);
+      cssLength(dimensions[key], [key === "--sheet-width" ? "vw" : key === "--content-max-width" ? "ch" : "rem", "px"]);
     }
     expect(cssLength(dimensions["--panel-min-width"]).pixels)
       .toBeLessThanOrEqual(cssLength(dimensions["--panel-width"]).pixels);
