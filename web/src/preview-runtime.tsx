@@ -11,12 +11,14 @@ class PreviewBoundary extends Component<{ children: ReactNode; label: string }, 
 function InteractivePreview({ entry, state }: { entry: SkeletonEntry; state: SkeletonEntry["meta"]["galleryStates"][number] }) {
   const [props, setProps] = useState<Record<string, unknown>>(() => ({ ...state.props }));
   const update = (key: string) => (value: unknown) => setProps((current) => ({ ...current, [key]: value }));
-  return <entry.Component props={{
-    ...props,
+  const slots = entry.id === "ProjectPanel"
+    ? entry.meta.galleryStates.find(({ props: example }) => example.activeTab === props.activeTab)?.slots ?? state.slots
+    : state.slots;
+  return <entry.Component props={props} interactions={{
     ...(Object.hasOwn(props, "activeTab") ? { onTabChange: update("activeTab") } : {}),
     ...(Object.hasOwn(props, "open") ? { onOpenChange: update("open") } : {}),
     ...(Object.hasOwn(props, "docked") ? { onDockChange: update("docked") } : {}),
-  }} slots={state.slots ?? {}} />;
+  }} slots={slots ?? {}} />;
 }
 
 export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | undefined>) {

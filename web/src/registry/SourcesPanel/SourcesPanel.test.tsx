@@ -13,7 +13,7 @@ describe("SourcesPanel public interface", () => {
     expect(propsSchema.safeParse({ docked: true }).success).toBe(true);
     expect(slotsSchema.safeParse({}).success).toBe(true);
     const closed = render(<SourcesPanel {...meta.galleryStates[1].props} />);
-    expect(screen.getByRole("button", { name: "Sources (0)" }).getAttribute("data-state")).toBe("closed");
+    expect(screen.getByRole("button", { name: "Sources (2)" }).getAttribute("data-state")).toBe("closed");
     closed.unmount();
     render(<SourcesPanel {...meta.galleryStates[0].props} />);
     expect(screen.getByRole("button", { name: "Sources (2)" }).getAttribute("data-state")).toBe("open");

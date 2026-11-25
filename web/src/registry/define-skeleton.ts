@@ -39,7 +39,7 @@ export type SkeletonEntry = {
   schema: z.ZodObject<{ props: z.ZodObject<z.ZodRawShape>; slots: z.ZodObject<z.ZodRawShape> }>;
   events: readonly string[];
   meta: SkeletonMeta;
-  Component: ComponentType<{ props: unknown; slots: Record<string, ReactNode> }>;
+  Component: ComponentType<{ props: unknown; slots: Record<string, ReactNode>; interactions?: Record<string, unknown> }>;
 };
 
 type ComponentProps<P extends z.ZodObject<z.ZodRawShape>, S extends z.ZodObject<z.ZodRawShape>> = z.infer<P> & {
@@ -75,12 +75,12 @@ export function defineSkeleton<P extends z.ZodObject<z.ZodRawShape>, S extends z
   definition: SkeletonDefinition<P, S>,
   Skeleton: ComponentType<ComponentProps<P, S>>,
 ) {
-  function Component({ props, slots }: { props: unknown; slots: Record<string, ReactNode> }) {
+  function Component({ props, slots, interactions }: { props: unknown; slots: Record<string, ReactNode>; interactions?: Record<string, unknown> }) {
     const propsSchema = definition.propsSchema;
     const parsed = propsSchema.safeParse(props);
     if (!parsed.success) throw new Error("Skeleton props failed runtime validation");
     const slotArrays = Object.fromEntries(Object.entries(slots).map(([name, children]) => [name, Array.isArray(children) ? children : [children]]));
-    return createElement(Skeleton, { ...(parsed.data as ComponentProps<P, S>), slots: slotArrays as ComponentProps<P, S>["slots"] });
+    return createElement(Skeleton, { ...(parsed.data as ComponentProps<P, S>), ...interactions, slots: slotArrays as ComponentProps<P, S>["slots"] } as ComponentProps<P, S>);
   }
   return {
     ...definition,

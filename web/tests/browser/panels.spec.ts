@@ -5,7 +5,7 @@ const panelStates = [
   ["DockedPanel", "open_undocked", "panel_content"],
   ["DockedPanel", "closed", "Open Workspace"],
   ["SourcesPanel", "docked", "Reference one"],
-  ["SourcesPanel", "closed", "Sources (0)"],
+  ["SourcesPanel", "closed", "Sources (2)"],
   ["ProjectPanel", "decisions", "decision_one"],
   ["ProjectPanel", "constraints", "constraint_one"],
   ["ProjectPanel", "files", "file_one"],
@@ -37,7 +37,7 @@ test("panel gallery states render with the selected settings across every config
     await expect(page.locator("[data-gallery-root]")).toHaveAttribute("data-look", look);
     const rootTokens = await page.locator("[data-gallery-root]").evaluate((element) => {
       const style = getComputedStyle(element);
-      return { background: style.getPropertyValue("--background").trim(), space: style.getPropertyValue("--space-1").trim(), text: style.getPropertyValue("--text-base").trim() };
+      return { background: style.getPropertyValue("--background").trim(), space: style.getPropertyValue("--space-1").trim(), text: style.getPropertyValue("--text-base").trim(), target: style.getPropertyValue("--target-min-size").trim() };
     });
     const expectedWidth = device === "desktop" ? 1440 : 800;
     await expect.poll(() => page.locator("iframe").evaluateAll((frames, { expectedTitles: names, expectedContent: contentByTitle, tokens, expectedMode, width }) => {
@@ -61,16 +61,17 @@ test("panel gallery states render with the selected settings across every config
         background: view?.getComputedStyle(document!.documentElement).getPropertyValue("--background").trim(),
         space: view?.getComputedStyle(document!.documentElement).getPropertyValue("--space-1").trim(),
         text: view?.getComputedStyle(document!.documentElement).getPropertyValue("--text-base").trim(),
+        target: view?.getComputedStyle(document!.documentElement).getPropertyValue("--target-min-size").trim(),
         mode: document?.documentElement.dataset.mode,
         width: iframe.contentWindow?.innerWidth,
         content: document?.body.innerText.includes(contentByTitle[iframe.title]),
         healthy: !document?.body.innerText.includes("preview failed") && !document?.body.innerText.includes("Preview unavailable"),
         headingsMatchToken: !heading || headingSize === `${Number.parseFloat(headingToken ?? "") * 16}px`,
-        controlsMeetTarget: buttons.every(({ height }) => height >= 44),
+        controlsMeetTarget: buttons.every(({ height }) => height >= Number.parseFloat(document?.documentElement.style.getPropertyValue("--target-min-size") ?? "") * 16),
         controlsMeetContrast: buttons.every(({ contrast }) => contrast >= 4.5),
       };
       }).filter(({ title }) => names.includes(title));
-      return previews.length === names.length && previews.every((preview) => preview.background === tokens.background && preview.space === tokens.space && preview.text === tokens.text && preview.mode === expectedMode && preview.width === width && preview.content && preview.healthy && preview.headingsMatchToken && preview.controlsMeetTarget && preview.controlsMeetContrast);
+      return previews.length === names.length && previews.every((preview) => preview.background === tokens.background && preview.space === tokens.space && preview.text === tokens.text && preview.target === tokens.target && preview.mode === expectedMode && preview.width === width && preview.content && preview.healthy && preview.headingsMatchToken && preview.controlsMeetTarget && preview.controlsMeetContrast);
     }, {
       expectedTitles: titles,
       expectedContent,
@@ -92,13 +93,17 @@ test("gallery previews complete panel callbacks, fit overlays, and preserve keyb
   const project = page.frameLocator('iframe[title="ProjectPanel · decisions"]');
   const decisions = project.getByText("decision_one", { exact: true });
   await expect(decisions).toBeVisible();
-  const constraintsTab = project.getByRole("tab", { name: "constraints" });
-  await constraintsTab.focus();
-  await constraintsTab.press("ArrowDown");
-  await constraintsTab.press("Enter");
-  await expect(project.getByRole("tab", { name: "files" })).toHaveAttribute("aria-selected", "true");
-  await expect(project.getByText("file_one", { exact: true })).toBeVisible();
+  const decisionsTab = project.getByRole("tab", { name: "decisions" });
+  await decisionsTab.focus();
+  await page.keyboard.press("ArrowDown");
+  await expect.poll(() => project.getByRole("tab", { name: "constraints" }).evaluate((element) => getComputedStyle(element).boxShadow)).not.toBe("none");
+  await page.keyboard.press("Enter");
+  await expect(project.getByRole("tab", { name: "constraints" })).toHaveAttribute("aria-selected", "true");
+  await expect(project.getByText("constraint_one", { exact: true })).toBeVisible();
   await expect(decisions).toBeHidden();
+  const tabpanel = project.getByRole("tabpanel");
+  await tabpanel.focus();
+  expect(await tabpanel.evaluate((element) => getComputedStyle(element).boxShadow)).not.toBe("none");
 
   const docked = page.frameLocator('iframe[title="DockedPanel · open_undocked"]');
   const dialog = docked.getByRole("dialog", { name: "Workspace" });
@@ -113,7 +118,7 @@ test("gallery previews complete panel callbacks, fit overlays, and preserve keyb
   expect(geometry.top).toBeGreaterThanOrEqual(0);
   expect(geometry.bottom).toBeLessThanOrEqual(geometry.height);
   expect(geometry.controlsSeparate).toBe(true);
-  await page.keyboard.press("Escape");
+  await docked.getByRole("button", { name: "Close" }).press("Escape");
   await expect(dialog).toHaveCount(0);
   await expect(docked.getByRole("button", { name: "Open Workspace" })).toBeFocused();
 
@@ -125,7 +130,14 @@ test("gallery previews complete panel callbacks, fit overlays, and preserve keyb
   expect(Number.isFinite(before)).toBe(true);
   await separator.focus();
   await separator.press("ArrowLeft");
+  expect(await separator.evaluate((element) => getComputedStyle(element).boxShadow)).not.toBe("none");
   await expect.poll(async () => Number(await separator.getAttribute("aria-valuenow"))).toBeLessThan(before);
+  for (let index = 0; index < 14; index += 1) await separator.press("ArrowRight");
+  const minimumPanelWidth = await closed.locator('[data-slot="resizable-panel"]').nth(1).evaluate((element) => {
+    const root = element.ownerDocument.documentElement;
+    return { width: element.getBoundingClientRect().width, token: Number.parseFloat(getComputedStyle(root).getPropertyValue("--panel-min-width")) * 16 };
+  });
+  expect(minimumPanelWidth.width).toBeGreaterThanOrEqual(minimumPanelWidth.token);
 
   const smallScreen = page.locator('iframe[title="DockedPanel · open_docked"]');
   await smallScreen.evaluate((frame) => { (frame as HTMLIFrameElement).width = "767"; });
