@@ -46,6 +46,7 @@ import { Attachment, AttachmentInfo, AttachmentRemove, Attachments } from "../sr
 import { ConfirmationAction } from "../src/components/ai-elements/confirmation";
 import { InlineCitation, InlineCitationText } from "../src/components/ai-elements/inline-citation";
 import { Message, MessageContent, MessageResponse } from "../src/components/ai-elements/message";
+import { Marker } from "../src/components/ui/marker";
 import { PromptInput, PromptInputSubmit, PromptInputTextarea } from "../src/components/ai-elements/prompt-input";
 import { Reasoning, ReasoningContent, ReasoningTrigger } from "../src/components/ai-elements/reasoning";
 import { Source, Sources, SourcesContent, SourcesTrigger } from "../src/components/ai-elements/sources";
@@ -57,6 +58,17 @@ import { Tool, ToolContent, ToolHeader } from "../src/components/ai-elements/too
 import { Toaster } from "../src/components/ui/sonner";
 
 describe("shadcn primitives", () => {
+  it("Marker names an in-conversation note and keeps its actions keyboard-focusable", async () => {
+    const user = userEvent.setup();
+    const action = vi.fn();
+    render(<Marker label="Context" actions={<Button onClick={action}>Undo</Button>}>This answer used saved context.</Marker>);
+    expect(screen.getByRole("note", { name: "Context" }).textContent).toContain("This answer used saved context.");
+    await user.tab();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Undo" }));
+    await user.keyboard("{Enter}");
+    expect(action).toHaveBeenCalledOnce();
+  });
+
   it("Alert exposes the alert role and its heading", () => {
     render(<Alert><AlertTitle>Saved</AlertTitle><AlertDescription>Changes saved</AlertDescription></Alert>);
     expect(screen.getByRole("alert").textContent).toContain("Saved");

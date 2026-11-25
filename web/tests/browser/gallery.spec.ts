@@ -38,6 +38,47 @@ test("base primitives stay in the gallery across token selections", async ({ pag
   }
 });
 
+test("Button and Marker actions paint a contrasting keyboard focus ring in every look and mode", async ({ page }) => {
+  await page.goto("/tests/browser/gallery.html");
+  const marker = page.getByRole("note", { name: "Context" });
+  await expect(marker).toBeVisible();
+  await expect(marker).toContainText("This answer used saved context.");
+  await expect(page.getByRole("button", { name: "Undo marker" })).toBeVisible();
+  const parse = (hex: string) => hex.match(/[\da-f]{2}/gi)!.map((value) => Number.parseInt(value, 16));
+  const ratio = (foreground: number[], background: number[]) => {
+    const luminance = (rgb: number[]) => rgb.map((value) => {
+      const channel = value / 255;
+      return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+    }).reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index], 0);
+    const values = [luminance(foreground), luminance(background)];
+    return (Math.max(...values) + 0.05) / (Math.min(...values) + 0.05);
+  };
+  for (const look of ["default", "focused", "notebook"]) {
+    await page.getByLabel("Look").selectOption(look);
+    for (const mode of ["light", "dark"]) {
+      await page.getByLabel("Mode").selectOption(mode);
+      for (const control of [page.getByRole("button", { name: "Continue" }), page.getByRole("button", { name: "Undo marker" })]) {
+        await control.evaluate((element) => {
+          const tabbable = [...document.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])')];
+          tabbable[tabbable.indexOf(element as HTMLElement) - 1].focus();
+        });
+        await page.keyboard.press("Tab");
+        await expect(control).toBeFocused();
+        const style = await control.evaluate((element) => {
+          const computed = getComputedStyle(element);
+          const root = getComputedStyle(document.querySelector("[data-gallery-root]")!);
+          return { focusVisible: element.matches(":focus-visible"), outlineStyle: computed.outlineStyle, outlineWidth: computed.outlineWidth, boxShadow: computed.boxShadow, ring: root.getPropertyValue("--ring").trim(), background: root.getPropertyValue("--card").trim() };
+        });
+        expect(style.focusVisible).toBe(true);
+        expect(style.outlineStyle !== "none" || style.boxShadow !== "none", JSON.stringify(style)).toBe(true);
+        if (style.outlineStyle !== "none") expect(Number.parseFloat(style.outlineWidth)).toBeGreaterThan(0);
+        if (style.outlineStyle === "none") expect(style.boxShadow).not.toBe("none");
+        expect(ratio(parse(style.ring), parse(style.background))).toBeGreaterThanOrEqual(3);
+      }
+    }
+  }
+});
+
 test("desktop Sidebar responds to the token breakpoint", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/tests/browser/gallery.html");
