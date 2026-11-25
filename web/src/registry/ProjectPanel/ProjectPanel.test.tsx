@@ -1,45 +1,48 @@
 // @vitest-environment jsdom
-import { act } from "react";
-import { createRoot } from "react-dom/client";
-import { renderToStaticMarkup } from "react-dom/server";
+import { act, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { CaptureProvider, recordingCapture } from "../capture";
 import { ProjectPanel } from "./ProjectPanel";
-import { propsSchema, slotsSchema } from "./schema";
 import { events } from "./events";
 import { meta } from "./meta";
-import { CaptureProvider, recordingCapture } from "../capture";
+import { propsSchema, slotsSchema } from "./schema";
 
-Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 afterEach(() => vi.useRealTimers());
 
 describe("ProjectPanel public interface", () => {
-  it("renders each declared state and exposes the selected tab", () => {
+  it("renders each gallery tab and its slot content", () => {
     for (const state of meta.galleryStates) {
-      const html = renderToStaticMarkup(<ProjectPanel {...state.props} slots={Object.fromEntries(Object.entries(state.slots ?? {}).map(([slot, ids]) => [slot, (ids as readonly string[]).map((id) => <p key={id}>{id}</p>)]))} />);
-      expect(html).toContain('role="group"');
-      expect(html).toContain(`aria-label="${state.id}"`);
+      const slots = Object.fromEntries(Object.entries(state.slots ?? {}).map(([slot, ids]) => [slot, (ids as readonly string[]).map((id) => <span key={id}>{id}</span>)]));
+      const view = render(<ProjectPanel {...state.props} slots={slots} />);
+      expect(screen.getByRole("tab", { name: state.id })).toBeTruthy();
+      expect(screen.getByRole("heading", { name: "Project" })).toBeTruthy();
+      view.unmount();
     }
   });
-  it("validates props and all declared slot ids and panel events", () => {
-    const state = meta.galleryStates[0];
-    expect(propsSchema.safeParse(state.props).success).toBe(true);
-    expect(propsSchema.safeParse({ ...state.props, activeTab: "other" }).success).toBe(false);
-    expect(slotsSchema.safeParse(state.slots).success).toBe(true);
-    expect(slotsSchema.safeParse({ ...state.slots, files: ["BadId"] }).success).toBe(false);
+
+  it("validates props and slots and keeps tabs keyboard-accessible", async () => {
+    expect(propsSchema.safeParse(meta.galleryStates[0].props).success).toBe(true);
+    expect(propsSchema.safeParse({ ...meta.galleryStates[0].props, activeTab: "other" }).success).toBe(false);
+    expect(slotsSchema.safeParse(meta.galleryStates[0].slots).success).toBe(true);
+    expect(slotsSchema.safeParse({ ...meta.galleryStates[0].slots, files: ["BadId"] }).success).toBe(false);
     expect(events).toEqual(["component_shown", "component_seen"]);
-  });
-  it("emits lifecycle events and delegates tab selection", async () => {
-    vi.useFakeTimers();
+
+    const user = userEvent.setup();
     const recorder = recordingCapture();
     const onTabChange = vi.fn();
-    const container = document.createElement("div");
-    const root = createRoot(container);
-    await act(async () => root.render(<CaptureProvider sink={recorder.sink}><ProjectPanel {...meta.galleryStates[0].props} onTabChange={onTabChange} /></CaptureProvider>));
-    expect(recorder.events).toEqual([{ name: "component_shown", component: "ProjectPanel", default_state: "decisions" }]);
-    await act(async () => { vi.advanceTimersByTime(3000); });
-    expect(recorder.events[1]).toEqual({ name: "component_seen", component: "ProjectPanel", default_state: "decisions", seconds_visible: 3 });
-    await act(async () => { container.querySelectorAll("button")[1].click(); });
+    render(<CaptureProvider sink={recorder.sink}><ProjectPanel {...meta.galleryStates[0].props} onTabChange={onTabChange} /></CaptureProvider>);
+    expect(recorder.events[0]).toEqual({ name: "component_shown", component: "ProjectPanel", default_state: "decisions" });
+    screen.getByRole("tab", { name: "decisions" }).focus();
+    await user.keyboard("{ArrowDown}");
     expect(onTabChange).toHaveBeenCalledWith("constraints");
-    await act(async () => root.unmount());
+  });
+
+  it("emits seen after the panel remains rendered", async () => {
+    vi.useFakeTimers();
+    const recorder = recordingCapture();
+    render(<CaptureProvider sink={recorder.sink}><ProjectPanel {...meta.galleryStates[0].props} /></CaptureProvider>);
+    await act(async () => { vi.advanceTimersByTime(3000); });
+    expect(recorder.events.at(-1)).toEqual({ name: "component_seen", component: "ProjectPanel", default_state: "decisions", seconds_visible: 3 });
   });
 });

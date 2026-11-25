@@ -63,7 +63,7 @@
         "additionalProperties": false
       },
       "limits": {
-        "minWidth": 288,
+        "minWidth": 384,
         "minHeight": 160,
         "minContrast": 4.5
       }

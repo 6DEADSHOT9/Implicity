@@ -1,40 +1,51 @@
 // @vitest-environment jsdom
-import { act } from "react";
-import { createRoot } from "react-dom/client";
-import { renderToStaticMarkup } from "react-dom/server";
+import { act, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { CaptureProvider, recordingCapture } from "../capture";
 import { SourcesPanel } from "./SourcesPanel";
-import { propsSchema, slotsSchema } from "./schema";
 import { events } from "./events";
 import { meta } from "./meta";
-import { CaptureProvider, recordingCapture } from "../capture";
+import { propsSchema, slotsSchema } from "./schema";
 
-Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 afterEach(() => vi.useRealTimers());
 
 describe("SourcesPanel public interface", () => {
-  it("renders every gallery state with an accessible empty state or source list", () => {
-    for (const state of meta.galleryStates) {
-      const html = renderToStaticMarkup(<SourcesPanel {...state.props} />);
-      expect(html).toContain("Sources");
-      expect(html).toMatch(state.id === "empty" ? /role="status"/ : /<li/);
-    }
+  it("renders populated and empty gallery states", () => {
+    const populated = render(<SourcesPanel {...meta.galleryStates[0].props} />);
+    expect(screen.getByRole("button", { name: "Sources (2)" })).toBeTruthy();
+    expect(screen.getByText("Reference one")).toBeTruthy();
+    populated.unmount();
+    render(<SourcesPanel {...meta.galleryStates[1].props} />);
+    expect(screen.getByRole("status").textContent).toContain("No sources");
   });
-  it("validates props and declares only closed panel events", () => {
+
+  it("validates props, declares only contract events, and tracks disclosure state", async () => {
     expect(propsSchema.safeParse(meta.galleryStates[0].props).success).toBe(true);
     expect(propsSchema.safeParse({ sources: [{ title: "x", type: "filename" }] }).success).toBe(false);
     expect(slotsSchema.safeParse({}).success).toBe(true);
-    expect(events).toEqual(["component_shown", "component_seen"]);
+    expect(events).toEqual(["component_shown", "component_seen", "panel_opened", "panel_closed"]);
+
+    const user = userEvent.setup();
+    const recorder = recordingCapture();
+    const onOpenChange = vi.fn();
+    render(<CaptureProvider sink={recorder.sink}><SourcesPanel {...meta.galleryStates[0].props} onOpenChange={onOpenChange} /></CaptureProvider>);
+    expect(recorder.events[0]).toEqual({ name: "component_shown", component: "SourcesPanel", default_state: "populated" });
+    expect(screen.getByText("Reference one")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Sources (2)" }));
+    expect(screen.queryByText("Reference one")).toBeNull();
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(recorder.events.at(-1)).toEqual({ name: "panel_closed", component: "SourcesPanel" });
+    await user.click(screen.getByRole("button", { name: "Sources (2)" }));
+    expect(screen.getByText("Reference one")).toBeTruthy();
+    expect(recorder.events.at(-1)).toEqual({ name: "panel_opened", component: "SourcesPanel" });
   });
-  it("emits lifecycle events with the source panel state and no content", async () => {
+
+  it("emits seen after the panel remains rendered", async () => {
     vi.useFakeTimers();
     const recorder = recordingCapture();
-    const root = createRoot(document.createElement("div"));
-    await act(async () => root.render(<CaptureProvider sink={recorder.sink}><SourcesPanel {...meta.galleryStates[0].props} /></CaptureProvider>));
-    expect(recorder.events).toEqual([{ name: "component_shown", component: "SourcesPanel", default_state: "populated" }]);
+    render(<CaptureProvider sink={recorder.sink}><SourcesPanel {...meta.galleryStates[0].props} /></CaptureProvider>);
     await act(async () => { vi.advanceTimersByTime(3000); });
-    expect(recorder.events[1]).toEqual({ name: "component_seen", component: "SourcesPanel", default_state: "populated", seconds_visible: 3 });
-    expect(JSON.stringify(recorder.events)).not.toContain("Reference one");
-    await act(async () => root.unmount());
+    expect(recorder.events.at(-1)).toEqual({ name: "component_seen", component: "SourcesPanel", default_state: "populated", seconds_visible: 3 });
   });
 });

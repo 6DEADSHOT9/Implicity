@@ -1,5 +1,7 @@
 import { useEffect, useRef, type ReactElement, type ReactNode } from "react";
-import { token } from "../token";
+import { Empty, EmptyTitle } from "@/components/ui/empty";
+import { Item, ItemContent, ItemGroup } from "@/components/ui/item";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCapture } from "../capture";
 import { events } from "./events";
 
@@ -19,12 +21,18 @@ export function ProjectPanel({ title, tabs, activeTab, slots, onTabChange }: {
     const timer = window.setTimeout(() => emitRef.current("component_seen", { component: "ProjectPanel", default_state: initialState.current, seconds_visible: 3 }), 3000);
     return () => window.clearTimeout(timer);
   }, []);
-  const content = slots?.[activeTab];
-  return <section aria-label={title} className="flex flex-col gap-3 rounded-md bg-card p-4 text-card-foreground">
-    <h2>{title}</h2>
-    <div role="group" aria-label={`${title} sections`} className="flex flex-wrap gap-2">
-      {tabs.map((tab) => <button key={tab} type="button" aria-pressed={tab === activeTab} style={{ minHeight: token("--target-min-size") }} onClick={() => onTabChange?.(tab)}>{tab}</button>)}
-    </div>
-    <div role="region" aria-label={activeTab}>{content?.length ? content : <p role="status">No {activeTab}</p>}</div>
+
+  return <section aria-label={title} className="flex flex-col gap-space-4 bg-card p-space-4 text-card-foreground">
+    <h2 className="text-heading-3">{title}</h2>
+    <Tabs value={activeTab} onValueChange={(value) => onTabChange?.(value as typeof activeTab)} orientation="vertical">
+      <TabsList className="w-full flex-wrap">
+        {tabs.map((tab) => <TabsTrigger key={tab} value={tab}>{tab}</TabsTrigger>)}
+      </TabsList>
+      {tabs.map((tab) => <TabsContent key={tab} value={tab}>
+        {slots?.[tab]?.length ? <ItemGroup aria-label={tab}>
+          {slots[tab]?.map((child, index) => <Item key={`${tab}-${index}`} role="listitem"><ItemContent>{child}</ItemContent></Item>)}
+        </ItemGroup> : <Empty role="status"><EmptyTitle className="text-heading-4">No {tab}</EmptyTitle></Empty>}
+      </TabsContent>)}
+    </Tabs>
   </section>;
 }
