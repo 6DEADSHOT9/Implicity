@@ -66,6 +66,8 @@ and
 The closest matching image pair found on or after the S2/S3 spike revision
 `be0a6f2a4cb4f9614a7954e01032ca3223bfdbaf` (2026-11-17) was this revision.
 
+Run the Skeleton gallery locally with `pnpm --filter @implicity/web dev`.
+
 Backend commands run from the repository root and use `data/implicity.db` by
 default:
 

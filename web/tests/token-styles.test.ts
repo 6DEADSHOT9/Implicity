@@ -1,15 +1,32 @@
 import { describe, expect, it } from "vitest";
-import { tokenStyleViolations } from "../scripts/check-token-styles.mjs";
+import { paths, tokenStyleViolations } from "../scripts/check-token-styles.mjs";
 import { token } from "../src/registry/token";
+import { tokenNames } from "../src/registry/token-values.mjs";
 
 const componentFile = new URL("../src/registry/Probe/Probe.tsx", import.meta.url).pathname;
+const rendererFile = new URL("../src/renderer.tsx", import.meta.url).pathname;
+const galleryFile = new URL("../src/gallery.tsx", import.meta.url).pathname;
+const previewRuntimeFile = new URL("../src/preview-runtime.tsx", import.meta.url).pathname;
+const previewMainFile = new URL("../src/preview-main.tsx", import.meta.url).pathname;
 const tokenImport = 'import { token } from "../token"; ';
 
 describe("token-only style guard", () => {
+  it("scans both preview runtime files", () => {
+    expect(paths).toContain(previewRuntimeFile);
+    expect(paths).toContain(previewMainFile);
+  });
+
   it.each([
     ['const View = () => <div style={{ color: "#ff0000" }} />;', "color"],
     ['const View = () => <div style={{ backgroundColor: "rebeccapurple" }} />;', "backgroundColor"],
     ['const View = () => <div style={{ fontSize: "19px" }} />;', "fontSize"],
+    ['const View = () => <div style={{ color: "center" }} />;', "color"],
+    ['const View = () => <div style={{ width: "center" }} />;', "width"],
+    ['const View = () => <div style={{ background: "flex" }} />;', "background"],
+    ['const View = () => <div style={{ fontFamily: "column" }} />;', "fontFamily"],
+    ['const View = () => <div style={{ padding: "wrap" }} />;', "padding"],
+    ['const View = () => <div style={{ borderRadius: "baseline" }} />;', "borderRadius"],
+    ['const View = () => <div style={{ boxShadow: "space-between" }} />;', "boxShadow"],
     ['const View = () => <div className="text-red-500" />;', "text-red-500"],
     ['const View = () => <div className={"text-red-500"} />;', "text-red-500"],
     ['const shade = "red"; const View = () => <div className={"text-" + shade + "-500"} />;', "unsupported dynamic className"],
@@ -38,6 +55,18 @@ describe("token-only style guard", () => {
     expect(() => token("text-red-500")).toThrow(/Unknown design token/);
   });
 
+  it("allows gallery classes only in the gallery and layout keywords only in layout properties", () => {
+    expect(tokenStyleViolations('const View = () => <div className="gallery-control" />;', componentFile).some((message) => message.includes("gallery-control"))).toBe(true);
+    expect(tokenStyleViolations('const View = () => <div className="gallery-control" />;', rendererFile).some((message) => message.includes("gallery-control"))).toBe(true);
+    expect(tokenStyleViolations('const View = () => <div className="gallery-control" />;', galleryFile)).toEqual([]);
+    expect(tokenStyleViolations('const View = () => <div style={{ display: "flex", alignItems: "center" }} />;', componentFile)).toEqual([]);
+    expect(tokenStyleViolations('const View = () => <div style={{ width: "var(--gallery-device-width)" }} />;', componentFile)).toContain("width: var(--gallery-device-width)");
+    expect(tokenStyleViolations('const View = () => <div style={{ width: "var(--gallery-device-width)" }} />;', rendererFile)).toContain("width: var(--gallery-device-width)");
+    expect(tokenStyleViolations('const View = () => <p style={{ color: "#f00" }} />;', previewRuntimeFile)).toContain("color: #f00");
+    expect(tokenStyleViolations('const View = () => <p style={{ color: "#f00" }} />;', previewMainFile)).toContain("color: #f00");
+    expect(tokenStyleViolations('.probe { color: center; width: center; display: flex; }', "styles.css")).toEqual(["color: center", "width: center"]);
+  });
+
   it("rejects dynamic token names and non-token CSS values", () => {
     expect(tokenStyleViolations(`${tokenImport}const name = "--foreground"; const View = () => <div style={{ color: token(name) }} />;`, componentFile)).toContain("unsupported dynamic style value for color");
     expect(tokenStyleViolations('.text { color: rebeccapurple; letter-spacing: 1px; font-family: Arial; }', "styles.css")).toHaveLength(3);
@@ -50,5 +79,12 @@ describe("token-only style guard", () => {
     expect(tokenStyleViolations(`${tokenImport}const View = (token: () => string) => <div style={{ color: token() }} />;`, componentFile)).toContain("unsupported dynamic style value for color");
     expect(tokenStyleViolations(`${alias}const View = (designToken: () => string) => <div style={{ color: designToken() }} />;`, componentFile)).toContain("unsupported dynamic style value for color");
     expect(tokenStyleViolations('import { token } from "./fake"; const View = () => <div style={{ color: token("--foreground") }} />;', componentFile)).toContain("unsupported dynamic style value for color");
+  });
+
+  it("does not accept custom properties that have no CSS token definition", () => {
+    expect(tokenNames.has("--font-body")).toBe(true);
+    expect(tokenNames.has("--font-heading")).toBe(true);
+    expect(tokenNames.has("--gallery-device-width")).toBe(false);
+    expect(tokenNames.has("--code-background")).toBe(false);
   });
 });

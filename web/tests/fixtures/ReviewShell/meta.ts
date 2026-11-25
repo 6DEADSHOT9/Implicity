@@ -4,5 +4,5 @@ export const meta = {
   defaultStates: ["plain"],
   commands: [],
   limits: { minWidth: 1, minHeight: 1, minContrast: 4.5 },
-  galleryStates: ["plain"],
+  galleryStates: [{ id: "plain", props: {}, slots: { main: ["content"] } }],
 } as const;

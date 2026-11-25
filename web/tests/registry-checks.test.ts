@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { checkGeneratedFileSet, checkRegistrySnapshots } from "../src/registry/snapshot";
 import { catalogueFromEntries } from "../src/registry/catalogue";
-import { discoverRegistryFolders } from "../src/registry/discovery";
+import { discoverRegistryFolders, registryFoldersFromPaths } from "../src/registry/discovery";
 import { events } from "./fixtures/ReviewPanel/events";
 import { meta } from "./fixtures/ReviewPanel/meta";
 import { definition, propsSchema, slotsSchema } from "./fixtures/ReviewPanel/schema";
@@ -16,6 +16,16 @@ import registryV2 from "../../contracts/generated/components/registry-v2.json";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
 describe("registry generation guards", () => {
+  it("discovers registry folders and files from the same module paths", () => {
+    expect(registryFoldersFromPaths(["./Panel/Panel.tsx", "./Panel/schema.ts", "./Shell/Shell.tsx"])).toEqual([
+      { id: "Panel", files: ["Panel.tsx", "schema.ts"] },
+      { id: "Shell", files: ["Shell.tsx"] },
+    ]);
+    expect(registryFoldersFromPaths(["./registry/Panel/Panel.tsx"], "./registry/")).toEqual([
+      { id: "Panel", files: ["Panel.tsx"] },
+    ]);
+  });
+
   it("requires the current roster snapshot and highest snapshot version", () => {
     const current = { registry_version: 2, components: [] };
     expect(() => checkRegistrySnapshots([{ registry_version: 1, components: [] }, current], current)).not.toThrow();

@@ -14,6 +14,7 @@ import { definition as panelDefinition, propsSchema } from "./fixtures/ReviewPan
 import { ReviewShellEntry } from "./fixtures/ReviewShell/entry";
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+Object.defineProperty(window, "matchMedia", { configurable: true, value: () => ({ matches: true }) });
 
 const panelRegistry = createRegistry([ReviewPanelEntry], 1);
 const goodLayout = {
@@ -60,7 +61,7 @@ describe("registry and renderer", () => {
         child: { type: "ReviewPanel", props: { count: 3 }, slots: { main: [] } },
       },
     };
-    expect(await markup(renderMessage(spec, "fallback", panelRegistry))).toContain("<strong>7</strong><section><strong>3</strong></section>");
+    expect(await markup(renderMessage(spec, "fallback", panelRegistry))).toContain("<strong>7</strong><section class=\"review-panel\" data-count=\"3\"><strong>3</strong>");
   });
 
   it("falls back for inherited, unknown and missing-root component ids", async () => {
@@ -172,7 +173,7 @@ describe("registry and renderer", () => {
   });
 
   it("registers and renders a leaf with no slots", async () => {
-    const leafMeta = { ...meta, slots: [] as const };
+    const leafMeta = { ...meta, slots: [] as const, galleryStates: [{ id: "plain", props: { count: 1 } }] };
     const definition = defineSkeletonDefinition({
       id: "ReviewLeaf",
       props: z.object({ count: z.number() }).strict(),
@@ -185,6 +186,34 @@ describe("registry and renderer", () => {
     const spec = { registry_version: 1, root: "leaf", elements: { leaf: { type: "ReviewLeaf", props: { count: 5 } } } };
     expect(leafRegistry.getSkeleton("ReviewLeaf")).toBe(leaf);
     expect(await markup(renderMessage(spec, "fallback", leafRegistry))).toContain("<b>5</b>");
+  });
+
+  it("requires an explicit empty example for optional Skeleton slots", () => {
+    const optionalSlotDefinition = (galleryStates: unknown) => defineSkeletonDefinition({
+      id: "OptionalSlot",
+      props: z.object({ count: z.number() }).strict(),
+      slots: z.object({ main: z.array(z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/)).optional() }).strict(),
+      events,
+      meta: { ...meta, galleryStates } as never,
+    });
+    const OptionalSlot = defineSkeleton(optionalSlotDefinition([{ id: "plain", props: { count: 1 }, slots: {} }]), ({ count }: { count: number }) => <b>{count}</b>);
+    expect(() => createRegistry([OptionalSlot], 1)).not.toThrow();
+    const MissingSlotExample = defineSkeleton(optionalSlotDefinition([{ id: "plain", props: { count: 1 } }]), ({ count }: { count: number }) => <b>{count}</b>);
+    expect(() => createRegistry([MissingSlotExample], 1)).toThrow(/OptionalSlot.*plain.*missing example slots/);
+  });
+
+  it("validates each slot example even when a sibling slot has a weak schema", () => {
+    const mixedSlotDefinition = (side: unknown) => defineSkeletonDefinition({
+      id: "MixedSlots",
+      props: z.object({ count: z.number() }).strict(),
+      slots: z.object({ main: z.array(z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/)), side: z.unknown().optional() }).strict(),
+      events,
+      meta: { ...meta, slots: ["main", "side"], defaultStates: ["busy"], galleryStates: [{ id: "busy", props: { count: 1 }, slots: { main: [], side } as never }] },
+    });
+    for (const side of [{ label: "not-a-child-list" }, ["BadChild"]]) {
+      const MixedSlots = defineSkeleton(mixedSlotDefinition(side), ({ count }: { count: number }) => <b>{count}</b>);
+      expect(() => createRegistry([MixedSlots], 1)).toThrow(/MixedSlots.*busy.*side/);
+    }
   });
 
   it("rejects entries missing declarations, invalid ids, events or reviewed limits", () => {
@@ -209,7 +238,14 @@ describe("registry and renderer", () => {
     const weakSlotEntry = defineSkeleton(weakSlotDefinition, ReviewPanel);
     expect(() => createRegistry([weakSlotEntry], 1)).toThrow(/T3 child ids/);
     expect(() => createRegistry([{ ...ReviewPanelEntry, meta: { ...meta, defaultStates: ["bad state"] } }], 1)).toThrow(/default state id/);
-    expect(() => createRegistry([{ ...ReviewPanelEntry, meta: { ...meta, galleryStates: ["bad state"] } }], 1)).toThrow(/gallery state id/);
+    expect(() => createRegistry([{ ...ReviewPanelEntry, meta: { ...meta, galleryStates: [{ id: "bad state", props: { count: 1 }, slots: { main: [] } }] } } as never], 1)).toThrow(/ReviewPanel.*gallery state id/);
+    expect(() => createRegistry([{ ...ReviewPanelEntry, meta: { ...meta, galleryStates: [{ id: "plain", slots: { main: [] } }] } } as never], 1)).toThrow(/ReviewPanel.*plain.*example props/);
+    expect(() => createRegistry([{ ...ReviewPanelEntry, meta: { ...meta, galleryStates: [{ id: "plain", props: { count: "bad" }, slots: { main: [] } }] } } as never], 1)).toThrow(/ReviewPanel.*plain.*props/);
+    expect(() => createRegistry([{ ...ReviewPanelEntry, meta: { ...meta, galleryStates: [{ id: "plain", props: { count: 1 } }] } } as never], 1)).toThrow(/ReviewPanel.*plain.*missing example slots/);
+    expect(() => createRegistry([{ ...ReviewPanelEntry, meta: { ...meta, galleryStates: [{ id: "plain", props: { count: 1 }, slots: { main: "bad" } }] } } as never], 1)).toThrow(/ReviewPanel.*plain.*slots/);
+    for (const slots of ["bad", null]) {
+      expect(() => createRegistry([{ ...ReviewPanelEntry, meta: { ...meta, galleryStates: [{ id: "busy", props: { count: 1 }, slots }] } } as never], 1)).toThrow(/ReviewPanel.*busy.*slots/);
+    }
     expect(() => createRegistry([{ ...ReviewPanelEntry, id: "bad id" }], 1)).toThrow(/component id/);
   });
 });
