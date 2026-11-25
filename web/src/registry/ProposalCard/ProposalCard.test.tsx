@@ -38,7 +38,7 @@ describe("ProposalCard", () => {
 
   it("validates every gallery example and rejects invalid props", () => {
     expect(propsSchema.safeParse({ proposal_id: proposalId, proposal_type: "dimension", title: "Change", description: "Details", preview: "Example." }).success).toBe(true);
-    expect(propsSchema.safeParse({ proposal_id: proposalId, proposal_type: "dimension", title: "Change", description: "Details" }).success).toBe(false);
+    expect(propsSchema.safeParse({ proposal_id: proposalId, proposal_type: "dimension", title: "Change", description: "Details", preview: "" }).success).toBe(false);
     expect(propsSchema.safeParse({ proposal_id: proposalId, proposal_type: "dimension", title: "Change", description: "Details" }).success).toBe(false);
     expect(propsSchema.safeParse({ proposal_id: proposalId, proposal_type: "other", title: "Change", description: "Details" }).success).toBe(false);
     expect(slotsSchema.safeParse({}).success).toBe(true);

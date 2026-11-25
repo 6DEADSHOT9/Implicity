@@ -2,6 +2,7 @@
 import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CaptureProvider, recordingCapture, registry } from "./index";
+import { ChangeNotice, ChangeNoticeToastHost } from "./ChangeNotice/ChangeNotice";
 
 class TestIntersectionObserver {
   static instances: TestIntersectionObserver[] = [];
@@ -62,6 +63,24 @@ async function passTime(milliseconds: number) {
 }
 
 describe("system message seen events", () => {
+  it("emits change_shown for an inline ChangeNotice only after it becomes visible", async () => {
+    const capture = recordingCapture();
+    let visibleWhenShown = false;
+    const sink = (event: Parameters<typeof capture.sink>[0]) => {
+      capture.sink(event);
+      if (event.name === "change_shown") visibleWhenShown = screen.getByRole("status", { name: "Changed" }).checkVisibility({ opacityProperty: true, visibilityProperty: true });
+    };
+    const notice = <ChangeNotice decision_id="dec_123e4567-e89b-42d3-a456-426614174000" title="Changed" reason="Because." presentation="inline" />;
+    const view = render(<CaptureProvider sink={sink}><div style={{ display: "none" }}>{notice}</div></CaptureProvider>);
+    await passTime(100);
+    expect(capture.events.some(({ name }) => name === "change_shown")).toBe(false);
+
+    view.rerender(<CaptureProvider sink={sink}><div>{notice}</div></CaptureProvider>);
+    await passTime(100);
+    expect(capture.events).toContainEqual({ name: "change_shown", decision_id: "dec_123e4567-e89b-42d3-a456-426614174000" });
+    expect(visibleWhenShown).toBe(true);
+  });
+
   it("emits component_seen from each public Skeleton after it stays visible", async () => {
     const capture = recordingCapture();
     const examples = [
@@ -91,22 +110,26 @@ describe("system message seen events", () => {
 
   it("does not count a hidden ChangeNotice toast as seen, then counts it when shown", async () => {
     const capture = recordingCapture();
-    const entry = registry.getSkeleton("ChangeNotice")!;
-    render(<CaptureProvider sink={capture.sink}><entry.Component props={{ decision_id: "dec_123e4567-e89b-42d3-a456-426614174000", title: "Changed", reason: "Because.", presentation: "toast" }} slots={{}} /></CaptureProvider>);
+    const view = render(<CaptureProvider sink={capture.sink}><ChangeNoticeToastHost /><ChangeNotice decision_id="dec_123e4567-e89b-42d3-a456-426614174000" title="Changed" reason="Because." presentation="toast" /></CaptureProvider>);
     await passTime(0);
     const notice = screen.getByRole("status", { name: "Changed" });
     const observer = TestIntersectionObserver.instances.at(-1)!;
     expect(observer.target).toBe(notice);
-    expect(capture.events).toContainEqual({ name: "change_shown", decision_id: "dec_123e4567-e89b-42d3-a456-426614174000" });
     const toast = notice.closest("[data-sonner-toast]");
     expect(toast).toBeTruthy();
     toast!.setAttribute("style", "display: none");
+    view.rerender(<CaptureProvider sink={capture.sink}><ChangeNoticeToastHost /><ChangeNotice decision_id="dec_123e4567-e89b-42d3-a456-426614174000" title="Changed" reason="Because." presentation="toast" onKeep={() => undefined} /></CaptureProvider>);
+    expect(document.querySelector('[role="status"]')).toBe(notice);
+    expect(observer.target).toBe(notice);
     act(() => observer.setRatio(1));
     await passTime(3500);
     expect(capture.events.some(({ name }) => name === "component_seen")).toBe(false);
+    expect(capture.events.some(({ name }) => name === "change_shown")).toBe(false);
 
     toast!.removeAttribute("style");
+    act(() => observer.setRatio(1));
     await passTime(3300);
+    expect(capture.events).toContainEqual({ name: "change_shown", decision_id: "dec_123e4567-e89b-42d3-a456-426614174000" });
     expect(capture.events.filter(({ name }) => name === "component_seen")).toEqual([
       { name: "component_seen", component: "ChangeNotice", default_state: "toast", seconds_visible: 3 },
     ]);

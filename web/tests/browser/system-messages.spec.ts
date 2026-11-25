@@ -28,16 +28,32 @@ test("system message Skeletons render across every gallery setting", async ({ pa
     const frame = card.locator("iframe");
     await expect(frame).toHaveAttribute("title", `${id} · ${state}`);
     await expect.poll(async () => Number(await frame.getAttribute("height"))).toBeGreaterThan(1);
-    const frameBounds = await frame.boundingBox();
     const preview = page.frameLocator(`iframe[title='${id} · ${state}']`);
+    const component = preview.locator(id === "ProposalCard" ? "[role='region']" : "[role='status']");
+    await expect(component).toBeVisible();
+    const bounds = () => component.evaluate((element) => {
+      const { x, y, width, height } = element.getBoundingClientRect();
+      const view = element.ownerDocument.defaultView!;
+      return { x, y, width, height, inside: x >= 0 && y >= 0 && x + width <= view.innerWidth && y + height <= view.innerHeight };
+    });
+    await expect.poll(async () => (await bounds()).inside).toBe(true);
+    const componentBounds = await bounds();
+    expect(componentBounds.inside, `${id} ${state} bounds: ${JSON.stringify(componentBounds)}`).toBe(true);
+    if (id === "ProposalCard") await expect(component).toHaveAttribute("data-slot", "card");
+    else if (id === "ChangeNotice" && state === "inline") await expect(component.locator("[data-slot='marker']")).toHaveCount(1);
+    else await expect(component).toHaveAttribute("data-slot", "alert");
     const buttons = preview.locator("button");
     await expect(buttons).toHaveCount(2);
     for (const button of await buttons.all()) {
       await expect(button).toBeVisible();
       await expect.poll(async () => {
-        const bounds = await button.boundingBox();
-        return bounds !== null && bounds.x >= frameBounds!.x && bounds.y >= frameBounds!.y && bounds.x + bounds.width <= frameBounds!.x + frameBounds!.width && bounds.y + bounds.height <= frameBounds!.y + frameBounds!.height;
+        return button.evaluate((element) => {
+          const { x, y, width, height } = element.getBoundingClientRect();
+          const view = element.ownerDocument.defaultView!;
+          return x >= 0 && y >= 0 && x + width <= view.innerWidth && y + height <= view.innerHeight;
+        });
       }, { message: `${id} ${state} action stays inside its frame` }).toBe(true);
+      await expect(button).toHaveAttribute("data-slot", "button");
     }
     await buttons.first().press("Tab");
     await expect(buttons.nth(1)).toBeFocused();
@@ -59,6 +75,7 @@ test("system message Skeletons render across every gallery setting", async ({ pa
       await expect(toast.locator("html")).toHaveAttribute("data-mode", mode);
       await expect(toast.locator("[data-sonner-toaster]")).toHaveAttribute("data-sonner-theme", mode);
       await expect(toast.locator("[data-sonner-toast]")).toBeVisible();
+      await expect.poll(() => toast.locator("[data-sonner-toast]").evaluate((element) => Number(getComputedStyle(element).opacity))).toBeGreaterThan(0);
       const toastStyle = await toast.locator("[data-sonner-toaster]").evaluate((element) => ({ width: getComputedStyle(element).getPropertyValue("--width").trim(), widthToken: getComputedStyle(document.documentElement).getPropertyValue("--panel-width").trim(), background: getComputedStyle(element).getPropertyValue("--normal-bg").trim(), backgroundToken: getComputedStyle(document.documentElement).getPropertyValue("--popover").trim() }));
       expect(toastStyle.width).toBe(toastStyle.widthToken);
       expect(toastStyle.background).toBe(toastStyle.backgroundToken);
@@ -86,6 +103,35 @@ test("system message Skeletons render across every gallery setting", async ({ pa
   await toastButton.scrollIntoViewIfNeeded();
   const toastRect = await toastButton.boundingBox();
   expect(toastRect).not.toBeNull();
+  const toastHit = await toast.locator("html").evaluate((html, point) => {
+    const frame = html.ownerDocument.defaultView!;
+    const rect = frame.frameElement!.getBoundingClientRect();
+    const target = frame.document.elementFromPoint((point.x - rect.x) / (rect.width / frame.innerWidth), (point.y - rect.y) / (rect.height / frame.innerHeight));
+    return target === frame.document.querySelector("button") || target?.closest("button") === frame.document.querySelector("button");
+  }, { x: toastRect!.x + toastRect!.width / 2, y: toastRect!.y + toastRect!.height / 2 });
+  expect(toastHit).toBe(true);
   await page.mouse.click(toastRect!.x + toastRect!.width / 2, toastRect!.y + toastRect!.height / 2);
   expect(errors).toEqual([]);
+});
+
+test("concurrent Decision toasts stack and route each pointer action to its own Decision", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(async () => {
+    const fixtureUrl = "/tests/browser/system-messages-entry.tsx";
+    const { mountConcurrentNotices } = await import(/* @vite-ignore */ fixtureUrl) as typeof import("./system-messages-entry");
+    mountConcurrentNotices();
+  });
+  const first = page.getByRole("status", { name: "First decision" });
+  const second = page.getByRole("status", { name: "Second decision" });
+  await expect(first).toBeVisible();
+  await expect(second).toBeVisible();
+  for (const [notice, title] of [[first, "First"], [second, "Second"]] as const) {
+    for (const action of ["Keep", "Undo"] as const) {
+      const button = notice.getByRole("button", { name: action });
+      await expect(button).toBeVisible();
+      await button.click();
+      await expect.poll(() => page.evaluate(() => window.noticeActions)).toContain(`${title.toLowerCase()}:${action.toLowerCase()}`);
+    }
+  }
+  expect(await page.evaluate(() => window.noticeActions)).toEqual(["first:keep", "first:undo", "second:keep", "second:undo"]);
 });

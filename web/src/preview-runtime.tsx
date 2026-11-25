@@ -1,6 +1,7 @@
 import { Component, useEffect, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import type { SkeletonEntry } from "./registry";
+import { ChangeNoticeToastHost } from "./registry/ChangeNotice/ChangeNotice";
 
 class PreviewBoundary extends Component<{ children: ReactNode; label: string }, { failed: boolean }> {
   state = { failed: false };
@@ -62,7 +63,7 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
     document.body.className = "gallery-preview-root";
     document.body.dataset.previewState = state?.id;
     root.render(<PreviewMounted onMounted={onMounted} version={version}>{entry && state
-      ? <PreviewBoundary label={`${entry.id} · ${state.id}`}><entry.Component props={state.props} slots={state.slots ?? {}} /></PreviewBoundary>
+      ? <><PreviewBoundary label={`${entry.id} · ${state.id}`}><entry.Component props={state.props} slots={state.slots ?? {}} /></PreviewBoundary><ChangeNoticeToastHost /></>
       : <p role="alert">Preview unavailable</p>}</PreviewMounted>);
   };
   window.addEventListener("message", (event: MessageEvent<unknown>) => {

@@ -1,14 +1,21 @@
 // @vitest-environment jsdom
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CaptureProvider, recordingCapture, registry } from "../index";
-import { ChangeNotice } from "./ChangeNotice";
+import { ChangeNotice, ChangeNoticeToastHost } from "./ChangeNotice";
 import { events } from "./events";
 import { meta } from "./meta";
 import { propsSchema, slotsSchema } from "./schema";
 
 const decisionId = "dec_123e4567-e89b-42d3-a456-426614174000";
+const visibilityDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, "checkVisibility");
+
+beforeEach(() => Object.defineProperty(Element.prototype, "checkVisibility", { configurable: true, value: () => true }));
+afterEach(() => {
+  if (visibilityDescriptor) Object.defineProperty(Element.prototype, "checkVisibility", visibilityDescriptor);
+  else delete (Element.prototype as { checkVisibility?: () => boolean }).checkVisibility;
+});
 
 describe("ChangeNotice", () => {
   it("uses the accessible inline primitive and emits its declared actions", async () => {
@@ -19,6 +26,7 @@ describe("ChangeNotice", () => {
     render(<CaptureProvider sink={recorder.sink}><ChangeNotice decision_id={decisionId} title="Density changed" reason="Long answers were often expanded." presentation="inline" onKeep={onKeep} onUndo={onUndo} /></CaptureProvider>);
 
     expect(screen.getByRole("status", { name: "Density changed" })).toBeTruthy();
+    await waitFor(() => expect(recorder.events).toContainEqual({ name: "change_shown", decision_id: decisionId }));
     await user.tab();
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Keep" }));
     await user.keyboard("{Enter}");
@@ -44,7 +52,7 @@ describe("ChangeNotice", () => {
     expect(entry.meta.galleryStates.map(({ id }) => id)).toEqual(["inline", "toast"]);
     for (const state of entry.meta.galleryStates) {
       expect(entry.schema.safeParse({ props: state.props, slots: {} }).success).toBe(true);
-      const view = render(<entry.Component props={state.props} slots={{}} />);
+      const view = render(<><ChangeNoticeToastHost /><entry.Component props={state.props} slots={{}} /></>);
       expect(await screen.findByRole("status", { name: String(state.props.title) })).toBeTruthy();
       if (state.id === "toast") {
         const user = userEvent.setup();
@@ -61,11 +69,11 @@ describe("ChangeNotice", () => {
     expect(entry.schema.safeParse({ props: { ...meta.galleryStates[0].props, extra: true }, slots: {} }).success).toBe(false);
   });
 
-  it("isolates multiple toast hosts and refreshes content and callbacks", async () => {
+  it("shares one host and refreshes toast content and callbacks in place", async () => {
     const oldKeep = vi.fn();
     const newKeep = vi.fn();
     const user = userEvent.setup();
-    const view = render(<>
+    const view = render(<><ChangeNoticeToastHost />
       <ChangeNotice decision_id={decisionId} title="First notice" reason="First reason" presentation="toast" onKeep={oldKeep} />
       <ChangeNotice decision_id="dec_223e4567-e89b-42d3-a456-426614174000" title="Second notice" reason="Second reason" presentation="toast" />
     </>);
@@ -73,14 +81,27 @@ describe("ChangeNotice", () => {
     expect(await screen.findByRole("status", { name: "First notice" })).toBeTruthy();
     expect(screen.getByRole("status", { name: "Second notice" })).toBeTruthy();
     expect(screen.getAllByRole("status")).toHaveLength(2);
+    expect(document.querySelectorAll("[data-sonner-toaster]")).toHaveLength(1);
+    const notice = screen.getByRole("status", { name: "First notice" });
+    const firstKeep = screen.getAllByRole("button", { name: "Keep" })[0];
+    firstKeep.focus();
+    expect(document.activeElement).toBe(firstKeep);
+    const focused = document.activeElement;
     const ids = [...document.querySelectorAll("[id]")].map(({ id }) => id);
     expect(new Set(ids).size).toBe(ids.length);
-    view.rerender(<>
+    view.rerender(<><ChangeNoticeToastHost />
+      <ChangeNotice decision_id={decisionId} title="First notice" reason="First reason" presentation="toast" onKeep={newKeep} />
+      <ChangeNotice decision_id="dec_223e4567-e89b-42d3-a456-426614174000" title="Second notice" reason="Second reason" presentation="toast" />
+    </>);
+    expect(await screen.findByRole("status", { name: "First notice" })).toBe(notice);
+    expect(document.activeElement).toBe(focused);
+    view.rerender(<><ChangeNoticeToastHost />
       <ChangeNotice decision_id={decisionId} title="Updated notice" reason="Updated reason" presentation="toast" onKeep={newKeep} />
       <ChangeNotice decision_id="dec_223e4567-e89b-42d3-a456-426614174000" title="Second notice" reason="Second reason" presentation="toast" />
     </>);
-    expect(await screen.findByRole("status", { name: "Updated notice" })).toBeTruthy();
-    await user.click(screen.getAllByRole("button", { name: "Keep" })[0]);
+    expect(await screen.findByRole("status", { name: "Updated notice" })).toBe(notice);
+    expect(document.activeElement).toBe(focused);
+    await user.click(screen.getByRole("status", { name: "Updated notice" }).querySelector("button")!);
     expect(oldKeep).not.toHaveBeenCalled();
     expect(newKeep).toHaveBeenCalledOnce();
   });
@@ -91,7 +112,7 @@ describe("ChangeNotice", () => {
     const view = render(<form onSubmit={onSubmit}><ChangeNotice decision_id={decisionId} title="Density changed" reason="Because." presentation="inline" onKeep={vi.fn()} /></form>);
     await user.click(screen.getByRole("button", { name: "Keep" }));
     view.unmount();
-    render(<form onSubmit={onSubmit}><ChangeNotice decision_id={decisionId} title="Density changed" reason="Because." presentation="toast" onKeep={vi.fn()} /></form>);
+    render(<><ChangeNoticeToastHost /><form onSubmit={onSubmit}><ChangeNotice decision_id={decisionId} title="Density changed" reason="Because." presentation="toast" onKeep={vi.fn()} /></form></>);
     await user.click(await screen.findByRole("button", { name: "Keep" }));
     expect(onSubmit).not.toHaveBeenCalled();
   });
