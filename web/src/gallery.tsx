@@ -4,6 +4,7 @@ import focused from "../../contracts/looks/focused.json" with { type: "json" };
 import notebook from "../../contracts/looks/notebook.json" with { type: "json" };
 import tokens from "../../contracts/looks/tokens.json" with { type: "json" };
 import { registry as defaultRegistry, type SkeletonEntry } from "./registry";
+import { PrimitiveGallery } from "./components/primitive-gallery";
 import "./gallery.css";
 
 const availableLooks = [looks, focused, notebook];
@@ -90,11 +91,25 @@ export function Gallery({ registry = defaultRegistry, previewPath = "/preview.ht
   useEffect(() => {
     const element = root.current;
     if (!element) return;
+    const documentRoot = document.documentElement;
     const scale = tokens.derivedTokens.textSize[textSize as keyof typeof tokens.derivedTokens.textSize];
-    const styles = { ...look[mode as "light" | "dark"], ...tokens.derivedTokens.radius[look.radius as keyof typeof tokens.derivedTokens.radius], ...tokens.derivedTokens.density[density as keyof typeof tokens.derivedTokens.density], "--text-scale": scale["--text-scale"], ...scale.sizes, ...scale.headings, ...tokens.derivedTokens.dimensions, ...tokens.derivedTokens.fontWeights, ...tokens.derivedTokens.lineHeights };
-    for (const [name, value] of Object.entries(styles)) element.style.setProperty(name.startsWith("--") ? name : `--${name}`, value);
-    element.style.setProperty("--font-body", JSON.stringify(tokens.typefaces[look.typeface.body as keyof typeof tokens.typefaces].family));
-    element.style.setProperty("--font-heading", JSON.stringify(tokens.typefaces[look.typeface.heading as keyof typeof tokens.typefaces].family));
+    const styles = { ...look[mode as "light" | "dark"], ...Object.fromEntries(Object.entries(tokens.sharedPalette[mode as "light" | "dark"]).map(([name, value]) => [`--${name}`, value])), ...tokens.derivedTokens.radius[look.radius as keyof typeof tokens.derivedTokens.radius], ...tokens.derivedTokens.density[density as keyof typeof tokens.derivedTokens.density], "--text-scale": scale["--text-scale"], ...scale.sizes, ...scale.headings, ...tokens.derivedTokens.dimensions, ...tokens.derivedTokens.motionDurations, ...tokens.derivedTokens.motionEasing, ...tokens.derivedTokens.motionAnimations, ...tokens.derivedTokens.fontWeights, ...tokens.derivedTokens.lineHeights };
+    const typeStyles = {
+      "--font-body": JSON.stringify(tokens.typefaces[look.typeface.body as keyof typeof tokens.typefaces].family),
+      "--font-heading": JSON.stringify(tokens.typefaces[look.typeface.heading as keyof typeof tokens.typefaces].family),
+      "--font-serif": JSON.stringify(tokens.typefaces.serif.family),
+      "--font-informal": JSON.stringify(tokens.typefaces.informal.family),
+      "--font-mono": JSON.stringify(tokens.typefaces.mono.family),
+    };
+    for (const [name, value] of Object.entries({ ...styles, ...typeStyles })) {
+      element.style.setProperty(name.startsWith("--") ? name : `--${name}`, value);
+      documentRoot.style.setProperty(name.startsWith("--") ? name : `--${name}`, value);
+    }
+    documentRoot.dataset.mode = mode;
+    documentRoot.dataset.look = look.id;
+    documentRoot.dataset.density = density;
+    documentRoot.dataset.textSize = textSize;
+    documentRoot.dataset.texture = look.texture;
     setTokenRevision((revision) => revision + 1);
   }, [look, mode, density, textSize, deviceClass]);
 
@@ -109,6 +124,7 @@ export function Gallery({ registry = defaultRegistry, previewPath = "/preview.ht
         {choices("Screen size", deviceClass, ["desktop", "tablet"], setDeviceClass)}
       </div>
     </header>
+    <PrimitiveGallery />
     <section className="gallery-grid" aria-label="Registered Skeletons">
       {[...registry.entries.values()].flatMap((entry) => entry.meta.galleryStates.map((state) => {
         return <article className="gallery-card" data-skeleton={entry.id} data-gallery-state={state.id} key={`${entry.id}-${state.id}`}>

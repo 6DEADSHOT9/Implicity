@@ -35,7 +35,7 @@ These never move. Only additions, such as a new shortcut chip, are allowed.
 | --- | --- | --- | --- |
 | MessageBody | Rich text of a message. Code fences render as CodeBlock and markdown tables as DataTable | Message, Bubble, Typography, plus a markdown renderer | Composed |
 | Details | A collapsible section, for reasoning and "why this works" | Reasoning, Collapsible | Direct |
-| RunActivity | Tool steps with their status | Tool and Task, built on Trace | Direct |
+| RunActivity | Tool steps with their status | Tool and Task, built on Collapsible until AI Elements ships Trace | Direct |
 | MessageActions | Copy, regenerate, feedback, version switcher, "Remember this" | Button Group, Tooltip, Pagination | Composed |
 | AttachmentTray | Files and photos attached to a message | Attachment | Direct |
 | Citation | A source chip, including links to the person's own memory | Inline Citation | Direct |
@@ -101,6 +101,10 @@ Each registry entry carries four things beyond its code, and the rest of the sys
 1. **A schema** for its props and slots, so an invalid layout is rejected before it renders.
 2. **The events it emits**, including when it was actually shown. Capture comes from this, so a new component brings its own signals. A skeleton emits through the registry's capture context (`useCapture().emit`) and only events it declares from the closed vocabulary; its controls call prop callbacks, and the app decides what they do (docs/contracts.md).
 3. **Token-only styling.** It uses the design tokens and has no styles of its own. A lint enforces this by allowing only known-good forms: a `style` value must be `var(--token)` or a safe keyword such as `inherit` or `auto`; colour, size, font, spacing, radius and shadow utilities in `className` must be names generated from the token set, while layout-only utilities such as `flex` and `items-center` are free; dynamic values in `style` or `className` are an error unless they go through the one helper that accepts only token names. The lint guarantees that no hard-coded colour, size, font, spacing, radius or shadow reaches a skeleton through `style` or `className`. Whether a skeleton looks right in every look, mode and screen size is checked in review and in the gallery, not by the lint.
+
+   **The shadcn/ui primitives** (copied sources, ADR 0010) follow the same guarantee by a different route. Tailwind's default theme is cleared and its theme is defined only from the tokens, so every colour, spacing, radius, font, size or shadow utility that exists resolves to a token. In the primitives' folder the lint accepts a class only if Tailwind generates it from that theme, rejects arbitrary values such as `bg-[#f00]` or `p-[13px]`, allows inline `style` only as `var(--token)`, and leaves layout-only properties such as `grid-template-columns` free. Primitives whose styling is computed at runtime (charts, code highlighting) are adapted by the skeleton ticket that uses them, through the token helper, not copied into the base.
+
+   **Where a look applies.** A look's token properties and its mode (`data-mode`) are set on the document root (`<html>`), so one look applies to the whole page and overlays rendered at the end of `<body>` (dialogs, popovers, menus, tooltips) inherit it. **Breakpoints** are tokens in `contracts/looks/tokens.json` with Tailwind's standard values, `sm` 40rem, `md` 48rem, `lg` 64rem and `xl` 80rem, and the Tailwind theme's breakpoints and container sizes are generated from them; they are separate from `device_class`, which comes from the device. **Animations** use `tw-animate-css`, as shadcn/ui expects, and are turned off under `prefers-reduced-motion`.
 4. **Its limits**: minimum sizes and contrast that no adaptation may break.
 
 Widgets declare two more: where their data comes from, and how they refresh. That is what lets each one show its last update and its source.
@@ -114,7 +118,7 @@ Widgets declare two more: where their data comes from, and how they refresh. Tha
 | Source | Used for |
 | --- | --- |
 | shadcn/ui components | The single base for building blocks: layout, inputs, tables, charts, code, messages. |
-| shadcn/ui AI Elements | Bases for the AI-specific components: Prompt Input, Reasoning, Tool, Task, Sources, Inline Citation, Confirmation, Suggestion, Stack Trace, Terminal. Most are built on Trace. |
+| shadcn/ui AI Elements | Bases for the AI-specific components: Prompt Input, Reasoning, Tool, Task, Sources, Inline Citation, Confirmation, Suggestion, Stack Trace, Terminal. Most are built on Trace; the pinned AI Elements has no Trace yet, so Tool and Task are built on Collapsible until it ships. |
 | Vercel AI SDK | Chat state on the frontend: streaming, message parts and tool calls. The shadcn/ui chat components are built around its message parts. |
 | Our own code | The compositions specific to Implicity, and MediaPlayer. |
 | Kokonut UI | Reference only, for interaction ideas. Not a dependency. |
@@ -170,7 +174,7 @@ Before adding, check whether the need is a new component or a new arrangement of
 
 ## Still to verify
 
-- [x] Trace fits RunActivity, reasoning and sources
+- [x] Trace fits RunActivity, reasoning and sources (Tool and Task use Collapsible until the pinned AI Elements ships Trace)
 - [x] Marker is for notes between turns, so it is the base for ContextChip and in-conversation notices, not Citation
 - [x] Item works as a general row
 - [ ] Spike: confirm the AI SDK's stream format works from the Python backend relaying Hermes. If not, return to assistant-ui
