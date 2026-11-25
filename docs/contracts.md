@@ -407,7 +407,7 @@ web/src/registry/DataTable/
   DataTable.test.tsx
 ```
 
-`meta.ts` also lists the states the gallery must show, such as empty, loading, long content and error. The registry is the list of these folders, and adding one raises the registry version.
+`meta.ts` also lists the states the gallery must show, such as empty, loading, long content and error. Each gallery state carries the example props, and slot content where the skeleton has slots, that put the skeleton in that state. Registry validation parses each state's example with the entry's `schema.ts` and fails, naming the folder and the state, when one is missing or invalid. The ticket that adds a skeleton supplies its examples, and the gallery renders each state from its example as given. The registry is the list of these folders, and adding one raises the registry version.
 
 An entry is exactly these files: the component is the named export matching its folder, and `schema.ts`, `events.ts` and `meta.ts` provide the rest. Nothing else is exported for the registry. Generation and loading both fail, naming the folder, when a file or its expected export is missing.
 
