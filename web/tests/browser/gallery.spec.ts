@@ -23,11 +23,28 @@ test("tablet changes the viewport and media-query layout seen by Skeletons", asy
   await page.goto("/tests/browser/gallery.html");
   const previewFrame = page.locator("iframe[title='ReviewPanel · plain']");
   const preview = page.frameLocator("iframe[title='ReviewPanel · plain']").locator(".review-panel");
-  await expect.poll(() => previewFrame.evaluate((frame) => (frame as HTMLIFrameElement).contentWindow?.innerWidth)).toBeGreaterThan(1024);
+  await expect.poll(() => previewFrame.evaluate((frame) => (frame as HTMLIFrameElement).contentWindow?.innerWidth)).toBe(1440);
   await expect(preview).toHaveCSS("display", "grid");
+  await expect(page.frameLocator("iframe[title='ReviewPanel · plain']").locator("[data-match-media]")).toHaveText("wide");
   await page.getByLabel("Screen size").selectOption("tablet");
-  await expect.poll(() => previewFrame.evaluate((frame) => (frame as HTMLIFrameElement).contentWindow?.innerWidth)).toBeLessThan(1024);
+  await expect.poll(() => previewFrame.evaluate((frame) => (frame as HTMLIFrameElement).contentWindow?.innerWidth)).toBe(800);
   await expect(preview).toHaveCSS("display", "flex");
+  await expect(page.frameLocator("iframe[title='ReviewPanel · plain']").locator("[data-match-media]")).toHaveText("narrow");
+});
+
+test("tablet viewport stays fixed when text size changes and previews fit their cards", async ({ page }) => {
+  await page.goto("/tests/browser/gallery.html");
+  await page.getByLabel("Screen size").selectOption("tablet");
+  const frame = page.locator("iframe[title='ReviewPanel · plain']");
+  await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentWindow?.innerWidth)).toBe(800);
+  await expect(frame).toHaveAttribute("width", "800");
+  await page.getByLabel("Text size").selectOption("1");
+  await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentWindow?.innerWidth)).toBe(800);
+  await expect(page.frameLocator("iframe[title='ReviewPanel · plain']").locator("[data-match-media]")).toHaveText("narrow");
+  const bounds = await page.locator("[data-skeleton='ReviewPanel'][data-gallery-state='plain'] .gallery-preview").boundingBox();
+  const displayed = await frame.boundingBox();
+  expect(displayed && bounds && displayed.width).toBeLessThanOrEqual(bounds!.width + 1);
+  expect(bounds && displayed && displayed.x + displayed.width).toBeLessThanOrEqual(bounds!.x + bounds!.width + 1);
 });
 
 test("renders examples and contains a failed Skeleton state to its card", async ({ page }) => {
@@ -50,14 +67,20 @@ test("Notebook applies its bundled body font, paper texture, and both mode palet
   expect(await previewHeading.evaluate((element) => getComputedStyle(element).fontFamily)).toBe(previewBodyFont);
   expect(await previewHeading.evaluate((element) => getComputedStyle(element).fontSize)).toBe("27px");
   expect(await root.evaluate((element) => getComputedStyle(element).backgroundImage)).toContain("paper-grain.svg");
-  expect(await page.evaluate(async () => {
+  const textureDetails = async () => page.frameLocator("iframe[title='ReviewPanel · plain']").locator("html").evaluate(async (element) => {
+    const url = getComputedStyle(element).backgroundImage.match(/url\(["']?(.*?)["']?\)/)?.[1];
+    if (!url) return null;
     const image = new Image();
-    image.src = "/textures/paper-grain.svg";
+    image.src = url;
     await image.decode();
-    return [image.naturalWidth, image.naturalHeight];
-  })).toEqual([160, 160]);
+    return [url, image.naturalWidth, image.naturalHeight, getComputedStyle(element).backgroundColor];
+  });
+  expect((await textureDetails())?.slice(0, 1)[0]).toMatch(/\/textures\/paper-grain\.svg$/);
+  expect((await textureDetails())?.slice(1)).toEqual([160, 160, "rgb(251, 247, 237)"]);
   expect(await root.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe("rgb(251, 247, 237)");
   await page.getByLabel("Mode").selectOption("dark");
   expect(await root.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe("rgb(32, 31, 26)");
   expect(await root.evaluate((element) => getComputedStyle(element).backgroundImage)).toContain("paper-grain.svg");
+  expect((await textureDetails())?.slice(0, 1)[0]).toMatch(/\/textures\/paper-grain\.svg$/);
+  expect((await textureDetails())?.slice(1)).toEqual([160, 160, "rgb(32, 31, 26)"]);
 });

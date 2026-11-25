@@ -14,6 +14,7 @@ import { definition as panelDefinition, propsSchema } from "./fixtures/ReviewPan
 import { ReviewShellEntry } from "./fixtures/ReviewShell/entry";
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+Object.defineProperty(window, "matchMedia", { configurable: true, value: () => ({ matches: true }) });
 
 const panelRegistry = createRegistry([ReviewPanelEntry], 1);
 const goodLayout = {
@@ -199,6 +200,20 @@ describe("registry and renderer", () => {
     expect(() => createRegistry([OptionalSlot], 1)).not.toThrow();
     const MissingSlotExample = defineSkeleton(optionalSlotDefinition([{ id: "plain", props: { count: 1 } }]), ({ count }: { count: number }) => <b>{count}</b>);
     expect(() => createRegistry([MissingSlotExample], 1)).toThrow(/OptionalSlot.*plain.*missing example slots/);
+  });
+
+  it("validates each slot example even when a sibling slot has a weak schema", () => {
+    const mixedSlotDefinition = (side: unknown) => defineSkeletonDefinition({
+      id: "MixedSlots",
+      props: z.object({ count: z.number() }).strict(),
+      slots: z.object({ main: z.array(z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/)), side: z.unknown().optional() }).strict(),
+      events,
+      meta: { ...meta, slots: ["main", "side"], defaultStates: ["busy"], galleryStates: [{ id: "busy", props: { count: 1 }, slots: { main: [], side } as never }] },
+    });
+    for (const side of [{ label: "not-a-child-list" }, ["BadChild"]]) {
+      const MixedSlots = defineSkeleton(mixedSlotDefinition(side), ({ count }: { count: number }) => <b>{count}</b>);
+      expect(() => createRegistry([MixedSlots], 1)).toThrow(/MixedSlots.*busy.*side/);
+    }
   });
 
   it("rejects entries missing declarations, invalid ids, events or reviewed limits", () => {

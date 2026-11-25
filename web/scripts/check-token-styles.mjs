@@ -21,6 +21,7 @@ const gallerySource = resolve(dirname(fileURLToPath(import.meta.url)), "../src/g
 const galleryCssPath = resolve(dirname(fileURLToPath(import.meta.url)), "../src/gallery.css");
 const galleryCss = await readFile(galleryCssPath, "utf8");
 const galleryClasses = new Set([...galleryCss.matchAll(/\.([a-z][\w-]*)/g)].map(([, name]) => name));
+const galleryLayout = new Map([["overflow", new Set(["hidden"])], ["position", new Set(["relative", "absolute"])], ["width", new Set(["100%"])], ["inset", new Set(["0 auto auto 0"])], ["border", new Set(["0"])], ["transform-origin", new Set(["top left"])] ]);
 
 function safeStyleValue(property, value) {
   const normalized = value.toLowerCase();
@@ -191,6 +192,7 @@ export function tokenStyleViolations(source, filename = resolve("web/src/registr
     const violations = [];
     postcss.parse(source).walkDecls((declaration) => {
       const value = declaration.value.trim();
+      if (resolve(filename) === galleryCssPath && galleryLayout.get(declaration.prop)?.has(value)) return;
       if (resolve(filename) === galleryCssPath && declaration.prop === "background-image" && value === 'url("/textures/paper-grain.svg")') return;
       const match = value.match(tokenReference);
       if (!(match && tokenNames.has(match[1])) && !safeStyleValue(declaration.prop, value)) violations.push(`${declaration.prop}: ${value}`);

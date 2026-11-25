@@ -22,8 +22,9 @@
 .gallery[data-device-class="tablet"] .gallery-card { width: var(--panel-min-width); }
 .gallery-card > header { align-items: baseline; }
 .gallery-card > header span { color: var(--muted-foreground); }
-.gallery-preview { overflow: auto; padding-block: var(--space-4); }
-.gallery-preview-frame { display: block; width: var(--gallery-device-width); height: var(--content-max-width); }
+.gallery-preview { overflow: hidden; padding-block: var(--space-4); }
+.gallery-preview-stage { position: relative; width: 100%; }
+.gallery-preview-frame { position: absolute; inset: 0 auto auto 0; display: block; max-width: none; border: 0; transform-origin: top left; }
 .gallery[data-device-class="tablet"] .gallery-grid { max-width: var(--panel-width); }
 .gallery[data-device-class="desktop"] .gallery-grid { max-width: var(--content-max-width); }
 .gallery[data-texture="paper-grain"] { background-image: url("/textures/paper-grain.svg"); }

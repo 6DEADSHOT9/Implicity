@@ -53,6 +53,8 @@ describe("token-only style guard", () => {
     expect(tokenStyleViolations('const View = () => <div className="gallery-control" />;', rendererFile).some((message) => message.includes("gallery-control"))).toBe(true);
     expect(tokenStyleViolations('const View = () => <div className="gallery-control" />;', galleryFile)).toEqual([]);
     expect(tokenStyleViolations('const View = () => <div style={{ display: "flex", alignItems: "center" }} />;', componentFile)).toEqual([]);
+    expect(tokenStyleViolations('const View = () => <div style={{ width: "var(--gallery-device-width)" }} />;', componentFile)).toContain("width: var(--gallery-device-width)");
+    expect(tokenStyleViolations('const View = () => <div style={{ width: "var(--gallery-device-width)" }} />;', rendererFile)).toContain("width: var(--gallery-device-width)");
     expect(tokenStyleViolations('.probe { color: center; width: center; display: flex; }', "styles.css")).toEqual(["color: center", "width: center"]);
   });
 
@@ -73,6 +75,7 @@ describe("token-only style guard", () => {
   it("does not accept custom properties that have no CSS token definition", () => {
     expect(tokenNames.has("--font-body")).toBe(true);
     expect(tokenNames.has("--font-heading")).toBe(true);
+    expect(tokenNames.has("--gallery-device-width")).toBe(false);
     expect(tokenNames.has("--code-background")).toBe(false);
   });
 });

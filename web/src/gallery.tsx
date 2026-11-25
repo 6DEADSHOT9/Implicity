@@ -1,5 +1,4 @@
-import { Component, useEffect, useRef, useState, type ReactNode } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useRef, useState } from "react";
 import looks from "../../contracts/looks/default.json" with { type: "json" };
 import focused from "../../contracts/looks/focused.json" with { type: "json" };
 import notebook from "../../contracts/looks/notebook.json" with { type: "json" };
@@ -10,41 +9,44 @@ import "./gallery.css";
 const availableLooks = [looks, focused, notebook];
 type Registry = typeof defaultRegistry;
 
-class PreviewBoundary extends Component<{ children: ReactNode; fallback: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
-
-  static getDerivedStateFromError() {
-    return { failed: true };
-  }
-
-  render() {
-    return this.state.failed ? this.props.fallback : this.props.children;
-  }
-}
-
-function SkeletonPreview({ entry, state, deviceClass, tokenStyles }: { entry: SkeletonEntry; state: SkeletonEntry["meta"]["galleryStates"][number]; deviceClass: string; tokenStyles: string }) {
+function SkeletonPreview({ entry, state, deviceClass, tokenStyles, texture, previewPath }: { entry: SkeletonEntry; state: SkeletonEntry["meta"]["galleryStates"][number]; deviceClass: string; tokenStyles: string; texture: string; previewPath: string }) {
   const frame = useRef<HTMLIFrameElement>(null);
-  const [frameDocument, setFrameDocument] = useState<Document>();
+  const stage = useRef<HTMLDivElement>(null);
+  const viewportWidth = deviceClass === "desktop" ? 1440 : 800;
+  const previewConfig = useRef({ styles: tokenStyles, texture });
+  previewConfig.current = { styles: tokenStyles, texture };
+
+  function updatePreview() {
+    frame.current?.contentWindow?.postMessage(previewConfig.current, location.origin);
+  }
 
   useEffect(() => {
-    if (!frameDocument) return;
-    frameDocument.documentElement.style.cssText = tokenStyles;
-    frameDocument.documentElement.dataset.texture = document.querySelector<HTMLElement>("[data-gallery-root]")?.dataset.texture ?? "none";
-  }, [frameDocument, tokenStyles]);
+    updatePreview();
+  }, [tokenStyles, texture]);
 
-  function loadPreview() {
-    const doc = frame.current?.contentDocument;
-    if (!doc) return;
-    doc.documentElement.style.cssText = tokenStyles;
-    doc.documentElement.dataset.texture = document.querySelector<HTMLElement>("[data-gallery-root]")?.dataset.texture ?? "none";
-    doc.body.className = "gallery-preview-root";
-    doc.head.replaceChildren(...[...document.head.querySelectorAll('link[rel="stylesheet"], style')].map((node) => doc.importNode(node, true)));
-    setFrameDocument(doc);
-  }
+  useEffect(() => {
+    const container = stage.current;
+    const preview = frame.current;
+    if (!container || !preview) return;
+    let previousWidth = -1;
+    const resize = () => {
+      if (container.clientWidth === previousWidth) return;
+      previousWidth = container.clientWidth;
+      const scale = Math.min(1, previousWidth / viewportWidth);
+      preview.style.transform = `scale(${scale})`;
+      container.style.height = `${900 * scale}px`;
+    };
+    const observer = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(() => requestAnimationFrame(resize));
+    observer?.observe(container);
+    resize();
+    return () => observer?.disconnect();
+  }, [viewportWidth]);
 
+  const params = new URLSearchParams({ entry: entry.id, state: state.id });
   return <>
-    <iframe ref={frame} className="gallery-preview-frame" title={`${entry.id} · ${state.id}`} data-device-class={deviceClass} srcDoc="<!doctype html><html lang='en'><head></head><body></body></html>" onLoad={loadPreview} />
-    {frameDocument && createPortal(<PreviewBoundary fallback={<p className="gallery-error" role="alert">{entry.id} · {state.id}: preview failed</p>}><entry.Component props={state.props} slots={(state.slots ?? {}) as Record<string, ReactNode>} /></PreviewBoundary>, frameDocument.body)}
+    <div className="gallery-preview-stage" ref={stage}>
+      <iframe key={deviceClass} ref={frame} className="gallery-preview-frame" title={`${entry.id} · ${state.id}`} data-device-class={deviceClass} width={viewportWidth} height={900} src={`${previewPath}?${params}`} onLoad={updatePreview} />
+    </div>
   </>;
 }
 
@@ -54,7 +56,7 @@ function choices(label: string, value: string, values: readonly string[], onChan
   </select></label>;
 }
 
-export function Gallery({ registry = defaultRegistry }: { registry?: Registry }) {
+export function Gallery({ registry = defaultRegistry, previewPath = "/preview.html" }: { registry?: Registry; previewPath?: string }) {
   const [lookId, setLookId] = useState(availableLooks[0].id);
   const [mode, setMode] = useState("light");
   const [density, setDensity] = useState(availableLooks[0].density);
@@ -72,7 +74,6 @@ export function Gallery({ registry = defaultRegistry }: { registry?: Registry })
     for (const [name, value] of Object.entries(styles)) element.style.setProperty(name.startsWith("--") ? name : `--${name}`, value);
     element.style.setProperty("--font-body", JSON.stringify(tokens.typefaces[look.typeface.body as keyof typeof tokens.typefaces].family));
     element.style.setProperty("--font-heading", JSON.stringify(tokens.typefaces[look.typeface.heading as keyof typeof tokens.typefaces].family));
-    element.style.setProperty("--gallery-device-width", deviceClass === "desktop" ? "calc(var(--content-max-width) + var(--sidebar-width) + var(--panel-width))" : "var(--content-max-width)");
     setTokenRevision((revision) => revision + 1);
   }, [look, mode, density, textSize, deviceClass]);
 
@@ -91,7 +92,7 @@ export function Gallery({ registry = defaultRegistry }: { registry?: Registry })
       {[...registry.entries.values()].flatMap((entry) => entry.meta.galleryStates.map((state) => {
         return <article className="gallery-card" data-skeleton={entry.id} data-gallery-state={state.id} key={`${entry.id}-${state.id}`}>
           <header><h2>{entry.id}</h2><span>{state.id}</span></header>
-          <div className="gallery-preview"><SkeletonPreview entry={entry} state={state} deviceClass={deviceClass} tokenStyles={tokenStyles} /></div>
+          <div className="gallery-preview"><SkeletonPreview entry={entry} state={state} deviceClass={deviceClass} tokenStyles={tokenStyles} texture={look.texture} previewPath={previewPath} /></div>
         </article>;
       }))}
     </section>

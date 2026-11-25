@@ -1,7 +1,7 @@
 import tokens from "../../../contracts/looks/tokens.json" with { type: "json" };
 
 const cssNames = new Set(tokens.colorKeys.map((name) => `--${name}`));
-for (const name of ["--font-body", "--font-heading", "--gallery-device-width"]) cssNames.add(name);
+for (const name of ["--font-body", "--font-heading"]) cssNames.add(name);
 const addCssNames = (value) => {
   if (Array.isArray(value)) return value.forEach(addCssNames);
   if (!value || typeof value !== "object") return;

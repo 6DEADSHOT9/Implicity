@@ -5,4 +5,4 @@ import { ReviewPanelEntry } from "../fixtures/ReviewPanel/entry";
 import { ReviewShellEntry } from "../fixtures/ReviewShell/entry";
 import "../../src/tokens.css";
 
-createRoot(document.getElementById("root")!).render(<Gallery registry={createRegistry([ReviewPanelEntry, ReviewShellEntry], 1)} />);
+createRoot(document.getElementById("root")!).render(<Gallery registry={createRegistry([ReviewPanelEntry, ReviewShellEntry], 1)} previewPath="/tests/browser/preview-frame.html" />);

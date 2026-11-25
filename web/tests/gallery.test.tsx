@@ -9,6 +9,7 @@ import { ReviewPanelEntry } from "./fixtures/ReviewPanel/entry";
 import { ReviewShellEntry } from "./fixtures/ReviewShell/entry";
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+Object.defineProperty(window, "matchMedia", { configurable: true, value: () => ({ matches: true }) });
 
 async function renderGallery(registry = createRegistry([ReviewPanelEntry], 1)) {
   const container = document.createElement("div");
