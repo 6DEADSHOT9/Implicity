@@ -52,6 +52,8 @@ describe("ChangeNotice", () => {
         await user.tab();
         expect(document.activeElement).toBe(screen.getByRole("button", { name: "Keep" }));
         await user.keyboard("{Enter}");
+      } else {
+        expect(document.querySelector('[data-slot="marker"]')).toBeTruthy();
       }
       view.unmount();
     }
@@ -85,9 +87,11 @@ describe("ChangeNotice", () => {
   it("does not submit an enclosing form when an action is activated", async () => {
     const onSubmit = vi.fn((event: React.FormEvent) => event.preventDefault());
     const user = userEvent.setup();
-    render(<form onSubmit={onSubmit}><ChangeNotice decision_id={decisionId} title="Density changed" reason="Because." presentation="inline" onKeep={vi.fn()} /></form>);
-
+    const view = render(<form onSubmit={onSubmit}><ChangeNotice decision_id={decisionId} title="Density changed" reason="Because." presentation="inline" onKeep={vi.fn()} /></form>);
     await user.click(screen.getByRole("button", { name: "Keep" }));
+    view.unmount();
+    render(<form onSubmit={onSubmit}><ChangeNotice decision_id={decisionId} title="Density changed" reason="Because." presentation="toast" onKeep={vi.fn()} /></form>);
+    await user.click(await screen.findByRole("button", { name: "Keep" }));
     expect(onSubmit).not.toHaveBeenCalled();
   });
 });

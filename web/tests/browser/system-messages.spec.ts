@@ -39,6 +39,10 @@ test("system message Skeletons render across every gallery setting", async ({ pa
         return bounds !== null && bounds.x >= frameBounds!.x && bounds.y >= frameBounds!.y && bounds.x + bounds.width <= frameBounds!.x + frameBounds!.width && bounds.y + bounds.height <= frameBounds!.y + frameBounds!.height;
       }, { message: `${id} ${state} action stays inside its frame` }).toBe(true);
     }
+    await buttons.first().press("Tab");
+    await expect(buttons.nth(1)).toBeFocused();
+    expect(await buttons.nth(1).evaluate((button) => getComputedStyle(button).boxShadow)).not.toBe("none");
+    await buttons.nth(1).press("Enter");
   }
 
   for (const look of ["default", "focused", "notebook"]) {
@@ -55,6 +59,9 @@ test("system message Skeletons render across every gallery setting", async ({ pa
       await expect(toast.locator("html")).toHaveAttribute("data-mode", mode);
       await expect(toast.locator("[data-sonner-toaster]")).toHaveAttribute("data-sonner-theme", mode);
       await expect(toast.locator("[data-sonner-toast]")).toBeVisible();
+      const toastStyle = await toast.locator("[data-sonner-toaster]").evaluate((element) => ({ width: getComputedStyle(element).getPropertyValue("--width").trim(), widthToken: getComputedStyle(document.documentElement).getPropertyValue("--panel-width").trim(), background: getComputedStyle(element).getPropertyValue("--normal-bg").trim(), backgroundToken: getComputedStyle(document.documentElement).getPropertyValue("--popover").trim() }));
+      expect(toastStyle.width).toBe(toastStyle.widthToken);
+      expect(toastStyle.background).toBe(toastStyle.backgroundToken);
     }
   }
   for (const density of ["compact", "comfortable", "spacious"]) {
