@@ -1,8 +1,13 @@
 import asyncio
 import json
+import os
 import socket
 import threading
 import time
+from contextlib import contextmanager
+from dataclasses import asdict
+from datetime import datetime, timedelta
+from pathlib import Path
 
 import pytest
 import uvicorn
@@ -13,10 +18,53 @@ from implicity_api.modules import agent as agent_module
 from implicity_api.modules.agent import (
     AI_SDK_STREAM_HEADERS,
     HermesAgent,
+    PromptContext,
+    Quota,
+    QuotaSettings,
+    SkillResult,
+    UserMessage,
     stream_sse,
 )
 from implicity_api.persistence import create_store
 from sqlalchemy import create_engine
+
+
+def _usage_payload(windows, *, limit=None):
+    row = {"is_current": True, "usage": {"windows": windows}}
+    if limit is not None:
+        row["limit"] = limit
+    return {"providers": [{"is_current": False}, row]}
+
+
+def _window(percent, *, scope="account", resets_at="2026-12-01T12:00:00+00:00"):
+    return {
+        "label": "Weekly",
+        "used_percent": percent,
+        "resets_at": resets_at,
+        "scope": scope,
+    }
+
+
+@contextmanager
+def _serve_hermes(app):
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
+    sock.close()
+    server = uvicorn.Server(
+        uvicorn.Config(app, host="127.0.0.1", port=port, log_level="error")
+    )
+    thread = threading.Thread(target=server.run, daemon=True)
+    thread.start()
+    deadline = time.monotonic() + 5
+    while not server.started and time.monotonic() < deadline:
+        time.sleep(0.01)
+    assert server.started
+    try:
+        yield f"http://127.0.0.1:{port}"
+    finally:
+        server.should_exit = True
+        thread.join(timeout=5)
 
 
 @pytest.fixture
@@ -64,9 +112,42 @@ def fake_hermes():
                 "item": {"type": "reasoning", "id": "reason-1"},
             },
             {
+                "type": "response.reasoning_summary_part.added",
+                "item_id": "reason-1",
+                "output_index": 0,
+                "summary_index": 0,
+            },
+            {
                 "type": "response.reasoning_summary_text.delta",
                 "item_id": "reason-1",
+                "output_index": 0,
+                "summary_index": 0,
                 "delta": "briefly",
+            },
+            {
+                "type": "response.reasoning_summary_part.done",
+                "item_id": "reason-1",
+                "output_index": 0,
+                "summary_index": 0,
+            },
+            {
+                "type": "response.reasoning_summary_part.added",
+                "item_id": "reason-1",
+                "output_index": 0,
+                "summary_index": 1,
+            },
+            {
+                "type": "response.reasoning_summary_text.delta",
+                "item_id": "reason-1",
+                "output_index": 0,
+                "summary_index": 1,
+                "delta": "briefly again",
+            },
+            {
+                "type": "response.reasoning_summary_part.done",
+                "item_id": "reason-1",
+                "output_index": 0,
+                "summary_index": 1,
             },
             {
                 "type": "response.output_item.done",
@@ -115,30 +196,29 @@ def fake_hermes():
                     stream_closed.set()
                     raise
                 return
+            if payload["input"] in {"truncated", "done-only"}:
+                for event in events[:10]:
+                    yield f"data: {json.dumps(event)}\n\n"
+                if payload["input"] == "done-only":
+                    yield "data: [DONE]\n\n"
+                return
+            if payload["input"] == "bad-event":
+                for event in events[:2]:
+                    yield f"data: {json.dumps(event)}\n\n"
+                yield "data: {not-json}\n\n"
+                return
+            if payload["input"] == "midstream-error":
+                for event in events[:3]:
+                    yield f"data: {json.dumps(event)}\n\n"
+                raise RuntimeError("simulated Hermes restart")
             for event in events:
                 yield f"data: {json.dumps(event)}\n\n"
             yield "data: [DONE]\n\n"
 
         return StreamingResponse(body(), media_type="text/event-stream")
 
-    sock = socket.socket()
-    sock.bind(("127.0.0.1", 0))
-    port = sock.getsockname()[1]
-    sock.close()
-    server = uvicorn.Server(
-        uvicorn.Config(app, host="127.0.0.1", port=port, log_level="error")
-    )
-    thread = threading.Thread(target=server.run, daemon=True)
-    thread.start()
-    deadline = time.monotonic() + 5
-    while not server.started and time.monotonic() < deadline:
-        time.sleep(0.01)
-    assert server.started
-    try:
-        yield f"http://127.0.0.1:{port}", received, stream_started, stream_closed
-    finally:
-        server.should_exit = True
-        thread.join(timeout=5)
+    with _serve_hermes(app) as base_url:
+        yield base_url, received, stream_started, stream_closed
 
 
 def test_agent_streams_parts_and_reuses_its_hermes_conversation(fake_hermes, tmp_path):
@@ -148,28 +228,44 @@ def test_agent_streams_parts_and_reuses_its_hermes_conversation(fake_hermes, tmp
     store = create_store("agent", bind)
     agent = HermesAgent(store, base_url, "test-key")
     conversation_id = "550e8400-e29b-41d4-a716-446655440000"
-    agent.start_conversation(conversation_id, "Keep the answer brief.")
-    agent.start_conversation(conversation_id, "Keep the answer brief.")
+    context = PromptContext(current_state_instructions="Keep the answer brief.")
+    agent.start_conversation(conversation_id, context)
+    agent.start_conversation(conversation_id, context)
+    restarted = HermesAgent(store, base_url, "test-key")
 
     async def collect():
-        return [part async for part in agent.send(conversation_id, "Hi")]
+        return [
+            part async for part in restarted.send(conversation_id, UserMessage("Hi"))
+        ]
 
     parts = asyncio.run(collect())
     types = [part["type"] for part in parts]
-    assert "text-start" in types and "text-delta" in types and "text-end" in types
-    assert (
-        "reasoning-start" in types
-        and "reasoning-delta" in types
-        and "reasoning-end" in types
-    )
-    assert "tool-input-start" in types and "tool-input-available" in types
-    assert "tool-output-available" in types
-    assert types[-1] == "finish"
+    assert types == [
+        "start",
+        "text-start",
+        "text-delta",
+        "text-end",
+        "reasoning-start",
+        "reasoning-delta",
+        "reasoning-end",
+        "reasoning-start",
+        "reasoning-delta",
+        "reasoning-end",
+        "tool-input-start",
+        "tool-input-available",
+        "tool-output-available",
+        "finish",
+    ]
+    reasoning_ids = [part["id"] for part in parts if part["type"] == "reasoning-start"]
+    assert len(set(reasoning_ids)) == 2
+    assert [
+        part["id"] for part in parts if part["type"] == "reasoning-end"
+    ] == reasoning_ids
     assert AI_SDK_STREAM_HEADERS == {"x-vercel-ai-ui-message-stream": "v1"}
     request = received[0][1]
     assert received[0][0]["authorization"] == "Bearer test-key"
     assert request["input"] == "Hi"
-    assert request["instructions"] == "Keep the answer brief."
+    assert request["instructions"] == json.dumps(asdict(context), separators=(",", ":"))
     session = store.get(AgentSession, conversation_id)
     assert request["conversation"] == session.data["hermes_session_id"]
     assert request["conversation"] != conversation_id
@@ -185,7 +281,7 @@ def test_cancel_ends_the_agent_stream(fake_hermes, tmp_path):
     agent.start_conversation(conversation_id)
 
     async def cancel():
-        stream = agent.send(conversation_id, "slow")
+        stream = agent.send(conversation_id, UserMessage("slow"))
         task = asyncio.create_task(anext(stream))
         await asyncio.sleep(0.1)
         agent.cancel(conversation_id)
@@ -199,6 +295,144 @@ def test_cancel_ends_the_agent_stream(fake_hermes, tmp_path):
     assert stream_closed.wait(timeout=3)
 
 
+def test_second_send_is_refused_while_the_first_stream_is_active(fake_hermes, tmp_path):
+    base_url, _, _, _ = fake_hermes
+    bind = create_engine(f"sqlite:///{tmp_path / 'concurrent.db'}")
+    Base.metadata.create_all(bind)
+    agent = HermesAgent(create_store("agent", bind), base_url, "test-key")
+    conversation_id = "550e8400-e29b-41d4-a716-446655440003"
+    agent.start_conversation(conversation_id)
+
+    async def check():
+        first = agent.send(conversation_id, UserMessage("slow"))
+        assert (await anext(first))["type"] == "start"
+        second = agent.send(conversation_id, UserMessage("Hi"))
+        with pytest.raises(RuntimeError, match="already streaming"):
+            await anext(second)
+        agent.cancel(conversation_id)
+        await anext(first)
+        await first.aclose()
+
+    asyncio.run(check())
+
+
+@pytest.mark.parametrize(
+    ("message", "expected"),
+    [
+        (
+            "truncated",
+            [
+                "start",
+                "text-start",
+                "text-delta",
+                "text-end",
+                "reasoning-start",
+                "reasoning-delta",
+                "reasoning-end",
+                "reasoning-start",
+                "reasoning-delta",
+                "reasoning-end",
+                "error",
+                "finish",
+            ],
+        ),
+        (
+            "done-only",
+            [
+                "start",
+                "text-start",
+                "text-delta",
+                "text-end",
+                "reasoning-start",
+                "reasoning-delta",
+                "reasoning-end",
+                "reasoning-start",
+                "reasoning-delta",
+                "reasoning-end",
+                "error",
+                "finish",
+            ],
+        ),
+        ("bad-event", ["start", "text-start", "text-end", "error", "finish"]),
+        (
+            "midstream-error",
+            ["start", "text-start", "text-delta", "text-end", "error", "finish"],
+        ),
+    ],
+)
+def test_broken_hermes_stream_closes_parts_and_finishes(
+    fake_hermes, tmp_path, message, expected
+):
+    base_url, _, _, _ = fake_hermes
+    bind = create_engine(f"sqlite:///{tmp_path / f'{message}.db'}")
+    Base.metadata.create_all(bind)
+    agent = HermesAgent(create_store("agent", bind), base_url, "test-key")
+    conversation_id = "550e8400-e29b-41d4-a716-446655440004"
+    agent.start_conversation(conversation_id)
+
+    async def collect():
+        return [
+            part async for part in agent.send(conversation_id, UserMessage(message))
+        ]
+
+    assert [part["type"] for part in asyncio.run(collect())] == expected
+
+
+def test_agent_module_does_not_name_model_providers():
+    text = Path(agent_module.__file__).read_text(encoding="utf-8").lower()
+
+    assert not any(
+        name in text for name in ("openai", "anthropic", "google", "openrouter", "nous")
+    )
+
+
+def test_public_interface_rejects_untyped_context_and_message(fake_hermes, tmp_path):
+    base_url, _, _, _ = fake_hermes
+    bind = create_engine(f"sqlite:///{tmp_path / 'typed.db'}")
+    Base.metadata.create_all(bind)
+    agent = HermesAgent(create_store("agent", bind), base_url, "test-key")
+    conversation_id = "550e8400-e29b-41d4-a716-446655440005"
+    with pytest.raises(TypeError, match="PromptContext"):
+        agent.start_conversation(conversation_id, "plain string")
+    agent.start_conversation(conversation_id, PromptContext())
+
+    async def send_string():
+        stream = agent.send(conversation_id, "plain string")
+        await anext(stream)
+
+    with pytest.raises(TypeError, match="UserMessage"):
+        asyncio.run(send_string())
+
+
+@pytest.mark.parametrize("terminal", ["response.incomplete", "response.failed"])
+def test_final_event_usage_is_logged(terminal, quota_hermes, tmp_path):
+    base_url, state = quota_hermes
+    state["payload"] = _usage_payload([_window(20)])
+    state["events"] = [
+        {
+            "type": terminal,
+            "response": {
+                "status": "incomplete" if terminal.endswith("incomplete") else "failed",
+                "usage": {
+                    "input_tokens": 7,
+                    "output_tokens": 2,
+                    "total_tokens": 9,
+                },
+            },
+        }
+    ]
+    agent, store = _quota_agent(tmp_path, base_url)
+    conversation_id = "550e8400-e29b-41d4-a716-446655440006"
+    agent.start_conversation(conversation_id)
+
+    async def collect():
+        return [part async for part in agent.send(conversation_id, UserMessage("Hi"))]
+
+    asyncio.run(collect())
+    row = store.list(QuotaLog)[0].data
+    assert (row["input_tokens"], row["output_tokens"], row["total_tokens"]) == (7, 2, 9)
+
+
 def test_skill_run_uses_a_short_hermes_conversation(fake_hermes, tmp_path):
     base_url, received, _, _ = fake_hermes
     bind = create_engine(f"sqlite:///{tmp_path / 'skill.db'}")
@@ -208,7 +442,9 @@ def test_skill_run_uses_a_short_hermes_conversation(fake_hermes, tmp_path):
 
     result = asyncio.run(agent.run_skill("propose-look", {"kind": "coding"}))
 
-    assert result["id"] == "skill-response" and result["status"] == "completed"
+    assert isinstance(result, SkillResult)
+    assert result.response["id"] == "skill-response"
+    assert result.response["status"] == "completed"
     assert store.list(QuotaLog)[0].data["type"] == "background"
     assert store.list(QuotaLog)[0].data["total_tokens"] == 3
     headers, request = received[0]
@@ -229,7 +465,7 @@ def test_closing_the_public_stream_closes_hermes_http_response(fake_hermes, tmp_
     agent.start_conversation(conversation_id)
 
     async def close():
-        stream = stream_sse(agent, conversation_id, "slow")
+        stream = stream_sse(agent, conversation_id, UserMessage("slow"))
         assert '"type":"start"' in await anext(stream)
         await stream.aclose()
 
@@ -280,29 +516,19 @@ def quota_hermes():
 
         async def body():
             for event in events:
-                yield f"data: {json.dumps(event)}\n\n"
-            yield "data: [DONE]\n\n"
+                if isinstance(event, str):
+                    yield event
+                else:
+                    yield f"data: {json.dumps(event)}\n\n"
+            if state.get("stream_error"):
+                raise RuntimeError("simulated connection reset")
+            if not state.get("truncate"):
+                yield "data: [DONE]\n\n"
 
         return StreamingResponse(body(), media_type="text/event-stream")
 
-    sock = socket.socket()
-    sock.bind(("127.0.0.1", 0))
-    port = sock.getsockname()[1]
-    sock.close()
-    server = uvicorn.Server(
-        uvicorn.Config(app, host="127.0.0.1", port=port, log_level="error")
-    )
-    thread = threading.Thread(target=server.run, daemon=True)
-    thread.start()
-    deadline = time.monotonic() + 5
-    while not server.started and time.monotonic() < deadline:
-        time.sleep(0.01)
-    assert server.started
-    try:
-        yield f"http://127.0.0.1:{port}", state
-    finally:
-        server.should_exit = True
-        thread.join(timeout=5)
+    with _serve_hermes(app) as base_url:
+        yield base_url, state
 
 
 def _quota_agent(tmp_path, base_url, *, api_key="test-key"):
@@ -312,51 +538,30 @@ def _quota_agent(tmp_path, base_url, *, api_key="test-key"):
     return HermesAgent(store, base_url, api_key), store
 
 
-def _usage_payload(windows, *, limit=None):
-    row = {"is_current": True, "usage": {"windows": windows}}
-    if limit is not None:
-        row["limit"] = limit
-    return {"providers": [{"is_current": False}, row]}
-
-
-def _window(percent, *, scope="account", resets_at="2026-12-01T12:00:00+00:00"):
-    return {
-        "label": "Weekly",
-        "used_percent": percent,
-        "resets_at": resets_at,
-        "scope": scope,
-    }
-
-
 def test_quota_contract_shape_auth_states_and_account_windows(quota_hermes, tmp_path):
     base_url, state = quota_hermes
     state["payload"] = _usage_payload(
-        [_window(89), _window(100, resets_at="2026-12-03T12:00:00+00:00")]
+        [
+            _window(89),
+            _window(100, resets_at="2026-12-03T12:00:00+00:00"),
+            _window(100, resets_at="2026-12-04T12:00:00+00:00"),
+        ]
     )
     agent, _ = _quota_agent(tmp_path, base_url)
 
     quota = agent.quota()
 
-    assert quota == {
-        "state": "limited",
-        "windows": [
-            {
-                "label": "Weekly",
-                "used_percent": 89,
-                "resets_at": "2026-12-01T12:00:00+00:00",
-            },
-            {
-                "label": "Weekly",
-                "used_percent": 100,
-                "resets_at": "2026-12-03T12:00:00+00:00",
-            },
-        ],
-        "resets_at": "2026-12-03T12:00:00+00:00",
-        "checked_at": quota["checked_at"],
-    }
+    assert isinstance(quota, Quota)
+    assert quota.state == "limited"
+    assert [(window.label, window.used_percent) for window in quota.windows] == [
+        ("Weekly", 89),
+        ("Weekly", 100),
+        ("Weekly", 100),
+    ]
+    assert quota.resets_at == "2026-12-04T12:00:00+00:00"
+    assert datetime.fromisoformat(quota.checked_at)
     assert state["requests"][0][1] == "/api/model/options"
     assert state["requests"][0][0]["authorization"] == "Bearer test-key"
-    assert "provider" not in str(quota).lower()
 
 
 @pytest.mark.parametrize(
@@ -375,19 +580,112 @@ def test_quota_state_threshold_and_ignored_windows(
     state["payload"] = _usage_payload(windows)
     agent, _ = _quota_agent(tmp_path, base_url)
 
-    assert agent.quota()["state"] == expected
+    assert agent.quota().state == expected
+
+
+def test_non_account_limit_is_ignored(quota_hermes, tmp_path):
+    base_url, state = quota_hermes
+    state["payload"] = _usage_payload(
+        [_window(20)],
+        limit={"scope": "model", "resets_at": "2026-12-01T12:00:00+00:00"},
+    )
+    agent, _ = _quota_agent(tmp_path, base_url)
+
+    assert agent.quota().state == "ok"
+
+
+def test_quota_without_account_windows_ignores_model_limit(quota_hermes, tmp_path):
+    base_url, state = quota_hermes
+    state["payload"] = _usage_payload(
+        [], limit={"scope": "model", "resets_at": "2026-12-01T12:00:00+00:00"}
+    )
+    agent, _ = _quota_agent(tmp_path, base_url)
+
+    assert agent.quota().state == "unknown"
 
 
 def test_quota_malformed_or_failed_read_is_unknown(quota_hermes, tmp_path):
     base_url, state = quota_hermes
     agent, _ = _quota_agent(tmp_path, base_url)
     state["payload"] = {"providers": [{"is_current": True, "usage": None}]}
-    assert agent.quota()["state"] == "unknown"
+    assert agent.quota().state == "unknown"
 
     # A new instance forces a fresh HTTP read instead of the one-minute cache.
     agent, _ = _quota_agent(tmp_path, base_url)
     state["fail_read"] = True
-    assert agent.quota()["state"] == "unknown"
+    assert agent.quota().state == "unknown"
+
+
+@pytest.mark.parametrize(
+    "window",
+    [
+        _window(101),
+        _window(10, resets_at="not-rfc3339"),
+    ],
+)
+def test_malformed_usage_window_is_unknown(quota_hermes, tmp_path, window):
+    base_url, state = quota_hermes
+    state["payload"] = _usage_payload([window])
+    agent, _ = _quota_agent(tmp_path, base_url)
+
+    assert agent.quota().state == "unknown"
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        _usage_payload([_window(90)]),
+        _usage_payload([_window(100)]),
+        _usage_payload([_window(20, scope="model")]),
+    ],
+)
+def test_background_gate_requires_ok_quota(quota_hermes, tmp_path, payload):
+    base_url, state = quota_hermes
+    state["payload"] = payload
+    agent, _ = _quota_agent(tmp_path, base_url)
+
+    assert not agent.may_start_background_work()
+
+
+def test_background_gate_ignores_yesterday_tokens_in_local_timezone(
+    quota_hermes, tmp_path
+):
+    base_url, state = quota_hermes
+    state["payload"] = _usage_payload([_window(10)])
+    agent, store = _quota_agent(tmp_path, base_url)
+    previous_timezone = os.environ.get("TZ")
+    os.environ["TZ"] = "America/Los_Angeles"
+    time.tzset()
+    try:
+        yesterday = datetime.now().astimezone().date() - timedelta(days=1)
+        yesterday_late = datetime(
+            yesterday.year,
+            yesterday.month,
+            yesterday.day,
+            23,
+            59,
+            tzinfo=datetime.now().astimezone().tzinfo,
+        )
+        store.insert(
+            QuotaLog(
+                id="yesterday",
+                data={
+                    "time": yesterday_late.isoformat(),
+                    "type": "background",
+                    "conversation_id": "old",
+                    "input_tokens": 1_000_000_000,
+                    "output_tokens": 0,
+                    "total_tokens": 1_000_000_000,
+                },
+            )
+        )
+        assert agent.may_start_background_work()
+    finally:
+        if previous_timezone is None:
+            os.environ.pop("TZ", None)
+        else:
+            os.environ["TZ"] = previous_timezone
+        time.tzset()
 
 
 def test_quota_cache_staleness_and_settings_take_effect(
@@ -396,19 +694,21 @@ def test_quota_cache_staleness_and_settings_take_effect(
     base_url, state = quota_hermes
     state["payload"] = _usage_payload([_window(92)])
     agent, agent_store = _quota_agent(tmp_path, base_url)
-    assert agent.get_quota_settings() == {
-        "daily_background_token_cap": 200_000,
-        "near_limit_threshold_percent": 90,
-    }
-    assert agent.quota()["state"] == "near_limit"
-    assert agent.quota()["state"] == "near_limit"
+    assert agent.quota_settings() == QuotaSettings()
+    assert agent.quota().state == "near_limit"
+    assert agent.quota().state == "near_limit"
     assert state["reads"] == 1
 
-    settings = agent.set_quota_settings(near_limit_threshold_percent=95)
-    assert settings["near_limit_threshold_percent"] == 95
-    assert agent.quota()["state"] == "ok"
+    settings = agent.set_quota_settings(QuotaSettings(200_000, 95))
+    assert settings == QuotaSettings(200_000, 95)
+    assert agent.quota().state == "ok"
+    settings = agent.set_quota_settings(QuotaSettings(200_000, 96))
     reloaded_agent, _ = _quota_agent(tmp_path, base_url)
-    assert reloaded_agent.get_quota_settings() == settings
+    assert reloaded_agent.quota_settings() == settings
+    with pytest.raises(ValueError):
+        agent.set_quota_settings(QuotaSettings(-1, 90))
+    with pytest.raises(ValueError):
+        agent.set_quota_settings(QuotaSettings(1, 101))
 
     class FrozenDateTime(agent_module.datetime):
         current = agent_module.datetime.now(agent_module.timezone.utc)
@@ -419,7 +719,7 @@ def test_quota_cache_staleness_and_settings_take_effect(
 
     monkeypatch.setattr(agent_module, "datetime", FrozenDateTime)
     FrozenDateTime.current += agent_module.timedelta(minutes=16)
-    assert agent.quota()["state"] == "unknown"
+    assert agent.quota().state == "unknown"
 
 
 def test_background_gate_and_quota_log_rows(quota_hermes, tmp_path):
@@ -427,18 +727,16 @@ def test_background_gate_and_quota_log_rows(quota_hermes, tmp_path):
     state["payload"] = _usage_payload([_window(10)])
     agent, agent_store = _quota_agent(tmp_path, base_url)
     assert agent.may_start_background_work()
-    assert (
-        agent.set_quota_settings(daily_background_token_cap=14)[
-            "daily_background_token_cap"
-        ]
-        == 14
-    )
+    assert agent.set_quota_settings(QuotaSettings(14, 90)) == QuotaSettings(14, 90)
+    assert agent.set_quota_settings(QuotaSettings(13, 90)) == QuotaSettings(13, 90)
 
     async def collect(kind):
         return [
             part
             async for part in agent.send(
-                "550e8400-e29b-41d4-a716-446655440099", "Hi", turn_type=kind
+                "550e8400-e29b-41d4-a716-446655440099",
+                UserMessage("Hi"),
+                turn_type=kind,
             )
         ]
 
@@ -467,7 +765,7 @@ def test_failed_turn_forces_quota_reread_and_exposes_limit(quota_hermes, tmp_pat
     state["events"] = [{"type": "response.failed", "response": {"status": "failed"}}]
     agent, _ = _quota_agent(tmp_path, base_url)
     agent.start_conversation("550e8400-e29b-41d4-a716-446655440098")
-    assert agent.quota()["state"] == "ok"
+    assert agent.quota().state == "ok"
     state["payload"] = _usage_payload(
         [_window(100)],
         limit={"scope": "account", "resets_at": "2026-12-01T12:00:00+00:00"},
@@ -476,7 +774,9 @@ def test_failed_turn_forces_quota_reread_and_exposes_limit(quota_hermes, tmp_pat
     async def collect():
         return [
             part
-            async for part in agent.send("550e8400-e29b-41d4-a716-446655440098", "Hi")
+            async for part in agent.send(
+                "550e8400-e29b-41d4-a716-446655440098", UserMessage("Hi")
+            )
         ]
 
     parts = asyncio.run(collect())
@@ -495,6 +795,6 @@ def test_hermes_limit_without_windows_is_limited(quota_hermes, tmp_path):
 
     quota = agent.quota()
 
-    assert quota["state"] == "limited"
-    assert quota["windows"] == []
-    assert quota["resets_at"] == "2026-12-01T12:00:00+00:00"
+    assert quota.state == "limited"
+    assert quota.windows == ()
+    assert quota.resets_at == "2026-12-01T12:00:00+00:00"

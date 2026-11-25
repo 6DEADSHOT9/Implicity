@@ -7,12 +7,19 @@ import time
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import aclosing, suppress
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 
-from implicity_api.models.agent import AgentSession, QuotaLog, QuotaSettings
+from implicity_api.models.agent import (
+    AgentSession,
+    QuotaLog,
+)
+from implicity_api.models.agent import (
+    QuotaSettings as QuotaSettingsRow,
+)
 from implicity_api.stores.agent import store
 
 AI_SDK_STREAM_HEADERS = {"x-vercel-ai-ui-message-stream": "v1"}
@@ -25,11 +32,64 @@ SKILLS = frozenset(
         "extract-memory",
     }
 )
-_DEFAULT_SETTINGS = {
-    "daily_background_token_cap": 200_000,
-    "near_limit_threshold_percent": 90,
-}
 _SETTINGS_ID = "default"
+TurnType = Literal["chat", "background"]
+
+
+@dataclass(frozen=True, slots=True)
+class PromptContext:
+    memory: str = ""
+    explicit_preferences: str = ""
+    answer_style: str = ""
+    deleted_draft: str | None = None
+    current_state_instructions: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class UserMessage:
+    text: str
+
+
+@dataclass(frozen=True, slots=True)
+class SkillResult:
+    response: dict[str, Any]
+
+
+@dataclass(frozen=True, slots=True)
+class QuotaWindow:
+    label: str
+    used_percent: float
+    resets_at: str
+
+
+@dataclass(frozen=True, slots=True)
+class Quota:
+    state: Literal["ok", "near_limit", "limited", "unknown"]
+    windows: tuple[QuotaWindow, ...]
+    resets_at: str | None
+    checked_at: str
+
+
+@dataclass(frozen=True, slots=True)
+class QuotaSettings:
+    daily_background_token_cap: int = 200_000
+    near_limit_threshold_percent: int = 90
+
+
+def _validate_settings(settings: QuotaSettings) -> QuotaSettings:
+    if not isinstance(settings, QuotaSettings):
+        raise TypeError("settings must be QuotaSettings")
+    cap = settings.daily_background_token_cap
+    threshold = settings.near_limit_threshold_percent
+    if isinstance(cap, bool) or not isinstance(cap, int) or cap < 0:
+        raise ValueError("Invalid daily background token cap")
+    if (
+        isinstance(threshold, bool)
+        or not isinstance(threshold, int)
+        or not 0 <= threshold <= 100
+    ):
+        raise ValueError("Invalid near-limit threshold percent")
+    return settings
 
 
 def _timestamp(value: Any) -> datetime | None:
@@ -91,7 +151,9 @@ def _parse_usage(
     if limit is not None:
         if not isinstance(limit, dict) or not isinstance(limit.get("scope"), str):
             return None
-        if (
+        if limit["scope"] != "account":
+            limit = None
+        elif (
             limit.get("resets_at") is not None
             and _timestamp(limit["resets_at"]) is None
         ):
@@ -101,6 +163,26 @@ def _parse_usage(
 
 def _sse(part: dict[str, Any]) -> str:
     return f"data: {json.dumps(part, separators=(',', ':'), allow_nan=False)}\n\n"
+
+
+def _close_open_parts(
+    text_ids: set[str], reasoning_ids: set[str], ended: set[tuple[str, str]]
+) -> list[dict[str, str]]:
+    parts = []
+    for item_id in text_ids:
+        if ("text", item_id) not in ended:
+            ended.add(("text", item_id))
+            parts.append({"type": "text-end", "id": item_id})
+    for item_id in reasoning_ids:
+        if ("reasoning", item_id) not in ended:
+            ended.add(("reasoning", item_id))
+            parts.append({"type": "reasoning-end", "id": item_id})
+    return parts
+
+
+def _reasoning_part_id(event: dict[str, Any]) -> str:
+    item_id = str(event.get("item_id") or f"reasoning-{event.get('output_index', 0)}")
+    return f"{item_id}:{event.get('summary_index', 0)}"
 
 
 class HermesAgent:
@@ -118,7 +200,7 @@ class HermesAgent:
             api_key if api_key is not None else os.getenv("HERMES_API_KEY", "")
         )
         self._active: dict[str, asyncio.Event] = {}
-        self._instructions: dict[str, str] = {}
+        self._active_lock = threading.Lock()
         self._quota_lock = threading.Lock()
         self._quota_last_fetch: float | None = None
         self._quota_checked_at: datetime | None = None
@@ -128,7 +210,11 @@ class HermesAgent:
         ) = None
         self._quota_unknown = True
 
-    def start_conversation(self, conversation_id: str, context: str = "") -> None:
+    def start_conversation(
+        self, conversation_id: str, context: PromptContext = PromptContext()
+    ) -> None:
+        if not isinstance(context, PromptContext):
+            raise TypeError("context must be PromptContext")
         conversation_id = str(uuid.UUID(conversation_id))
         session = self._store.get(AgentSession, conversation_id)
         if session is None:
@@ -137,68 +223,39 @@ class HermesAgent:
                     id=conversation_id,
                     session_id=conversation_id,
                     data={"hermes_session_id": str(uuid.uuid4())},
+                    instructions=asdict(context),
                 )
             )
-        self._instructions[conversation_id] = context
+        else:
+            session.instructions = asdict(context)
+            self._store.put(session)
 
     def cancel(self, conversation_id: str) -> None:
-        active = self._active.get(str(uuid.UUID(conversation_id)))
+        with self._active_lock:
+            active = self._active.get(str(uuid.UUID(conversation_id)))
         if active:
             active.set()
 
-    def get_quota_settings(self) -> dict[str, int]:
-        row = self._store.get(QuotaSettings, _SETTINGS_ID)
-        settings = dict(_DEFAULT_SETTINGS)
-        if row is not None:
-            for key in settings:
-                value = row.data.get(key)
-                if (
-                    isinstance(value, int)
-                    and not isinstance(value, bool)
-                    and value >= 0
-                ):
-                    settings[key] = value
-        if settings["near_limit_threshold_percent"] > 100:
-            settings["near_limit_threshold_percent"] = _DEFAULT_SETTINGS[
-                "near_limit_threshold_percent"
-            ]
-        return settings
-
-    def set_quota_settings(
-        self,
-        *,
-        daily_background_token_cap: int | None = None,
-        near_limit_threshold_percent: int | None = None,
-    ) -> dict[str, int]:
-        updates = {
-            "daily_background_token_cap": daily_background_token_cap,
-            "near_limit_threshold_percent": near_limit_threshold_percent,
-        }
-        settings = self.get_quota_settings()
-        for name, value in updates.items():
-            if value is None:
-                continue
-            maximum = 100 if name == "near_limit_threshold_percent" else None
-            if (
-                isinstance(value, bool)
-                or not isinstance(value, int)
-                or value < 0
-                or (maximum is not None and value > maximum)
-            ):
-                raise ValueError(f"Invalid {name}")
-            settings[name] = value
-        row = self._store.get(QuotaSettings, _SETTINGS_ID)
+    def quota_settings(self) -> QuotaSettings:
+        row = self._store.get(QuotaSettingsRow, _SETTINGS_ID)
         if row is None:
-            self._store.insert(QuotaSettings(id=_SETTINGS_ID, data=settings))
+            return QuotaSettings()
+        return _validate_settings(QuotaSettings(**row.data))
+
+    def set_quota_settings(self, settings: QuotaSettings) -> QuotaSettings:
+        settings = _validate_settings(settings)
+        row = self._store.get(QuotaSettingsRow, _SETTINGS_ID)
+        if row is None:
+            self._store.insert(QuotaSettingsRow(id=_SETTINGS_ID, data=asdict(settings)))
         else:
-            row.data = settings
+            row.data = asdict(settings)
             self._store.put(row)
         return settings
 
-    def quota(self) -> dict[str, Any]:
+    def quota(self) -> Quota:
         return self._read_quota()
 
-    def _read_quota(self, force: bool = False) -> dict[str, Any]:
+    def _read_quota(self, force: bool = False) -> Quota:
         now = datetime.now(timezone.utc)
         monotonic = time.monotonic()
         with self._quota_lock:
@@ -230,7 +287,7 @@ class HermesAgent:
             self._quota_unknown = False
             return self._quota_value(now)
 
-    def _quota_value(self, now: datetime) -> dict[str, Any]:
+    def _quota_value(self, now: datetime) -> Quota:
         checked_at = self._quota_checked_at or now
         if (
             self._quota_unknown
@@ -239,15 +296,10 @@ class HermesAgent:
             or (not self._quota_snapshot[0] and self._quota_snapshot[1] is None)
             or now - self._quota_good_at > timedelta(minutes=15)
         ):
-            return {
-                "state": "unknown",
-                "windows": [],
-                "resets_at": None,
-                "checked_at": checked_at.isoformat(),
-            }
+            return Quota("unknown", (), None, checked_at.isoformat())
         windows, limit = self._quota_snapshot
         full = [window for window in windows if window["used_percent"] >= 100]
-        settings = self.get_quota_settings()
+        settings = self.quota_settings()
         limited = limit is not None or bool(full)
         if limited:
             resets = [
@@ -268,22 +320,22 @@ class HermesAgent:
             state = (
                 "near_limit"
                 if any(
-                    window["used_percent"] >= settings["near_limit_threshold_percent"]
+                    window["used_percent"] >= settings.near_limit_threshold_percent
                     for window in windows
                 )
                 else "ok"
             )
-        return {
-            "state": state,
-            "windows": [dict(window) for window in windows],
-            "resets_at": resets_at,
-            "checked_at": checked_at.isoformat(),
-        }
+        return Quota(
+            state,
+            tuple(QuotaWindow(**window) for window in windows),
+            resets_at,
+            checked_at.isoformat(),
+        )
 
     def may_start_background_work(self) -> bool:
-        if self.quota()["state"] != "ok":
+        if self.quota().state != "ok":
             return False
-        settings = self.get_quota_settings()
+        settings = self.quota_settings()
         today = datetime.now().astimezone().date()
         used = 0
         for row in self._store.list(QuotaLog):
@@ -292,7 +344,7 @@ class HermesAgent:
             logged_at = _timestamp(row.data.get("time"))
             if logged_at and logged_at.astimezone().date() == today:
                 used += row.data.get("total_tokens", 0)
-        return used < settings["daily_background_token_cap"]
+        return used < settings.daily_background_token_cap
 
     def _log_usage(self, conversation_id: str, turn_type: str, usage: Any) -> None:
         if not isinstance(usage, dict):
@@ -321,7 +373,7 @@ class HermesAgent:
             )
         )
 
-    async def run_skill(self, skill: str, inputs: dict[str, Any]) -> dict[str, Any]:
+    async def run_skill(self, skill: str, inputs: dict[str, Any]) -> SkillResult:
         if skill not in SKILLS:
             raise ValueError("Unknown skill")
         if not self._api_key:
@@ -349,13 +401,15 @@ class HermesAgent:
             if result.get("status") == "completed":
                 self._log_usage(conversation_id, "background", result.get("usage"))
                 await asyncio.to_thread(self.quota)
-            return result
+            return SkillResult(result)
 
     async def send(
-        self, conversation_id: str, message: str, turn_type: str = "chat"
+        self, conversation_id: str, message: UserMessage, turn_type: TurnType = "chat"
     ) -> AsyncIterator[dict[str, Any]]:
         if turn_type not in {"chat", "background"}:
             raise ValueError("Invalid turn type")
+        if not isinstance(message, UserMessage):
+            raise TypeError("message must be UserMessage")
         conversation_id = str(uuid.UUID(conversation_id))
         session = self._store.get(AgentSession, conversation_id)
         if session is None:
@@ -364,22 +418,28 @@ class HermesAgent:
             raise RuntimeError("Hermes API key is not configured")
 
         cancelled = asyncio.Event()
-        self._active[conversation_id] = cancelled
+        with self._active_lock:
+            if conversation_id in self._active:
+                raise RuntimeError("Conversation is already streaming")
+            self._active[conversation_id] = cancelled
         headers = {"Authorization": f"Bearer {self._api_key}"}
         payload = {
             "model": "hermes-agent",
             "conversation": session.data["hermes_session_id"],
-            "input": message,
+            "input": message.text,
             "stream": True,
             "store": True,
         }
-        if self._instructions.get(conversation_id):
-            payload["instructions"] = self._instructions[conversation_id]
+        if session.instructions:
+            payload["instructions"] = json.dumps(
+                session.instructions, separators=(",", ":")
+            )
 
         text_ids: set[str] = set()
         reasoning_ids: set[str] = set()
         tool_calls: dict[str, str] = {}
         ended: set[tuple[str, str]] = set()
+        terminal_seen = False
         read_task = None
         cancel_task = asyncio.create_task(cancelled.wait())
         try:
@@ -403,6 +463,10 @@ class HermesAgent:
                             read_task.cancel()
                             with suppress(asyncio.CancelledError, StopAsyncIteration):
                                 await read_task
+                            for part in _close_open_parts(
+                                text_ids, reasoning_ids, ended
+                            ):
+                                yield part
                             yield {"type": "abort", "reason": "user cancelled"}
                             yield {"type": "finish"}
                             return
@@ -421,8 +485,12 @@ class HermesAgent:
                         if raw == "[DONE]":
                             break
                         event = json.loads(raw)
+                        if not isinstance(event, dict):
+                            raise ValueError("Invalid Hermes event")
                         event_type = event.get("type")
                         item = event.get("item") or {}
+                        if not isinstance(item, dict):
+                            raise ValueError("Invalid Hermes event item")
                         item_type = item.get("type")
                         item_id = str(item.get("id") or event.get("item_id") or "")
                         parts = []
@@ -438,10 +506,8 @@ class HermesAgent:
                                 text_ids.add(item_id)
                                 parts.append({"type": "text-start", "id": item_id})
                         elif event_type == "response.reasoning_summary_part.added":
-                            item_id = str(
-                                event.get("item_id")
-                                or f"reasoning-{event.get('output_index', 0)}"
-                            )
+                            item_id = _reasoning_part_id(event)
+                            ended.discard(("reasoning", item_id))
                             reasoning_ids.add(item_id)
                             parts.append({"type": "reasoning-start", "id": item_id})
                         elif (
@@ -477,11 +543,9 @@ class HermesAgent:
                                 ended.add(("text", item_id))
                                 parts.append({"type": "text-end", "id": item_id})
                         elif event_type == "response.reasoning_summary_text.delta":
-                            item_id = str(
-                                event.get("item_id")
-                                or f"reasoning-{event.get('output_index', 0)}"
-                            )
+                            item_id = _reasoning_part_id(event)
                             if item_id not in reasoning_ids:
+                                ended.discard(("reasoning", item_id))
                                 reasoning_ids.add(item_id)
                                 parts.append({"type": "reasoning-start", "id": item_id})
                             parts.append(
@@ -492,13 +556,13 @@ class HermesAgent:
                                 }
                             )
                         elif event_type == "response.reasoning_summary_part.done":
-                            item_id = str(
-                                event.get("item_id")
-                                or f"reasoning-{event.get('output_index', 0)}"
-                            )
-                            if ("reasoning", item_id) not in ended:
-                                reasoning_ids.add(item_id)
+                            item_id = _reasoning_part_id(event)
+                            if (
+                                item_id in reasoning_ids
+                                and ("reasoning", item_id) not in ended
+                            ):
                                 ended.add(("reasoning", item_id))
+                                reasoning_ids.remove(item_id)
                                 parts.append({"type": "reasoning-end", "id": item_id})
                         elif (
                             event_type == "response.output_item.done"
@@ -545,16 +609,18 @@ class HermesAgent:
                                 }
                             )
                         elif event_type in {"response.failed", "response.incomplete"}:
-                            for text_id in text_ids:
-                                if ("text", text_id) not in ended:
-                                    ended.add(("text", text_id))
-                                    parts.append({"type": "text-end", "id": text_id})
-                            for reasoning_id in reasoning_ids:
-                                if ("reasoning", reasoning_id) not in ended:
-                                    ended.add(("reasoning", reasoning_id))
-                                    parts.append(
-                                        {"type": "reasoning-end", "id": reasoning_id}
-                                    )
+                            terminal_seen = True
+                            response_data = event.get("response") or {}
+                            if not isinstance(response_data, dict):
+                                raise ValueError("Invalid Hermes response")
+                            self._log_usage(
+                                conversation_id,
+                                turn_type,
+                                response_data.get("usage"),
+                            )
+                            parts.extend(
+                                _close_open_parts(text_ids, reasoning_ids, ended)
+                            )
                             quota = (
                                 await asyncio.to_thread(self._read_quota, True)
                                 if event_type == "response.failed"
@@ -565,37 +631,44 @@ class HermesAgent:
                                 "errorText": "The agent could not finish this turn.",
                             }
                             if quota is not None:
-                                error["quota_state"] = quota["state"]
-                                if quota["state"] == "limited":
-                                    error["resets_at"] = quota["resets_at"]
+                                error["quota_state"] = quota.state
+                                if quota.state == "limited":
+                                    error["resets_at"] = quota.resets_at
                             parts.append(error)
                             parts.append({"type": "finish"})
                             for part in parts:
                                 yield part
                             return
                         elif event_type == "response.completed":
+                            terminal_seen = True
+                            response_data = event.get("response") or {}
+                            if not isinstance(response_data, dict):
+                                raise ValueError("Invalid Hermes response")
                             self._log_usage(
                                 conversation_id,
                                 turn_type,
-                                (event.get("response") or {}).get("usage"),
+                                response_data.get("usage"),
                             )
                             await asyncio.to_thread(self.quota)
-                            for text_id in text_ids:
-                                if ("text", text_id) not in ended:
-                                    ended.add(("text", text_id))
-                                    parts.append({"type": "text-end", "id": text_id})
-                            for reasoning_id in reasoning_ids:
-                                if ("reasoning", reasoning_id) not in ended:
-                                    ended.add(("reasoning", reasoning_id))
-                                    parts.append(
-                                        {"type": "reasoning-end", "id": reasoning_id}
-                                    )
+                            parts.extend(
+                                _close_open_parts(text_ids, reasoning_ids, ended)
+                            )
                             parts.append({"type": "finish"})
                         for part in parts:
                             yield part
                         if event_type == "response.completed":
                             return
-        except httpx.HTTPError:
+            if not terminal_seen:
+                for part in _close_open_parts(text_ids, reasoning_ids, ended):
+                    yield part
+                yield {
+                    "type": "error",
+                    "errorText": "The agent could not finish this turn.",
+                }
+                yield {"type": "finish"}
+        except (httpx.HTTPError, json.JSONDecodeError, KeyError, TypeError, ValueError):
+            for part in _close_open_parts(text_ids, reasoning_ids, ended):
+                yield part
             yield {
                 "type": "error",
                 "errorText": "The agent could not finish this turn.",
@@ -610,14 +683,30 @@ class HermesAgent:
                 *(task for task in (read_task,) if task is not None),
                 return_exceptions=True,
             )
-            self._active.pop(conversation_id, None)
+            with self._active_lock:
+                if self._active.get(conversation_id) is cancelled:
+                    self._active.pop(conversation_id, None)
 
 
-async def stream_sse(agent: HermesAgent, conversation_id: str, message: str):
+async def stream_sse(
+    agent: HermesAgent, conversation_id: str, message: UserMessage
+) -> AsyncIterator[str]:
     async with aclosing(agent.send(conversation_id, message)) as parts:
         async for part in parts:
             yield _sse(part)
         yield "data: [DONE]\n\n"
 
 
-__all__ = ["AI_SDK_STREAM_HEADERS", "HermesAgent", "stream_sse", "store"]
+__all__ = [
+    "AI_SDK_STREAM_HEADERS",
+    "HermesAgent",
+    "PromptContext",
+    "Quota",
+    "QuotaSettings",
+    "QuotaWindow",
+    "SkillResult",
+    "TurnType",
+    "UserMessage",
+    "stream_sse",
+    "store",
+]
