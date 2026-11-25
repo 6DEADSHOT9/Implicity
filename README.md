@@ -31,6 +31,8 @@ Install the pinned workspaces with `make install`; run `make lint` and `make tes
 The TypeScript workspace uses the Node.js version in `.node-version` and npm;
 the Python workspace uses uv 0.11.25 with the version in `.python-version`.
 
+Run the Skeleton gallery locally with `pnpm --filter @implicity/web dev`.
+
 Backend commands run from the repository root and use `data/implicity.db` by
 default:
 

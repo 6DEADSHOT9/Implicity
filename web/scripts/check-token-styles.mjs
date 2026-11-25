@@ -6,10 +6,11 @@ import ts from "typescript";
 import postcss from "postcss";
 import { tokenNames, tokenUtilities } from "../src/registry/token-values.mjs";
 
-const safeKeywords = new Set(["inherit", "initial", "unset", "currentcolor", "transparent", "normal", "auto", "none"]);
+const safeKeywords = new Set(["inherit", "initial", "unset", "currentcolor", "transparent", "normal", "auto", "none", "flex", "wrap", "column", "center", "baseline", "space-between"]);
 const tokenReference = /^var\(\s*(--[\w-]+)\s*\)$/i;
 const layoutUtility = /^(?:block|inline|inline-block|flex|inline-flex|grid|inline-grid|hidden|contents|flow-root|flex-(?:row|row-reverse|col|col-reverse|wrap|wrap-reverse|nowrap|1|auto|initial|none|grow|shrink)|grid-flow-(?:row|col|dense)|items-(?:start|end|center|baseline|stretch)|justify-(?:normal|start|end|center|between|around|evenly|stretch)|self-(?:auto|start|end|center|stretch|baseline)|content-(?:normal|center|start|end|between|around|evenly|baseline|stretch)|place-(?:content|items|self)-(?:start|end|center|stretch|between|around|evenly|baseline)|col-span-(?:full|\d+)|row-span-(?:full|\d+)|order-(?:first|last|none|\d+)|relative|absolute|fixed|sticky|static|overflow-(?:auto|hidden|clip|visible|scroll)|z-(?:auto|\d+))$/;
 const approvedTokenModule = resolve(dirname(fileURLToPath(import.meta.url)), "../src/registry/token.ts");
+const localClasses = new Set();
 
 function unwrap(node) {
   while (ts.isParenthesizedExpression(node) || ts.isAsExpression(node) || ts.isSatisfiesExpression(node) || ts.isTypeAssertionExpression(node) || ts.isNonNullExpression(node)) node = node.expression;
@@ -105,7 +106,7 @@ function classViolations(node, tokenBindings) {
   if (value === undefined) return ["unsupported dynamic className; use token() with a token name"];
   return value.split(/\s+/).filter(Boolean).flatMap((fullName) => {
     const base = fullName.split(":").at(-1);
-    if (layoutUtility.test(base) || tokenUtilities.has(base)) return [];
+    if (layoutUtility.test(base) || tokenUtilities.has(base) || localClasses.has(base)) return [];
     return [`unknown or non-token style utility: ${fullName}`];
   });
 }
@@ -211,7 +212,9 @@ async function sourceFiles(path) {
 }
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const paths = [...await sourceFiles(resolve(root, "web/src/registry")), resolve(root, "web/src/renderer.tsx")];
+const galleryCss = await readFile(resolve(root, "web/src/gallery.css"), "utf8");
+for (const [, name] of galleryCss.matchAll(/\.([a-z][\w-]*)/g)) localClasses.add(name);
+const paths = [...await sourceFiles(resolve(root, "web/src/registry")), resolve(root, "web/src/renderer.tsx"), resolve(root, "web/src/gallery.tsx"), resolve(root, "web/src/gallery.css")];
 let failed = false;
 for (const path of paths) {
   const violations = tokenStyleViolations(await readFile(path, "utf8"), path);

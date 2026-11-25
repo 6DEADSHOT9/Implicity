@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "lint": "eslint . && tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "dev": "vite --host 127.0.0.1"
   },
   "dependencies": {
     "@json-render/react": "0.23.2",
