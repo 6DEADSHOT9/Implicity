@@ -26,7 +26,6 @@ export function DataTable({ columns, rows, chartValues, form, state, onAction }:
   const switchView = (to: "table" | "chart") => onAction?.("representation", to);
 
   return <section ref={root} className="space-y-space-3">
-    {/* TODO(#72): verify focus ring after the shared Button fix lands. */}
     <ButtonGroup aria-label="Data representation">
       <Button variant={form === "table" ? "default" : "outline"} aria-pressed={form === "table"} onClick={() => switchView("table")}>Table</Button>
       <Button variant={form === "chart" ? "default" : "outline"} aria-pressed={form === "chart"} disabled={!chartValues?.length} onClick={() => switchView("chart")}>Chart</Button>

@@ -539,7 +539,7 @@ test("content skeletons survive every gallery setting combination", async ({ pag
   expect(combinations).toBe(180);
 });
 
-test("content controls use their host, preserve list markers, and apply chart tokens", async ({ page }) => {
+test("content controls use their host, show focus rings, preserve list markers, and apply chart tokens", async ({ page }) => {
   await page.goto("/");
   const table = page.frameLocator('iframe[title="DataTable · default"]');
   const tableButton = table.getByRole("button", { name: "Table" });
@@ -547,6 +547,7 @@ test("content controls use their host, preserve list markers, and apply chart to
   await page.keyboard.press("Tab");
   const chartButton = table.getByRole("button", { name: "Chart" });
   await expect(chartButton).toBeFocused();
+  expect(await chartButton.evaluate((element) => getComputedStyle(element).boxShadow)).not.toBe("none");
   await chartButton.click();
   await expect(chartButton).toHaveAttribute("aria-pressed", "true");
   await expect(table.locator("svg")).toBeVisible();
@@ -555,6 +556,9 @@ test("content controls use their host, preserve list markers, and apply chart to
   const checkbox = checklist.getByRole("checkbox").nth(1);
   await checklist.getByText("Share with team").click();
   await expect(checkbox).toHaveAttribute("aria-checked", "true");
+  await checkbox.press("Space");
+  await expect(checkbox).toHaveAttribute("aria-checked", "false");
+  expect(await checkbox.evaluate((element) => getComputedStyle(element).boxShadow)).not.toBe("none");
 
   const tabs = page.frameLocator('iframe[title="Tabs · default"]');
   await tabs.getByRole("tab", { name: "Overview" }).focus();
