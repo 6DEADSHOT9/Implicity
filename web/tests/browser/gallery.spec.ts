@@ -554,7 +554,8 @@ test("Notebook applies its bundled body font, paper texture, and both mode palet
   expect(bodyFont).toContain("Source Serif 4");
   const frame = page.locator("iframe[title='ReviewPanel · plain']");
   const preview = page.frameLocator("iframe[title='ReviewPanel · plain']");
-  await expect(preview.locator("html")).toHaveAttribute("data-look", "notebook");
+  const previewRoot = preview.locator("html");
+  await expect(previewRoot).toHaveAttribute("data-look", "notebook");
   await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentDocument?.fonts.status)).toBe("loaded");
   await waitForStableHeight(frame);
   const previewHeading = preview.locator("[data-preview-heading]");
