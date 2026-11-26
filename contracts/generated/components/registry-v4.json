@@ -1,0 +1,17 @@
+{
+  "registry_version": 4,
+  "components": [
+    "ApprovalRequest",
+    "AttachmentTray",
+    "ChangeNotice",
+    "Citation",
+    "ContextChip",
+    "Details",
+    "MessageActions",
+    "MessageBody",
+    "Nudge",
+    "ProposalCard",
+    "RunActivity",
+    "ShortcutChips"
+  ]
+}

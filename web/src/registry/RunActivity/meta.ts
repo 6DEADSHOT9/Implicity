@@ -1,0 +1,2 @@
+const steps = [{ label: "Search the source", status: "complete" }, { label: "Compare the results", status: "running" }, { label: "Prepare the summary", status: "pending" }] as const;
+export const meta = { role: "content", slots: [], defaultStates: ["closed", "open"], commands: [], limits: { minWidth: 320, minHeight: 48, minContrast: 4.5 }, galleryStates: [{ id: "closed", props: { title: "Run activity", steps, open: false } }, { id: "open", props: { title: "Run activity", steps, open: true } }] } as const;
