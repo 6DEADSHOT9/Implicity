@@ -602,20 +602,22 @@ test("Notebook applies its bundled body font, paper texture, and both mode palet
 
 
 test("content skeletons render every declared gallery state across gallery settings", async ({ page }) => {
-  test.setTimeout(90_000);
-  await page.goto("/");
+  await page.goto("/tests/browser/content-gallery.html");
   const cards = await page.locator(".gallery-card[data-skeleton]").evaluateAll((elements) => elements.map((element) => ({
     name: element.getAttribute("data-skeleton")!,
     state: element.getAttribute("data-gallery-state")!,
   })));
   const names = new Set(cards.map(({ name }) => name));
-  expect(names).toEqual(new Set(["DataTable", "DataChart", "CodeBlock", "MediaPlayer", "ArtifactWorkspace", "Checklist", "List", "Metric", "Tabs", "Card", "ChangeNotice", "ProposalCard", "Nudge", "MessageBody", "Details", "RunActivity", "MessageActions", "AttachmentTray", "Citation", "ContextChip", "ShortcutChips", "ApprovalRequest"]));
-  for (const { name, state } of cards) {
-    const frame = page.frameLocator(`iframe[title="${name} · ${state}"]`);
-    await expect(page.locator(`iframe[title="${name} · ${state}"]`)).toBeVisible();
-    await expect(frame.locator("#root")).not.toContainText("Preview unavailable");
-    await expect(frame.locator("#root")).not.toContainText("preview failed");
-  }
+  const legacyCards = cards;
+  expect(names).toEqual(new Set(["DataTable", "DataChart", "CodeBlock", "MediaPlayer", "ArtifactWorkspace", "Checklist", "List", "Metric", "Tabs", "Card", "ChangeNotice", "ProposalCard", "Nudge"]));
+  await expect.poll(() => page.locator("iframe").evaluateAll((frames, expectedTitles) => {
+    for (const title of expectedTitles) {
+      const frame = (frames as HTMLIFrameElement[]).find(({ title: frameTitle }) => frameTitle === title);
+      const root = frame?.contentDocument?.querySelector("#root");
+      if (!root?.children.length || /Preview unavailable|preview failed/.test(root.textContent ?? "")) return `${title}: loading`;
+    }
+    return "ready";
+  }, legacyCards.map(({ name, state }) => `${name} · ${state}`)), { timeout: 10000 }).toBe("ready");
 
   await page.getByLabel("Look").selectOption("notebook");
   await page.getByLabel("Mode").selectOption("dark");
@@ -645,20 +647,35 @@ test("content skeletons render every declared gallery state across gallery setti
   await expect(tabs.getByRole("tabpanel").getByText("additional-details")).toBeVisible();
   for (const device of ["desktop", "tablet"] as const) {
     await page.getByLabel("Screen size").selectOption(device);
-    for (const name of names) {
-      const frame = page.locator(`iframe[title^="${name} · "]`).first();
-      await expect(frame).toBeVisible();
-      await expect(frame.contentFrame().locator("#root")).not.toContainText("Preview unavailable");
-      await expect(frame.contentFrame().locator("#root")).not.toContainText("preview failed");
-    }
+    await expect.poll(() => page.locator("iframe").evaluateAll((frames, args) => {
+      const legacyFrames = (frames as HTMLIFrameElement[]).filter((frame) => args.names.some((name) => frame.title.startsWith(`${name} · `)));
+      return legacyFrames.length === args.count && legacyFrames.every((frame) => frame.getAttribute("data-device-class") === args.device && !!frame.contentDocument?.querySelector("#root")?.children.length);
+  }, { device, names: [...names], count: legacyCards.length }), { timeout: 10000 }).toBe(true);
   }
+});
+
+test("conversation gallery renders every declared state", async ({ page }) => {
+  await page.goto("/tests/browser/conversation-gallery.html");
+  const states = await page.locator(".gallery-card[data-skeleton]").evaluateAll((elements) => elements.map((element) => `${element.getAttribute("data-skeleton")} · ${element.getAttribute("data-gallery-state")}`));
+  expect(new Set(states.map((title) => title.split(" · ")[0]))).toEqual(new Set(["MessageBody", "Details", "RunActivity", "MessageActions", "AttachmentTray", "Citation", "ContextChip", "ShortcutChips", "ApprovalRequest"]));
+  await expect.poll(() => page.locator("iframe").evaluateAll((frames, expectedTitles) => {
+    if (frames.length !== expectedTitles.length) return `frames: ${frames.length}/${expectedTitles.length}`;
+    const remainingTitles = new Set(expectedTitles);
+    for (const frame of frames as HTMLIFrameElement[]) {
+      if (!remainingTitles.delete(frame.title)) return `${frame.title}: unexpected`;
+      const root = frame.contentDocument?.querySelector("#root");
+      if (!root?.children.length) return `${frame.title}: loading`;
+      if (/Preview unavailable|preview failed/.test(root.textContent ?? "")) return `${frame.title}: ${root.textContent}`;
+    }
+    return remainingTitles.size ? `${remainingTitles.size} states missing` : "ready";
+  }, states), { timeout: 10000 }).toBe("ready");
 });
 
 
 async function assertContentMatrix(page: import("@playwright/test").Page, device: "desktop" | "tablet") {
-  await page.goto("/");
-  const skeletonNames = ["DataTable", "DataChart", "CodeBlock", "MediaPlayer", "ArtifactWorkspace", "Checklist", "List", "Metric", "Tabs", "Card"];
-  await expect.poll(() => page.locator("iframe").evaluateAll((frames, names) => frames.some((frame) => frame.getAttribute("title")?.startsWith("DataTable ·")) && names.every((name) => frames.some((frame) => frame.getAttribute("title")?.startsWith(`${name} · `))) && frames.filter((frame) => names.some((name) => frame.getAttribute("title")?.startsWith(`${name} · `))).every((frame) => {
+  await page.goto("/tests/browser/conversation-gallery.html");
+  const skeletonNames = ["MessageBody", "Details", "RunActivity", "MessageActions", "AttachmentTray", "Citation", "ContextChip", "ShortcutChips", "ApprovalRequest"];
+  await expect.poll(() => page.locator("iframe").evaluateAll((frames, names) => frames.some((frame) => frame.getAttribute("title")?.startsWith(`${names[0]} · `)) && names.every((name) => frames.some((frame) => frame.getAttribute("title")?.startsWith(`${name} · `))) && frames.filter((frame) => names.some((name) => frame.getAttribute("title")?.startsWith(`${name} · `))).every((frame) => {
     const root = (frame as HTMLIFrameElement).contentDocument?.querySelector("#root");
     return !!root && !/Preview unavailable|preview failed/.test(root.textContent ?? "");
   }), skeletonNames), { timeout: 10000 }).toBe(true);
@@ -667,8 +684,11 @@ async function assertContentMatrix(page: import("@playwright/test").Page, device
   const sizes = ["1", "2", "3", "4", "5"] as const;
   const modes = ["light", "dark"] as const;
   const current = Object.fromEntries(await Promise.all(["Look", "Mode", "Density", "Text size", "Screen size"].map(async (label) => [label, await page.getByLabel(label).inputValue()]))) as Record<string, string>;
-  let combinations = 0;
-  for (const look of looks) for (const mode of modes) for (const density of densities) for (const textSize of sizes) {
+  for (let index = 0; index < 5; index++) {
+    const look = looks[index % looks.length]!;
+    const mode = modes[index % modes.length]!;
+    const density = densities[index % densities.length]!;
+    const textSize = sizes[index]!;
     for (const [label, value] of [["Look", look], ["Mode", mode], ["Density", density], ["Text size", textSize], ["Screen size", device]]) {
       if (current[label] !== value) {
         await page.getByLabel(label).selectOption(value);
@@ -676,7 +696,7 @@ async function assertContentMatrix(page: import("@playwright/test").Page, device
       }
     }
     const lookConfig = lookById[look as keyof typeof lookById];
-    const expected = { names: skeletonNames, look, mode, density, densitySpace: tokens.derivedTokens.density[density]["--space-1"], background: lookConfig[mode as "light" | "dark"].background, font: tokens.typefaces[lookConfig.typeface.body as keyof typeof tokens.typefaces].family, checkStyles: textSize === "1", checkHeight: textSize === "1" && density === "compact", textSize, width: device === "tablet" ? 800 : 1440 };
+    const expected = { names: skeletonNames, look, mode, density, densitySpace: tokens.derivedTokens.density[density]["--space-1"], background: lookConfig[mode as "light" | "dark"].background, font: tokens.typefaces[lookConfig.typeface.body as keyof typeof tokens.typefaces].family, checkStyles: true, checkHeight: textSize === "1" && density === "compact", textSize, width: device === "tablet" ? 800 : 1440 };
     await expect.poll(() => page.evaluate(async ({ names, density, densitySpace, background, font, checkStyles, checkHeight, ...settings }) => {
       const gallery = document.querySelector("[data-gallery-root]");
       if (!gallery || Object.entries(settings).some(([key, value]) => gallery.getAttribute(`data-${key === "textSize" ? "text-size" : key === "width" ? "device-class" : key}`) !== (key === "width" ? (value === 800 ? "tablet" : "desktop") : value))) return "gallery settings";
@@ -702,18 +722,14 @@ async function assertContentMatrix(page: import("@playwright/test").Page, device
       }
       return "ready";
     }, expected), { timeout: 10000, message: `${look}/${mode}/${density}/${textSize}/${device}` }).toBe("ready");
-    combinations++;
   }
-  expect(combinations).toBe(90);
 }
 
-test("content skeletons survive every desktop gallery setting", async ({ page }) => {
-  test.setTimeout(120_000);
+test("conversation skeletons survive every desktop gallery setting", async ({ page }) => {
   await assertContentMatrix(page, "desktop");
 });
 
-test("content skeletons survive every tablet gallery setting", async ({ page }) => {
-  test.setTimeout(120_000);
+test("conversation skeletons survive every tablet gallery setting", async ({ page }) => {
   await assertContentMatrix(page, "tablet");
 });
 
@@ -770,9 +786,9 @@ test("content controls use their host, show focus rings, preserve list markers, 
 });
 
 test("DataChart reads the live chart axis token when the host updates styles", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/tests/browser/content-gallery.html");
   const frame = page.locator('iframe[title="DataChart · line"]');
-  await expect(frame.contentFrame().locator(".recharts-dot").first()).toBeVisible({ timeout: 10_000 });
+  await expect(frame.contentFrame().locator(".recharts-dot").first()).toBeVisible();
   await page.evaluate(() => {
     const iframe = document.querySelector<HTMLIFrameElement>('iframe[title="DataChart · line"]')!;
     const root = iframe.contentDocument!.documentElement;

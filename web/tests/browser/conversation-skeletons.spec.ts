@@ -4,7 +4,8 @@ test("conversation skeletons wrap at 375px and MessageBody keeps links safe and 
   const remoteRequests: { url: string; headers: Record<string, string> }[] = [];
   await page.route("https://tracker.invalid/**", async (route) => {
     remoteRequests.push({ url: route.request().url(), headers: await route.request().allHeaders() });
-    await route.abort();
+    if (route.request().url().endsWith("/fail.png")) return route.abort();
+    await route.fulfill({ status: 200, contentType: "image/png", body: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jS2cAAAAASUVORK5CYII=", "base64") });
   });
   const httpRequests: string[] = [];
   page.on("request", (request) => { if (request.url().startsWith("http://tracker.invalid/")) httpRequests.push(request.url()); });
@@ -42,12 +43,17 @@ test("conversation skeletons wrap at 375px and MessageBody keeps links safe and 
   await expect(link).toHaveAttribute("target", "_blank");
   await expect(message.locator("button")).toHaveCount(0);
   await expect(message.getByRole("img", { name: "blocked — tracker.invalid" })).toBeVisible();
-  await expect(message.getByRole("img", { name: "Remote preview — tracker.invalid" })).toBeVisible();
+  await expect(message.getByRole("img", { name: "failed preview — tracker.invalid" })).toBeVisible();
+  await expect(message.getByRole("img", { name: "Cross-origin preview" })).toBeVisible();
+  const image = message.locator('img[src="https://tracker.invalid/success.png"]');
+  await expect(image).toHaveJSProperty("naturalWidth", 1);
+  await expect(image).toHaveAttribute("referrerpolicy", "no-referrer");
+  await expect(image).not.toHaveAttribute("crossorigin", /.+/);
+  await expect(message).toContainText('<picture><source srcset="http://tracker.invalid/picture.png 1x, data:image/png;base64,AAAA 2x"><img src="http://tracker.invalid/picture.png" alt="raw html"></picture>');
   await expect(message.locator("p code")).toHaveClass(/rounded-md/);
   await expect(message.locator("blockquote")).toHaveClass(/border-s-token/);
   await expect(message.locator("hr")).toHaveClass(/border-b-token/);
   expect(httpRequests).toEqual([]);
-  expect(remoteRequests).toHaveLength(1);
-  expect(remoteRequests[0].headers).not.toHaveProperty("cookie");
-  expect(remoteRequests[0].headers).not.toHaveProperty("referer");
+  expect(remoteRequests.map(({ url }) => new URL(url).pathname).sort()).toEqual(["/fail.png", "/success.png"]);
+  for (const request of remoteRequests) expect(request.headers).not.toHaveProperty("referer");
 });
