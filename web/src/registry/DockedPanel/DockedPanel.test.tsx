@@ -23,6 +23,11 @@ describe("DockedPanel public interface", () => {
     expect(screen.getByRole("dialog", { name: "Workspace" })).toBeTruthy();
   });
 
+  it("keeps the stress tab label unbroken for wrapping coverage", () => {
+    const tabs = meta.galleryStates.find(({ id }) => id === "stress")?.props.tabs;
+    expect(tabs?.find(({ id }) => id === "activity_3")?.label).toBe("x".repeat(400));
+  });
+
   it("renders custom tab labels and content from slots named by tab id", () => {
     const custom = { ...meta.galleryStates[0].props, tabs: [{ id: "notes", label: "Notes" }, { id: "runs", label: "Runs" }], activeTab: "notes" };
     expect(propsSchema.safeParse(custom).success).toBe(true);

@@ -297,6 +297,48 @@ async function assertProjectLabels(page: Page, width: 375 | 288) {
 
 for (const width of [375, 288] as const) test(`ProjectPanel keeps its short labels on one line at ${width}px`, async ({ page }) => assertProjectLabels(page, width));
 
+async function assertFocusedProjectLabels(page: Page, viewportWidth: 288 | 1440, panelWidth?: 288 | 375) {
+  await page.goto("/");
+  await page.getByLabel("Screen size").selectOption(viewportWidth === 1440 ? "desktop" : "tablet");
+  await page.getByLabel("Look").selectOption("focused");
+  await page.getByLabel("Density").selectOption("spacious");
+  await page.getByLabel("Text size").selectOption("5");
+  const frame = page.locator('iframe[title="ProjectPanel · decisions"]');
+  if (viewportWidth === 288) {
+    await frame.evaluate((element) => { (element as HTMLIFrameElement).width = "288"; });
+  }
+  await expect.poll(() => frame.evaluate((element, width) => {
+    const iframe = element as HTMLIFrameElement;
+    const document = iframe.contentDocument;
+    const html = document?.documentElement;
+    return document?.fonts.status === "loaded" && iframe.contentWindow?.innerWidth === width && html?.dataset.look === "focused" && html.dataset.density === "spacious" && html.dataset.textSize === "5";
+  }, viewportWidth)).toBe(true);
+
+  if (viewportWidth === 1440 && panelWidth) {
+    await frame.evaluate((element, width) => {
+      const section = (element as HTMLIFrameElement).contentDocument!.querySelector<HTMLElement>('section[aria-label="Project"]')!;
+      section.style.width = `${width}px`;
+      section.style.boxSizing = "border-box";
+    }, panelWidth);
+  }
+
+  await expect.poll(() => frame.evaluate((element) => {
+    const document = (element as HTMLIFrameElement).contentDocument!;
+    const section = document.querySelector<HTMLElement>('section[aria-label="Project"]')!;
+    const list = section.querySelector<HTMLElement>('[role="tablist"]')!;
+    const labels = [...list.querySelectorAll<HTMLElement>("[role=tab]")].map((tab) => {
+      const range = document.createRange();
+      range.selectNodeContents(tab);
+      return { label: tab.textContent, lines: range.getClientRects().length };
+    });
+    return section.scrollWidth <= section.clientWidth && list.scrollWidth <= list.clientWidth && labels.every(({ lines }) => lines === 1) ? "ok" : JSON.stringify({ viewport: document.defaultView?.innerWidth, width: section.clientWidth, scroll: section.scrollWidth, listWidth: list.clientWidth, listScroll: list.scrollWidth, labels });
+  })).toBe("ok");
+}
+
+test("ProjectPanel short labels fit Focused at a 288px viewport", async ({ page }) => assertFocusedProjectLabels(page, 288));
+test("ProjectPanel short labels fit a 288px panel in a 1440px viewport", async ({ page }) => assertFocusedProjectLabels(page, 1440, 288));
+test("ProjectPanel short labels fit a 375px panel in a 1440px viewport", async ({ page }) => assertFocusedProjectLabels(page, 1440, 375));
+
 test("SourcesPanel disclosure follows its controlled docked state", async ({ page }) => {
   await page.goto("/");
   const sources = page.frameLocator('iframe[title="SourcesPanel · docked"]');

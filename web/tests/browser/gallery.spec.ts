@@ -601,6 +601,19 @@ test("Notebook applies its bundled body font, paper texture, and both mode palet
 });
 
 
+async function waitForContentPreviewSettings(page: import("@playwright/test").Page, names: readonly string[], settings: { look: string; mode: string; density: string; textSize: string; deviceClass: string }) {
+  await expect.poll(() => page.locator("iframe").evaluateAll((frames, expected) => {
+    const matching = frames.filter((frame) => expected.names.some((name: string) => frame.getAttribute("title")?.startsWith(`${name} · `))) as HTMLIFrameElement[];
+    const attributes = { look: "look", mode: "mode", density: "density", textSize: "text-size", deviceClass: "device-class" };
+    return matching.length > 0 && expected.names.every((name: string) => matching.some((frame) => frame.title.startsWith(`${name} · `))) && matching.every((frame) => {
+      const document = frame.contentDocument;
+      const root = document?.querySelector("#root");
+      const html = document?.documentElement;
+      return !!root?.children.length && !!root.textContent?.trim() && document.fonts.status === "loaded" && Object.entries(attributes).every(([key, attribute]) => html?.getAttribute(`data-${attribute}`) === expected.settings[key as keyof typeof expected.settings]);
+    });
+  }, { names, settings }), { message: `content previews ready for ${JSON.stringify(settings)}` }).toBe(true);
+}
+
 test("content skeletons render every declared gallery state across gallery settings", async ({ page }) => {
   await page.goto("/");
   const contentNames = new Set(["DataTable", "DataChart", "CodeBlock", "MediaPlayer", "ArtifactWorkspace", "Checklist", "List", "Metric", "Tabs", "Card", "ChangeNotice", "ProposalCard", "Nudge"]);
@@ -610,6 +623,14 @@ test("content skeletons render every declared gallery state across gallery setti
   })).filter(({ name }) => names.includes(name)), [...contentNames]);
   const names = new Set(cards.map(({ name }) => name));
   expect(names).toEqual(new Set(["DataTable", "DataChart", "CodeBlock", "MediaPlayer", "ArtifactWorkspace", "Checklist", "List", "Metric", "Tabs", "Card", "ChangeNotice", "ProposalCard", "Nudge"]));
+  const initialSettings = {
+    look: await page.getByLabel("Look").inputValue(),
+    mode: await page.getByLabel("Mode").inputValue(),
+    density: await page.getByLabel("Density").inputValue(),
+    textSize: await page.getByLabel("Text size").inputValue(),
+    deviceClass: await page.getByLabel("Screen size").inputValue(),
+  };
+  await waitForContentPreviewSettings(page, [...names], initialSettings);
   for (const { name, state } of cards) {
     const frame = page.frameLocator(`iframe[title="${name} · ${state}"]`);
     await expect(page.locator(`iframe[title="${name} · ${state}"]`)).toBeVisible();
@@ -625,7 +646,8 @@ test("content skeletons render every declared gallery state across gallery setti
   await expect(page.locator("[data-gallery-root]")).toHaveAttribute("data-look", "notebook");
   await expect(page.locator("[data-gallery-root]")).toHaveAttribute("data-mode", "dark");
   await expect(page.locator("[data-gallery-root]")).toHaveAttribute("data-device-class", "tablet");
-  await expect(page.frameLocator('iframe[title="DataTable · table"]').locator("html")).toHaveAttribute("data-mode", "dark");
+  const selectedSettings = { look: "notebook", mode: "dark", density: "spacious", textSize: "5", deviceClass: "tablet" };
+  await waitForContentPreviewSettings(page, [...names], selectedSettings);
   await expect(page.frameLocator('iframe[title="DataTable · table"]').locator("table")).toBeVisible();
   await expect(page.frameLocator('iframe[title="Tabs · default"]').getByRole("tablist")).toBeVisible();
   const chartView = page.frameLocator('iframe[title="DataTable · chart"]');
@@ -645,6 +667,7 @@ test("content skeletons render every declared gallery state across gallery setti
   await expect(tabs.getByRole("tabpanel").getByText("additional-details")).toBeVisible();
   for (const device of ["desktop", "tablet"] as const) {
     await page.getByLabel("Screen size").selectOption(device);
+    await waitForContentPreviewSettings(page, [...names], { ...selectedSettings, deviceClass: device });
     for (const name of names) {
       const frame = page.locator(`iframe[title^="${name} · "]`).first();
       await expect(frame).toBeVisible();

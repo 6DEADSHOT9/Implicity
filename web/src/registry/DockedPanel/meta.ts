@@ -1,8 +1,8 @@
 const longProse = "Release readiness and operational handover checklist for the production rollout, including service ownership, alert response and rollback notes";
-const longUrl = "x".repeat(400);
+const unbrokenLabel = "x".repeat(400);
 const manyTabs = Array.from({ length: 18 }, (_, index) => ({
   id: index === 0 ? "details" : `activity_${index + 1}`,
-  label: index === 0 ? "Details" : index === 1 ? longProse : index === 2 ? longUrl : `Workspace decision and approval history ${index + 1}`,
+  label: index === 0 ? "Details" : index === 1 ? longProse : index === 2 ? unbrokenLabel : `Workspace decision and approval history ${index + 1}`,
 }));
 
 export const meta = {
