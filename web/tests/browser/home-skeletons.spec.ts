@@ -35,21 +35,20 @@ async function expectHomeTitlesFit(page: import("@playwright/test").Page) {
       return { id, width: rect.width, left: rect.left, right: rect.right, viewport: frameDocument.defaultView!.innerWidth, scrollWidth: root.scrollWidth, textNodes };
     });
     const frame = frames.find((item) => item.title === "WidgetPicker · long-content");
-    const dialog = frame?.contentDocument?.querySelector('[role="dialog"]');
-    if (previews.some((preview) => !preview) || !frame || !dialog || dialog.getBoundingClientRect().width === 0) return false;
-    const rect = dialog.getBoundingClientRect();
+    const picker = frame?.contentDocument?.querySelector("[data-widget-picker-preview]");
+    if (previews.some((preview) => !preview) || !frame || !picker || picker.getBoundingClientRect().width === 0) return false;
+    const rect = picker.getBoundingClientRect();
     if (Number(frame.height) < rect.bottom) return false;
-    const title = dialog.querySelector("[data-slot=dialog-title]")!.getBoundingClientRect();
-    const range = dialog.ownerDocument.createRange();
-    range.selectNodeContents(dialog.querySelector("[data-slot=dialog-title]")!);
+    const titleElement = picker.querySelector("[data-widget-picker-title]")!;
+    const title = titleElement.getBoundingClientRect();
+    const range = picker.ownerDocument.createRange();
+    range.selectNodeContents(titleElement);
     const titleLines = Array.from(range.getClientRects(), ({ left, right }) => ({ left, right }));
-    const closeStyle = getComputedStyle(dialog.querySelector("[aria-label='Close widget picker']")!);
-    return { previews, picker: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: dialog.ownerDocument.defaultView!.innerWidth, height: dialog.ownerDocument.defaultView!.innerHeight, titleLeft: title.left, titleRight: title.right, titleLines, frameHeight: Number(frame.height) }, closeMinWidth: parseFloat(closeStyle.minWidth), closeMinHeight: parseFloat(closeStyle.minHeight) };
+    return { previews, picker: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: picker.ownerDocument.defaultView!.innerWidth, height: picker.ownerDocument.defaultView!.innerHeight, titleLeft: title.left, titleRight: title.right, titleLines, frameHeight: Number(frame.height) } };
   }, homeEntries);
-  const { previews, picker: bounds, closeMinWidth, closeMinHeight } = await result.jsonValue() as {
+  const { previews, picker: bounds } = await result.jsonValue() as {
     previews: Array<{ id: string; width: number; left: number; right: number; viewport: number; scrollWidth: number; textNodes: Array<{ length: number; rects: Array<{ left: number; right: number }>; bounds: { left: number; right: number } }> }>;
     picker: { left: number; top: number; right: number; bottom: number; width: number; height: number; titleLeft: number; titleRight: number; titleLines: Array<{ left: number; right: number }>; frameHeight: number };
-    closeMinWidth: number; closeMinHeight: number;
   };
   for (const bounds of previews) {
     expect(bounds.width, `${bounds.id} title width`).toBeGreaterThan(100);
@@ -64,8 +63,6 @@ async function expectHomeTitlesFit(page: import("@playwright/test").Page) {
       }
     }
   }
-  expect(closeMinWidth).toBeGreaterThanOrEqual(44);
-  expect(closeMinHeight).toBeGreaterThanOrEqual(44);
   expect(bounds.left).toBeGreaterThanOrEqual(0);
   expect(bounds.top).toBeGreaterThanOrEqual(0);
   expect(bounds.right).toBeLessThanOrEqual(bounds.width);
@@ -105,26 +102,26 @@ test("open picker previews do not steal focus and remain visible in the gallery"
   await expect.poll(() => page.evaluate(() => (document.activeElement as HTMLElement | null)?.tagName)).toBe("BODY");
   await page.keyboard.press("Tab");
   await expect(page.getByLabel("Look")).toBeFocused();
+  const pickerFrame = page.locator('iframe[title="WidgetPicker · open"]');
+  const frame = pickerFrame.contentFrame();
   const visibleHandle = await page.waitForFunction(() => {
     const iframe = Array.from(document.querySelectorAll("iframe")).find((item) => item.title === "WidgetPicker · open");
-    const dialog = iframe?.contentDocument?.querySelector('[role="dialog"]');
-    if (!iframe || !dialog || dialog.getBoundingClientRect().width === 0) return false;
-    const rect = dialog.getBoundingClientRect();
+    const picker = iframe?.contentDocument?.querySelector("[data-widget-picker-preview]");
+    if (!iframe || !picker || picker.getBoundingClientRect().width === 0) return false;
+    const rect = picker.getBoundingClientRect();
     if (Number(iframe.height) < rect.bottom) return false;
-    const view = dialog.ownerDocument.defaultView!;
-    const title = dialog.querySelector("[data-slot=dialog-title]")!;
-    const close = dialog.querySelector("[aria-label='Close widget picker']")!;
-    const range = dialog.ownerDocument.createRange();
+    const view = picker.ownerDocument.defaultView!;
+    const title = picker.querySelector("[data-widget-picker-title]")!;
+    const range = picker.ownerDocument.createRange();
     range.selectNodeContents(title);
     const titleLines = Array.from(range.getClientRects(), ({ left, right }) => ({ left, right }));
     const titleRect = title.getBoundingClientRect();
-    const closeStyle = getComputedStyle(close);
-    return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: view.innerWidth, height: view.innerHeight, titleLeft: titleRect.left, titleRight: titleRect.right, titleLines, closeMinWidth: parseFloat(closeStyle.minWidth), closeMinHeight: parseFloat(closeStyle.minHeight), frameHeight: Number(iframe.height) };
+    return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: view.innerWidth, height: view.innerHeight, titleLeft: titleRect.left, titleRight: titleRect.right, titleLines, frameHeight: Number(iframe.height) };
   });
   const visible = await visibleHandle.jsonValue() as {
     left: number; top: number; right: number; bottom: number; width: number; height: number;
     titleLeft: number; titleRight: number; titleLines: Array<{ left: number; right: number }>;
-    closeMinWidth: number; closeMinHeight: number; frameHeight: number;
+    frameHeight: number;
   };
   expect(visible.left).toBeGreaterThanOrEqual(0);
   expect(visible.top).toBeGreaterThanOrEqual(0);
@@ -133,9 +130,16 @@ test("open picker previews do not steal focus and remain visible in the gallery"
   expect(visible.titleLeft).toBeGreaterThanOrEqual(visible.left);
   expect(visible.titleRight).toBeLessThanOrEqual(visible.right);
   expect(visible.titleLines.every(({ left, right }) => left >= visible.left && right <= visible.right)).toBe(true);
-  expect(visible.closeMinWidth).toBeGreaterThanOrEqual(44);
-  expect(visible.closeMinHeight).toBeGreaterThanOrEqual(44);
   expect(visible.frameHeight).toBeGreaterThanOrEqual(visible.bottom);
+  await expect(frame.getByRole("dialog")).toHaveCount(0);
+  const firstSwitch = frame.getByRole("switch").first();
+  await firstSwitch.focus();
+  await page.keyboard.press("Shift+Tab");
+  await expect.poll(() => pickerFrame.evaluate((iframe) => iframe.ownerDocument.activeElement !== iframe)).toBe(true);
+  const lastAdd = frame.getByRole("button", { name: "Add Data table" });
+  await lastAdd.focus();
+  await page.keyboard.press("Tab");
+  await expect.poll(() => pickerFrame.evaluate((iframe) => iframe.ownerDocument.activeElement !== iframe)).toBe(true);
 });
 
 test("WidgetPicker fits short viewports and scrolls its rows", async ({ page }) => {
@@ -147,24 +151,63 @@ test("WidgetPicker fits short viewports and scrolls its rows", async ({ page }) 
     await expect(dialog).toBeVisible();
     const geometry = await dialog.evaluate((element) => {
       const rect = element.getBoundingClientRect();
-      const title = element.querySelector("[data-slot=dialog-title]")!.getBoundingClientRect();
+      const title = element.querySelector("[data-slot=card-title]")!.getBoundingClientRect();
+      const close = element.querySelector('[aria-label="Close widget picker"]')!.getBoundingClientRect();
       const scroll = element.querySelector('[data-slot="scroll-area-viewport"]')!;
-      return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, height: rect.height, titleTop: title.top, scrollHeight: scroll.scrollHeight, clientHeight: scroll.clientHeight, scrollViewport: scroll.getBoundingClientRect().height, scrollStyle: getComputedStyle(scroll).height, card: element.querySelector('[data-slot="card"]')!.getBoundingClientRect().height };
+      return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, height: rect.height, titleTop: title.top, titleCenter: title.top + title.height / 2, closeCenter: close.top + close.height / 2, scrollHeight: scroll.scrollHeight, clientHeight: scroll.clientHeight, scrollViewport: scroll.getBoundingClientRect().height, scrollStyle: getComputedStyle(scroll).height, card: element.querySelector('[data-slot="card"]')!.getBoundingClientRect().height };
     });
     expect(geometry.left).toBeGreaterThanOrEqual(0);
     expect(geometry.top).toBeGreaterThanOrEqual(0);
     expect(geometry.right).toBeLessThanOrEqual(viewport.width);
     expect(geometry.bottom).toBeLessThanOrEqual(viewport.height);
     expect(geometry.titleTop).toBeGreaterThanOrEqual(geometry.top);
+    expect(Math.abs(geometry.titleCenter - geometry.closeCenter)).toBeLessThanOrEqual(1);
     expect(geometry.scrollHeight, JSON.stringify(geometry)).toBeGreaterThan(geometry.clientHeight);
   }
+});
+
+test("long Switch and Add labels wrap inside the picker scroll viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 700 });
+  await page.goto("/tests/browser/home-skeletons.html?long-picker-labels");
+  await page.getByRole("button", { name: "Customize" }).click();
+  const dialog = page.getByRole("dialog", { name: "Choose Home widgets" });
+  const geometry = await dialog.evaluate((element) => {
+    const viewport = element.querySelector('[data-slot="scroll-area-viewport"]')!;
+    const viewportRect = viewport.getBoundingClientRect();
+    const switchLabel = element.querySelector("label")!;
+    const switchText = switchLabel.querySelector("span")!;
+    const switchControl = switchLabel.querySelector("button[role=switch]")!;
+    const add = element.querySelector('button[data-variant="outline"]')!;
+    const textBounds = (target: Element) => {
+      const range = element.ownerDocument.createRange();
+      range.selectNodeContents(target);
+      return Array.from(range.getClientRects(), ({ left, right }) => ({ left, right }));
+    };
+    const switchRect = switchControl.getBoundingClientRect();
+    return {
+      viewport: { left: viewportRect.left, right: viewportRect.right },
+      switch: { left: switchRect.left, right: switchRect.right },
+      switchLabel: textBounds(switchText),
+      addLabel: textBounds(add),
+      scrollWidth: viewport.scrollWidth,
+      clientWidth: viewport.clientWidth,
+    };
+  });
+  expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth);
+  expect(geometry.switch.left).toBeGreaterThanOrEqual(geometry.viewport.left);
+  expect(geometry.switch.right).toBeLessThanOrEqual(geometry.viewport.right + 1);
+  for (const line of [...geometry.switchLabel, ...geometry.addLabel]) {
+    expect(line.left).toBeGreaterThanOrEqual(geometry.viewport.left - 1);
+    expect(line.right).toBeLessThanOrEqual(geometry.viewport.right + 1);
+  }
+  expect(geometry.switchLabel.length).toBeGreaterThan(1);
+  expect(geometry.addLabel.length, JSON.stringify(geometry)).toBeGreaterThan(1);
 });
 
 test("Home titles and widget content wrap 150-character unbroken text", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 900 });
   await page.goto("/tests/browser/home-skeletons.html");
   const overflows = await page.locator("main").evaluate((main) => {
-    const root = main.ownerDocument.documentElement.getBoundingClientRect();
     const probes: Array<{ label: string; rects: DOMRect[]; bounds: DOMRect; parent: { tag: string; width: number; scrollWidth: number; wrap: string } }> = [];
     const walker = main.ownerDocument.createTreeWalker(main, NodeFilter.SHOW_TEXT);
     while (walker.nextNode()) {
@@ -174,7 +217,7 @@ test("Home titles and widget content wrap 150-character unbroken text", async ({
       range.selectNodeContents(node);
       const card = node.parentElement?.closest("[data-slot=card]");
       const parent = node.parentElement!;
-      probes.push({ label: node.textContent[0], rects: Array.from(range.getClientRects()), bounds: (card ?? root) as DOMRect, parent: { tag: parent.tagName, width: parent.getBoundingClientRect().width, scrollWidth: parent.scrollWidth, wrap: getComputedStyle(parent).overflowWrap } });
+      probes.push({ label: node.textContent[0], rects: Array.from(range.getClientRects()), bounds: (card ?? main.ownerDocument.documentElement).getBoundingClientRect(), parent: { tag: parent.tagName, width: parent.getBoundingClientRect().width, scrollWidth: parent.scrollWidth, wrap: getComputedStyle(parent).overflowWrap } });
     }
     return probes.map(({ label, rects, bounds, parent }) => ({ label, lineCount: rects.length, escaped: rects.some((rect) => rect.left < bounds.left - 1 || rect.right > bounds.right + 1), parent }));
   });

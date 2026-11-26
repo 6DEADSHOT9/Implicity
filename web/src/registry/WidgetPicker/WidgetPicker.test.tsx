@@ -32,18 +32,33 @@ describe("WidgetPicker", () => {
     }
   });
 
-  it("records only actual widget state changes and calls the owner with its component id", async () => {
+  it("records accepted widget changes after the parent displays them", async () => {
+    const recorder = recordingCapture();
+    const user = userEvent.setup();
+    const props = meta.galleryStates[1].props;
+
+    function AcceptingPicker() {
+      const [widgets, setWidgets] = useState(props.widgets);
+      return <WidgetPicker {...props} widgets={widgets} onWidgetChange={(id, enabled) => setWidgets((current) => current.map((widget) => widget.id === id ? { ...widget, enabled } : widget))} />;
+    }
+
+    render(<CaptureProvider sink={recorder.sink}><AcceptingPicker /></CaptureProvider>);
+    expect(recorder.events.map(({ name }) => name)).toEqual(["component_shown"]);
+    await user.click(screen.getByRole("switch", { name: "Resume" }));
+    expect(screen.getByRole("switch", { name: "Resume" }).getAttribute("aria-checked")).toBe("false");
+    expect(recorder.events).toContainEqual({ name: "setting_changed", dimension: "home_widgets", value: "off", component: "ResumeWidget" });
+  });
+
+  it("does not record a widget change refused by the parent", async () => {
     const recorder = recordingCapture();
     const onWidgetChange = vi.fn();
     const user = userEvent.setup();
-    const props = meta.galleryStates[1].props;
-    render(<CaptureProvider sink={recorder.sink}><WidgetPicker {...props} widgets={props.widgets.map((widget) => widget.id === "NowPlayingWidget" ? { ...widget, enabled: false } : widget)} onWidgetChange={onWidgetChange} /></CaptureProvider>);
+    render(<CaptureProvider sink={recorder.sink}><WidgetPicker {...meta.galleryStates[1].props} onWidgetChange={onWidgetChange} /></CaptureProvider>);
+
     await user.click(screen.getByRole("switch", { name: "Resume" }));
-    await user.click(screen.getByRole("switch", { name: "Now playing" }));
     expect(onWidgetChange).toHaveBeenCalledWith("ResumeWidget", false);
-    expect(onWidgetChange).toHaveBeenCalledWith("NowPlayingWidget", true);
-    expect(recorder.events).toContainEqual({ name: "setting_changed", dimension: "home_widgets", value: "off", component: "ResumeWidget" });
-    expect(recorder.events).toContainEqual({ name: "setting_changed", dimension: "home_widgets", value: "on", component: "NowPlayingWidget" });
+    expect(screen.getByRole("switch", { name: "Resume" }).getAttribute("aria-checked")).toBe("true");
+    expect(recorder.events.map(({ name }) => name)).toEqual(["component_shown"]);
   });
 
   it("passes the selected available widget id to onAdd", async () => {
@@ -81,7 +96,7 @@ describe("WidgetPicker", () => {
 
   it("requires unique heading ids", () => {
     const props = { ...meta.galleryStates[0].props, open: true };
-    render(<><WidgetPicker {...props} /><WidgetPicker {...props} /></>);
+    render(<><WidgetPicker {...props} onOpenChange={() => undefined} /><WidgetPicker {...props} onOpenChange={() => undefined} /></>);
     const ids = Array.from(document.querySelectorAll("h1, h2")).map((heading) => heading.id);
     expect(ids).toHaveLength(2);
     expect(ids.every(Boolean)).toBe(true);

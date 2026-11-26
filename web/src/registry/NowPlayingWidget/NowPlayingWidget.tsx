@@ -1,10 +1,5 @@
-import { useEffect, useRef } from "react";
-import { Empty, EmptyDescription, EmptyTitle } from "../../components/ui/empty";
-import { Item, ItemContent, ItemGroup, ItemTitle } from "../../components/ui/item";
 import { Progress } from "../../components/ui/progress";
-import { useCapture } from "../capture";
-import { useSeen } from "../use-seen";
-import { events } from "./events";
+import { BuiltinWidget } from "../BuiltinWidget";
 
 type Props = {
   progress: number;
@@ -12,36 +7,6 @@ type Props = {
 };
 
 export function NowPlayingWidget({ progress, slots }: Props) {
-  const { emit } = useCapture<(typeof events)[number]>();
-  const emitRef = useRef(emit);
-  const seenRef = useSeen({ component: "NowPlayingWidget", defaultState: "now-playing" });
-  emitRef.current = emit;
-
-  useEffect(() => {
-    emitRef.current("component_shown", { component: "NowPlayingWidget", default_state: "now-playing" });
-  }, []);
-
-  return (
-    <div ref={seenRef} className="min-w-0 break-words">
-      {slots?.content?.length ? (
-        <>
-          <Progress aria-label="Playback progress" value={progress} max={100} />
-          <ItemGroup>
-            {slots.content.map((item, index) => (
-              <Item role="listitem" key={index} className="min-w-0 break-words">
-                <ItemContent className="min-w-0 break-words">
-                  <ItemTitle className="block w-full min-w-0 break-words">{item}</ItemTitle>
-                </ItemContent>
-              </Item>
-            ))}
-          </ItemGroup>
-        </>
-      ) : (
-        <Empty>
-          <EmptyTitle>Nothing is playing</EmptyTitle>
-          <EmptyDescription>Start audio or video to see it here.</EmptyDescription>
-        </Empty>
-      )}
-    </div>
-  );
+  const leadingContent = slots?.content?.length ? <Progress aria-label="Playback progress" value={progress} max={100} /> : undefined;
+  return <BuiltinWidget component="NowPlayingWidget" defaultState="now-playing" emptyTitle="Nothing is playing" emptyDescription="Start audio or video to see it here." leadingContent={leadingContent} slots={slots} />;
 }

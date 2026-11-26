@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, type ReactElement, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import Ajv2020 from "ajv/dist/2020.js";
 import { z } from "zod";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -171,15 +171,18 @@ describe("registry and renderer", () => {
     expect(await markup(renderMessage(metric, "plain fallback"))).toContain("plain fallback");
   });
 
-  it("renders a static open WidgetPicker message without a modal focus trap", async () => {
+  it("renders a static open WidgetPicker message inline and dismisses it with Escape", async () => {
     const spec = {
       registry_version: registry.version,
       root: "picker",
       elements: { picker: { type: "WidgetPicker", props: { open: true, title: "Add widgets", widgets: [], availableWidgets: [] }, slots: {} } },
     };
     render(renderMessage(spec, "fallback"));
-    const dialog = await screen.findByRole("dialog");
-    expect(dialog.getAttribute("aria-modal")).not.toBe("true");
+    const preview = await screen.findByRole("region", { name: "Add widgets" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.keyDown(preview, { key: "Escape" });
+    expect(screen.queryByRole("region", { name: "Add widgets" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Customize" })).toBeTruthy();
   });
 
   it("falls back from a throwing message component in place", async () => {

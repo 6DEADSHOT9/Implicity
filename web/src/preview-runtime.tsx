@@ -72,7 +72,6 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
       textSize: config.textSize, deviceClass: config.deviceClass,
     });
     document.body.className = "gallery-preview-root";
-    document.body.dataset.previewEntry = entry?.id;
     document.body.dataset.previewState = state?.id;
     root.render(<PreviewMounted onMounted={onMounted} version={version}>{entry && state
       ? <PreviewExample entry={entry} props={state.props} slots={state.slots ?? {}} label={`${entry.id} · ${state.id}`} />

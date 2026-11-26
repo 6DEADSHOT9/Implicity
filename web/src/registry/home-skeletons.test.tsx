@@ -2,6 +2,7 @@
 import { act, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CaptureProvider, recordingCapture, registry, skeletonMetaSchema } from "./index";
+import { validateRegistryDefinitions } from "./validate";
 
 class TestIntersectionObserver {
   static instances: TestIntersectionObserver[] = [];
@@ -64,6 +65,16 @@ describe("Home Skeleton occasions", () => {
     expect(skeletonMetaSchema.safeParse({ ...meta, widget: { source: "Invalid source", refresh: "live" } }).success).toBe(false);
     for (const id of ["ResumeWidget", "ProjectsWidget", "ScheduledWidget", "QuickPromptsWidget", "NowPlayingWidget"]) {
       expect(registry.getSkeleton(id)!.meta.widget).toBeTruthy();
+    }
+  });
+
+  it("requires widget metadata on every built-in widget definition", () => {
+    const builtIns = ["ResumeWidget", "ProjectsWidget", "ScheduledWidget", "QuickPromptsWidget", "NowPlayingWidget"];
+    for (const id of builtIns) {
+      const definitions = [...registry.entries.values()].map((entry) => entry.id === id
+        ? { ...entry, meta: { ...entry.meta, widget: undefined } }
+        : entry);
+      expect(() => validateRegistryDefinitions(definitions)).toThrow(`${id} is missing widget metadata`);
     }
   });
 

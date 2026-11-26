@@ -47,9 +47,10 @@ const content = [<p key="paragraph">{paragraph}</p>, <span key="hash">{longText}
 
 function HomeSkeletonHarness() {
   const [open, setOpen] = useState(false);
+  const longPickerLabels = new URLSearchParams(location.search).has("long-picker-labels");
   const pickerWidgets = Array.from({ length: 60 }, (_, index) => ({
     id: ["ResumeWidget", "ProjectsWidget", "ScheduledWidget", "QuickPromptsWidget", "NowPlayingWidget"][index % 5],
-    label: `Widget ${index + 1}`,
+    label: longPickerLabels && index === 0 ? "W".repeat(150) : `Widget ${index + 1}`,
     enabled: true,
   }));
   return <main>
@@ -60,7 +61,7 @@ function HomeSkeletonHarness() {
     <WidgetFrame title={longTitle} lastUpdate="Updated today" source="scheduled_source" slots={{ content: [<ScheduledWidget key="scheduled" slots={{ content }} />] }} />
     <WidgetFrame title={longTitle} lastUpdate="Updated today" source="quick_prompts_source" slots={{ content: [<QuickPromptsWidget key="prompts" slots={{ content }} />] }} />
     <WidgetFrame title={longTitle} lastUpdate="Updated today" source="now_playing_source" slots={{ content: [<NowPlayingWidget key="now-playing" progress={35} slots={{ content }} />] }} />
-    <WidgetPicker open={open} title="Choose Home widgets" widgets={pickerWidgets} availableWidgets={[{ id: "DataTable", label: "Data table" }]} onOpenChange={setOpen} onWidgetChange={() => undefined} onAdd={() => undefined} />
+    <WidgetPicker open={open} title="Choose Home widgets" widgets={pickerWidgets} availableWidgets={[{ id: "DataTable", label: longPickerLabels ? "A".repeat(150) : "Data table" }]} onOpenChange={setOpen} onWidgetChange={() => undefined} onAdd={() => undefined} />
   </main>;
 }
 
