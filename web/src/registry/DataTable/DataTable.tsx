@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from "@tanstack/react-table";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -22,9 +22,8 @@ export function DataTable({ columns, rows, chartValues, form, state, onAction }:
   const previousForm = useRef(displayedForm);
   const emit = useRef(capture.emit);
   emit.current = capture.emit;
-  const data = useMemo(() => rows, [rows]);
   const tableColumns = useMemo<ColumnDef<string[]>[]>(() => columns.map((column, index) => ({ id: String(index), accessorFn: (row) => row[index] ?? "", header: column })), [columns]);
-  const table = useReactTable({ data, columns: tableColumns, getCoreRowModel: getCoreRowModel() });
+  const table = useReactTable({ data: rows, columns: tableColumns, getCoreRowModel: getCoreRowModel() });
 
   useEffect(() => {
     if (previousForm.current && displayedForm && previousForm.current !== displayedForm) emit.current("representation_switched", { dimension: "data_form", from: previousForm.current, to: displayedForm });

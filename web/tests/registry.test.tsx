@@ -287,6 +287,16 @@ describe("registry and renderer", () => {
     expect(tabs.schema.safeParse({ props: { tabs: [{ id: "summary", label: "Summary" }], selected: "summary" }, slots: { unrelated: ["child"] } }).success).toBe(false);
   });
 
+  it("registers named slots that use Object.prototype names", () => {
+    const tabs = registry.getSkeleton("Tabs")!;
+    const galleryState = {
+      id: "named_constructor",
+      props: { tabs: [{ id: "constructor", label: "Summary" }], selected: "constructor" },
+      slots: { constructor: ["child"] },
+    };
+    expect(() => createRegistry([{ ...tabs, meta: { ...tabs.meta, galleryStates: [...tabs.meta.galleryStates, galleryState] } }], registry.version)).not.toThrow();
+  });
+
   it("enables named slot validation from the definition instead of a component name", () => {
     const definition = defineSkeletonDefinition({
       id: "NamedParts",

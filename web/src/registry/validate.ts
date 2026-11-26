@@ -91,7 +91,7 @@ export function validateRegistryDefinitions(entries: readonly SkeletonDefinition
         throw new Error(`${entry.id} gallery state ${state.id} is missing example slots`);
       }
       for (const [slot, example] of Object.entries(state.slots ?? {})) {
-        const slotSchema = entry.slotsSchema.shape[slot] ?? entry.slotsSchema._def.catchall;
+        const slotSchema = Object.hasOwn(entry.slotsSchema.shape, slot) ? entry.slotsSchema.shape[slot] : entry.slotsSchema._def.catchall;
         const validSlot = slotSchema && z.object({ [slot]: slotSchema }).strict().safeParse({ [slot]: example }).success;
         if (!validSlot || (example as string[]).some((child) => !slotIdValid(child))) {
           throw new Error(`${entry.id} gallery state ${state.id} slot ${slot} example does not match its slot schema`);
