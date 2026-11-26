@@ -609,7 +609,7 @@ async function waitForContentPreviewSettings(page: import("@playwright/test").Pa
       const document = frame.contentDocument;
       const root = document?.querySelector("#root");
       const html = document?.documentElement;
-      return !!root?.children.length && !!root.textContent?.trim() && document.fonts.status === "loaded" && Object.entries(attributes).every(([key, attribute]) => html?.getAttribute(`data-${attribute}`) === expected.settings[key as keyof typeof expected.settings]);
+      return !!document && !!root?.children.length && !!root.textContent?.trim() && document.fonts.status === "loaded" && Object.entries(attributes).every(([key, attribute]) => html?.getAttribute(`data-${attribute}`) === expected.settings[key as keyof typeof expected.settings]);
     });
   }, { names, settings }), { message: `content previews ready for ${JSON.stringify(settings)}` }).toBe(true);
 }
