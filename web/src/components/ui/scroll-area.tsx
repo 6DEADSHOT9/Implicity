@@ -37,9 +37,9 @@ function ScrollBar({
       className={cn(
         "flex touch-none p-space-1 transition-colors select-none",
         orientation === "vertical" &&
-          "h-full w-space-3 border-l-token border-l-border",
+          "h-full w-space-3 token-border-l border-l-border",
         orientation === "horizontal" &&
-          "h-space-3 flex-col border-t-token border-t-border",
+          "h-space-3 flex-col token-border-t border-t-border",
         className
       )}
       {...props}

@@ -197,7 +197,7 @@ export const StackTrace = memo(
         <Collapsible open={isOpen} onOpenChange={setIsOpen}>
           <div
             className={cn(
-              "w-full overflow-hidden rounded-lg border-token bg-code-background font-mono text-sm text-code-foreground",
+              "w-full overflow-hidden rounded-lg token-border bg-code-background font-mono text-sm text-code-foreground",
               className
             )}
             {...props}
@@ -396,7 +396,7 @@ export const StackTraceContent = memo(
     return (
       <CollapsibleContent
         className={cn(
-            "max-h-content-height overflow-auto border-t-token bg-muted",
+            "max-h-content-height overflow-auto token-border-t bg-muted",
             "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=open]:animate-in",
             className
         )}

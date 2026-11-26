@@ -36,7 +36,7 @@ export const TerminalHeader = ({
 }: TerminalHeaderProps) => (
   <div
     className={cn(
-      "flex items-center justify-between border-border border-b-token px-space-4 py-space-2",
+      "flex items-center justify-between border-border token-border-b px-space-4 py-space-2",
       className
     )}
     {...props}
@@ -246,7 +246,7 @@ export const Terminal = ({
     <TerminalContext.Provider value={contextValue}>
       <div
         className={cn(
-          "flex flex-col overflow-hidden rounded-lg border-token bg-terminal-background text-terminal-foreground",
+          "flex flex-col overflow-hidden rounded-lg token-border bg-terminal-background text-terminal-foreground",
           className
         )}
         {...props}

@@ -59,13 +59,13 @@ function SheetContent({
         className={cn(
           "fixed z-50 flex flex-col gap-space-4 bg-background  transition ease-in-out data-[state=closed]:animate-out data-[state=closed]:duration-slow data-[state=open]:animate-in data-[state=open]:duration-slower",
           side === "right" &&
-            "inset-y-0 right-0 h-full w-3/4 border-l-token data-[state=closed]:slide-out-to-right  sm:max-w-content",
+            "inset-y-0 right-0 h-full w-3/4 token-border-l data-[state=closed]:slide-out-to-right  sm:max-w-content",
           side === "left" &&
-            "inset-y-0 left-0 h-full w-3/4 border-r-token data-[state=closed]:slide-out-to-left  sm:max-w-content",
+            "inset-y-0 left-0 h-full w-3/4 token-border-r data-[state=closed]:slide-out-to-left  sm:max-w-content",
           side === "top" &&
-            "inset-x-0 top-0 h-auto border-b-token data-[state=closed]:slide-out-to-top ",
+            "inset-x-0 top-0 h-auto token-border-b data-[state=closed]:slide-out-to-top ",
           side === "bottom" &&
-            "inset-x-0 bottom-0 h-auto border-t-token data-[state=closed]:slide-out-to-bottom ",
+            "inset-x-0 bottom-0 h-auto token-border-t data-[state=closed]:slide-out-to-bottom ",
           className
         )}
         {...props}
