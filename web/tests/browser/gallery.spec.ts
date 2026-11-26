@@ -82,6 +82,40 @@ test("base primitives stay in the gallery across token selections", async ({ pag
   }
 });
 
+test("Button variants and Tabs triggers meet 4.5:1 contrast in every look and mode", async ({ page }) => {
+  await page.goto("/tests/browser/gallery.html");
+  for (const look of ["default", "focused", "notebook"]) {
+    await page.getByLabel("Look").selectOption(look);
+    for (const mode of ["light", "dark"]) {
+      await page.getByLabel("Mode").selectOption(mode);
+      const buttons = page.locator(".primitive-gallery-grid > :first-child [data-slot='button']");
+      await expect(buttons).toHaveCount(8);
+      expect(await buttons.evaluateAll((elements) => [...new Set(elements.map((element) => element.getAttribute("data-variant")))].sort())).toEqual(["default", "destructive", "ghost", "link", "outline", "secondary"]);
+      const triggers = page.locator("[data-slot='tabs-trigger']");
+      await expect(triggers).toHaveCount(2);
+      for (const control of await page.locator("[data-slot='button'], [data-slot='tabs-trigger']").all()) {
+        const result = await control.evaluate((element) => {
+          const rgb = (color: string) => {
+            const values = color.match(/[\d.]+/g)!.map(Number);
+            return [...values.slice(0, 3), values[3] ?? 1];
+          };
+          const luminance = (color: string) => rgb(color).slice(0, 3).map((value) => {
+            const channel = value / 255;
+            return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+          }).reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index], 0);
+          let surface: Element | null = element;
+          while (surface && rgb(getComputedStyle(surface).backgroundColor)[3] !== 1) surface = surface.parentElement;
+          const foreground = getComputedStyle(element).color;
+          const background = surface ? getComputedStyle(surface).backgroundColor : getComputedStyle(document.documentElement).backgroundColor;
+          const values = [luminance(foreground), luminance(background)];
+          return { ratio: (Math.max(...values) + 0.05) / (Math.min(...values) + 0.05), control: element.outerHTML, foreground, background };
+        });
+        expect(result.ratio, `${look} ${mode}: ${result.control} (${result.foreground} on ${result.background})`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  }
+});
+
 test("focus rings are painted with 3:1 contrast on shared controls in every look and mode", async ({ page }) => {
   await page.goto("/tests/browser/gallery.html");
   const marker = page.getByRole("note", { name: "Remembered from your earlier conversation about travel" });
