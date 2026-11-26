@@ -62,9 +62,9 @@ These never move. Only additions, such as a new shortcut chip, are allowed.
 
 | Component | What it is | shadcn/ui base | Build |
 | --- | --- | --- | --- |
-| DockedPanel | A side panel that can hold tabs. Docked, it is a resizable pane beside the content; undocked, and on small screens, it opens as a Sheet over the content | Resizable when docked, Sheet when undocked or on small screens, Tabs | Composed |
+| DockedPanel | A side panel that can hold any tabs (one or more `{ id, label }` entries, the active one among them). Docked, it is a resizable pane beside the content; undocked, and on small screens, it opens as a Sheet over the content. On small screens it hides Dock and Undock and is shown as undocked, without changing the person's saved docked preference; crossing the breakpoint records no dock event | Resizable when docked, Sheet when undocked or on small screens, Tabs | Composed |
 | SourcesPanel | Sources for the current answer | Sources | Direct |
-| ProjectPanel | Decisions, constraints and files for a project | Tabs, Item | Composed |
+| ProjectPanel | Decisions, constraints and files for a project, as tabs with fixed ids; it shows any non-empty subset of them that includes the active tab | Tabs, Item | Composed |
 
 ### Home
 

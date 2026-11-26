@@ -1,0 +1,11 @@
+{
+  "registry_version": 4,
+  "components": [
+    "ChangeNotice",
+    "DockedPanel",
+    "Nudge",
+    "ProjectPanel",
+    "ProposalCard",
+    "SourcesPanel"
+  ]
+}

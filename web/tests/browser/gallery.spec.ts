@@ -552,20 +552,24 @@ test("Notebook applies its bundled body font, paper texture, and both mode palet
   const root = page.locator("[data-gallery-root]");
   const bodyFont = await root.evaluate((element) => getComputedStyle(element).fontFamily);
   expect(bodyFont).toContain("Source Serif 4");
+  const frame = page.locator("iframe[title='ReviewPanel · plain']");
   const preview = page.frameLocator("iframe[title='ReviewPanel · plain']");
   await expect(preview.locator("html")).toHaveAttribute("data-look", "notebook");
-  await expect.poll(() => preview.locator("body").evaluate((element) => getComputedStyle(element).fontFamily)).toBe(bodyFont);
+  await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentDocument?.fonts.status)).toBe("loaded");
+  await waitForStableHeight(frame);
   const previewHeading = preview.locator("[data-preview-heading]");
   const previewBodyFont = await preview.locator("body").evaluate((element) => getComputedStyle(element).fontFamily);
   expect(await previewHeading.evaluate((element) => getComputedStyle(element).fontFamily)).toBe(previewBodyFont);
   for (const size of ["1", "2", "3", "4", "5"] as const) {
     await page.getByLabel("Text size").selectOption(size);
+    await expect(previewRoot).toHaveAttribute("data-text-size", size);
+    await waitForStableHeight(frame);
     const actual = Number.parseFloat(await previewHeading.evaluate((element) => getComputedStyle(element).fontSize));
     const expected = Number.parseFloat(tokens.derivedTokens.textSize[size].headings["--heading-2"]) * 16;
     expect(actual).toBeCloseTo(expected, 1);
   }
   expect(await root.evaluate((element) => getComputedStyle(element).backgroundImage)).toContain("paper-grain.svg");
-  const textureDetails = async () => page.frameLocator("iframe[title='ReviewPanel · plain']").locator("html").evaluate(async (element) => {
+  const textureDetails = async () => previewRoot.evaluate(async (element) => {
     const url = getComputedStyle(element).backgroundImage.match(/url\(["']?(.*?)["']?\)/)?.[1];
     if (!url) return null;
     const image = new Image();
@@ -577,6 +581,8 @@ test("Notebook applies its bundled body font, paper texture, and both mode palet
   expect((await textureDetails())?.slice(1)).toEqual([160, 160, "rgb(251, 247, 237)"]);
   expect(await root.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe("rgb(251, 247, 237)");
   await page.getByLabel("Mode").selectOption("dark");
+  await expect(previewRoot).toHaveAttribute("data-mode", "dark");
+  await waitForStableHeight(frame);
   expect(await root.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe("rgb(32, 31, 26)");
   expect(await root.evaluate((element) => getComputedStyle(element).backgroundImage)).toContain("paper-grain.svg");
   expect((await textureDetails())?.slice(0, 1)[0]).toMatch(/\/textures\/paper-grain\.svg$/);

@@ -5,6 +5,7 @@ import notebook from "../../contracts/looks/notebook.json" with { type: "json" }
 import tokens from "../../contracts/looks/tokens.json" with { type: "json" };
 import { registry as defaultRegistry, type SkeletonEntry } from "./registry";
 import { PrimitiveGallery } from "./components/primitive-gallery";
+import { ChangeNoticeToastHost } from "./components/change-notice-toast-host";
 import "./gallery.css";
 
 const availableLooks = [looks, focused, notebook];
@@ -114,6 +115,7 @@ export function Gallery({ registry = defaultRegistry, previewPath = "/preview.ht
   }, [look, mode, density, textSize, deviceClass]);
 
   return <main ref={root} className="gallery" data-gallery-root data-look={look.id} data-mode={mode} data-density={density} data-text-size={textSize} data-texture={look.texture} data-device-class={deviceClass}>
+    <ChangeNoticeToastHost mode={mode === "dark" ? "dark" : "light"} />
     <header className="gallery-header"><div><p className="gallery-kicker">Implicity · Registry</p><h1>Skeleton gallery</h1></div>
       <div className="gallery-controls">
         {choices("Look", lookId, availableLooks.map(({ id }) => id), setLookId)}
