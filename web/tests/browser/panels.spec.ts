@@ -307,12 +307,12 @@ async function assertFocusedProjectLabels(page: Page, viewportWidth: 288 | 1440,
   if (viewportWidth === 288) {
     await frame.evaluate((element) => { (element as HTMLIFrameElement).width = "288"; });
   }
-  await expect.poll(() => frame.evaluate((element, width) => {
-    const iframe = element as HTMLIFrameElement;
-    const document = iframe.contentDocument;
-    const html = document?.documentElement;
-    return document?.fonts.status === "loaded" && iframe.contentWindow?.innerWidth === width && html?.dataset.look === "focused" && html.dataset.density === "spacious" && html.dataset.textSize === "5";
-  }, viewportWidth)).toBe(true);
+  const previewHtml = frame.contentFrame().locator("html");
+  await expect(previewHtml).toHaveAttribute("data-look", "focused");
+  await expect(previewHtml).toHaveAttribute("data-density", "spacious");
+  await expect(previewHtml).toHaveAttribute("data-text-size", "5");
+  await frame.evaluate(async (element) => { await (element as HTMLIFrameElement).contentDocument!.fonts.ready; });
+  await expect.poll(() => frame.evaluate((element, width) => (element as HTMLIFrameElement).contentWindow?.innerWidth, viewportWidth)).toBe(viewportWidth);
 
   if (viewportWidth === 1440 && panelWidth) {
     await frame.evaluate((element, width) => {
