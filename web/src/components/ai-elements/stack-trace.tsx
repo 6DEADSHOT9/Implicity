@@ -194,15 +194,17 @@ export const StackTrace = memo(
 
     return (
       <StackTraceContext.Provider value={contextValue}>
-        <div
-          className={cn(
-            " w-full overflow-hidden rounded-lg border-token bg-background font-mono text-sm",
-            className
-          )}
-          {...props}
-        >
-          {children}
-        </div>
+        <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+          <div
+            className={cn(
+              "w-full overflow-hidden rounded-lg border-token bg-code-background font-mono text-sm text-code-foreground",
+              className
+            )}
+            {...props}
+          >
+            {children}
+          </div>
+        </Collapsible>
       </StackTraceContext.Provider>
     );
   }
@@ -212,22 +214,18 @@ export type StackTraceHeaderProps = ComponentProps<typeof CollapsibleTrigger>;
 
 export const StackTraceHeader = memo(
   ({ className, children, ...props }: StackTraceHeaderProps) => {
-    const { isOpen, setIsOpen } = useStackTrace();
-
     return (
-      <Collapsible onOpenChange={setIsOpen} open={isOpen}>
-        <CollapsibleTrigger asChild {...props}>
-          <button
+      <CollapsibleTrigger asChild {...props}>
+        <button
             type="button"
             className={cn(
-              "flex w-full cursor-pointer items-center gap-space-3 p-space-3 text-left transition-colors hover:bg-muted",
+              "flex w-full cursor-pointer items-center gap-space-3 bg-code-background p-space-3 text-left text-code-foreground transition-colors hover:bg-muted focus-visible:ring-token focus-visible:ring-ring",
               className
             )}
           >
             {children}
-          </button>
-        </CollapsibleTrigger>
-      </Collapsible>
+        </button>
+      </CollapsibleTrigger>
     );
   }
 );
@@ -369,7 +367,6 @@ export type StackTraceExpandButtonProps = ComponentProps<"div">;
 export const StackTraceExpandButton = memo(
   ({ className, ...props }: StackTraceExpandButtonProps) => {
     const { isOpen } = useStackTrace();
-
     return (
       <div
         className={cn("flex size-control items-center justify-center", className)}
@@ -397,18 +394,16 @@ export const StackTraceContent = memo(
     const { isOpen } = useStackTrace();
 
     return (
-      <Collapsible open={isOpen}>
-        <CollapsibleContent
-          className={cn(
+      <CollapsibleContent
+        className={cn(
             "max-h-content-height overflow-auto border-t-token bg-muted",
             "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=open]:animate-in",
             className
-          )}
-          {...props}
-        >
-          {children}
-        </CollapsibleContent>
-      </Collapsible>
+        )}
+        {...props}
+      >
+        {children}
+      </CollapsibleContent>
     );
   }
 );
@@ -438,19 +433,15 @@ const FilePathButton = memo(
       }
     }, [frame, onFilePathClick]);
 
+    const path = <span>{frame.filePath}{frame.lineNumber !== null && `:${frame.lineNumber}`}{frame.columnNumber !== null && `:${frame.columnNumber}`}</span>;
+    if (!onFilePathClick) return path;
     return (
       <button
-        className={cn(
-          "underline  hover:text-primary",
-          onFilePathClick && "cursor-pointer"
-        )}
-        disabled={!onFilePathClick}
+        className="underline hover:text-primary"
         onClick={handleClick}
         type="button"
       >
-        {frame.filePath}
-        {frame.lineNumber !== null && `:${frame.lineNumber}`}
-        {frame.columnNumber !== null && `:${frame.columnNumber}`}
+        {path}
       </button>
     );
   }

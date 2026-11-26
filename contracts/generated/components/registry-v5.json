@@ -1,0 +1,26 @@
+{
+  "registry_version": 5,
+  "components": [
+    "ArtifactWorkspace",
+    "Card",
+    "ChangeNotice",
+    "Checklist",
+    "CodeBlock",
+    "DataChart",
+    "DataTable",
+    "HomeGrid",
+    "List",
+    "MediaPlayer",
+    "Metric",
+    "NowPlayingWidget",
+    "Nudge",
+    "ProjectsWidget",
+    "ProposalCard",
+    "QuickPromptsWidget",
+    "ResumeWidget",
+    "ScheduledWidget",
+    "Tabs",
+    "WidgetFrame",
+    "WidgetPicker"
+  ]
+}
