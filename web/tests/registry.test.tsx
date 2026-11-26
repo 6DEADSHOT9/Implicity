@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
-import { act, type ReactElement } from "react";
+import { act, type ReactElement, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
+import { render as renderView } from "@testing-library/react";
 import Ajv2020 from "ajv/dist/2020.js";
 import { z } from "zod";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { createRegistry, defineSkeleton, defineSkeletonDefinition, getSkeleton } from "../src/registry";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { CaptureProvider, createRegistry, defineSkeleton, defineSkeletonDefinition, getSkeleton, recordingCapture, registry } from "../src/registry";
 import { baselineLayout, renderLayout, renderMessage, resolveLayout } from "../src/renderer";
 import { events } from "./fixtures/ReviewPanel/events";
 import { meta } from "./fixtures/ReviewPanel/meta";
@@ -39,6 +40,108 @@ async function markup(element: ReactElement): Promise<string> {
 }
 
 afterEach(() => vi.restoreAllMocks());
+
+class RegistryIntersectionObserver {
+  static instances: RegistryIntersectionObserver[] = [];
+  target?: Element;
+  ratio?: number;
+  readonly root = null;
+  readonly rootMargin = "0px";
+  readonly thresholds = [0, 0.5];
+  constructor(private callback: IntersectionObserverCallback) { RegistryIntersectionObserver.instances.push(this); }
+  observe(target: Element) { this.target = target; if (this.ratio !== undefined) this.deliver(this.ratio); }
+  unobserve() { this.target = undefined; }
+  disconnect() { this.target = undefined; }
+  takeRecords() { return []; }
+  setRatio(intersectionRatio: number) {
+    this.ratio = intersectionRatio;
+    this.deliver(intersectionRatio);
+  }
+  private deliver(intersectionRatio: number) {
+    if (!this.target) return;
+    this.callback([{ target: this.target, isIntersecting: intersectionRatio > 0, intersectionRatio, time: performance.now() } as IntersectionObserverEntry], this as unknown as IntersectionObserver);
+  }
+}
+
+const previousCheckVisibility = Element.prototype.checkVisibility;
+
+const conversationIds = ["MessageBody", "Details", "RunActivity", "MessageActions", "AttachmentTray", "Citation", "ContextChip", "ShortcutChips", "ApprovalRequest"] as const;
+const sentinels = { message: "private-message-sentinel", label: "private-label-sentinel", file: "private-file-path-sentinel" };
+
+function propsWithSentinel(id: string, props: Record<string, unknown>) {
+  switch (id) {
+    case "MessageBody": return { ...props, content: sentinels.message };
+    case "Details": return { ...props, title: sentinels.label, content: sentinels.message };
+    case "RunActivity": return { ...props, title: sentinels.label, steps: [{ label: sentinels.message, status: "running" }] };
+    case "AttachmentTray": return { ...props, attachments: [{ id: "3f2504e0-4f89-41d3-9a0c-0305e82c3304", name: sentinels.file, type: "document" }] };
+    case "Citation": return { ...props, label: sentinels.label };
+    case "ContextChip": return { ...props, detail: sentinels.label };
+    case "ShortcutChips": return { ...props, commands: [{ id: "copy_answer", label: sentinels.label }] };
+    case "ApprovalRequest": return { ...props, title: sentinels.label, detail: sentinels.message };
+    default: return props;
+  }
+}
+
+describe("conversation registry entries", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    RegistryIntersectionObserver.instances = [];
+    vi.stubGlobal("IntersectionObserver", RegistryIntersectionObserver);
+    Object.defineProperty(Element.prototype, "checkVisibility", { configurable: true, value: () => true });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    if (previousCheckVisibility) Object.defineProperty(Element.prototype, "checkVisibility", { configurable: true, value: previousCheckVisibility });
+    else delete (Element.prototype as Partial<Element>).checkVisibility;
+  });
+
+  it("renders every declared gallery state through the public renderer and validates its example", () => {
+    for (const id of conversationIds) {
+      const entry = registry.getSkeleton(id)!;
+      for (const state of entry.meta.galleryStates) {
+        expect(entry.schema.safeParse({ props: state.props, slots: state.slots ?? {} }).success, `${id} ${state.id}`).toBe(true);
+        const view = renderView(<entry.Component props={state.props} slots={Object.fromEntries(Object.entries(state.slots ?? {}).map(([slot, children]) => [slot, children])) as Record<string, ReactNode>} />);
+        expect(view.container.textContent, `${id} ${state.id}`).not.toBe("");
+        if (id === "Details") expect(view.container.textContent).not.toContain("message_body");
+        view.unmount();
+      }
+    }
+  });
+
+  it("emits only the mount event and one exact seen event for each skeleton", async () => {
+    for (const id of conversationIds) {
+      const entry = registry.getSkeleton(id)!;
+      const state = entry.meta.galleryStates[id === "AttachmentTray" ? 1 : 0];
+      const defaultState = id === "AttachmentTray" ? "attached" : entry.meta.defaultStates[0];
+      const slot = id === "Details" ? "details" : id === "RunActivity" ? "steps" : undefined;
+      const recorder = recordingCapture();
+      const view = renderView(<CaptureProvider sink={recorder.sink}><entry.Component props={propsWithSentinel(id, state.props)} slots={{}} /></CaptureProvider>);
+      const shown = { name: "component_shown", component: id, default_state: defaultState, ...(slot ? { slot } : {}) };
+      expect(recorder.events).toEqual([shown]);
+
+      act(() => RegistryIntersectionObserver.instances.at(-1)!.setRatio(1));
+      await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
+      expect(recorder.events).toEqual([shown, { name: "component_seen", component: id, default_state: defaultState, seconds_visible: 3, ...(slot ? { slot } : {}) }]);
+      const serialized = JSON.stringify(recorder.events);
+      expect(serialized).not.toContain(sentinels.message);
+      expect(serialized).not.toContain(sentinels.label);
+      expect(serialized).not.toContain(sentinels.file);
+      view.unmount();
+    }
+  });
+
+  it("renders Details content from a valid public message spec without a slot", async () => {
+    const spec = {
+      registry_version: registry.version,
+      root: "details",
+      elements: { details: { type: "Details", props: { title: "Why", content: "MY DETAILS CONTENT", open: true }, slots: {} } },
+    };
+    const html = await markup(renderMessage(spec, "fallback"));
+    expect(html).toContain("MY DETAILS CONTENT");
+    expect(html).not.toContain("message_body");
+  });
+});
 
 describe("registry and renderer", () => {
   it("uses own registry keys and exposes fixed ids to callers", () => {

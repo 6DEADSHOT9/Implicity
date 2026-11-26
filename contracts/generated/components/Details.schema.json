@@ -28,7 +28,6 @@
       "type": "object",
       "properties": {
         "details": {
-          "minItems": 1,
           "type": "array",
           "items": {
             "type": "string",
@@ -36,9 +35,6 @@
           }
         }
       },
-      "required": [
-        "details"
-      ],
       "additionalProperties": false
     }
   },

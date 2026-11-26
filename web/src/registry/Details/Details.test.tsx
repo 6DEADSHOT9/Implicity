@@ -14,8 +14,14 @@ describe("Details", () => {
     const view = render(<CaptureProvider sink={recorder.sink}><Details {...state.props} onOpenChange={onOpenChange} /></CaptureProvider>);
     expect(screen.getByRole("button", { name: "Why this works" })).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Why this works" })); expect(onOpenChange).toHaveBeenCalledWith(true);
+    expect(recorder.events).toEqual([{ name: "component_shown", component: "Details", default_state: "folded", slot: "details" }]);
     view.rerender(<CaptureProvider sink={recorder.sink}><Details title="Why this works" content="The result follows from the evidence." open /></CaptureProvider>);
-    expect(recorder.events).toContainEqual({ name: "section_expanded", component: "Details", slot: "details" });
+    expect(recorder.events).toEqual([
+      { name: "component_shown", component: "Details", default_state: "folded", slot: "details" },
+      { name: "section_expanded", component: "Details", slot: "details" },
+    ]);
+    view.rerender(<CaptureProvider sink={recorder.sink}><Details title="Why this works" content="The result follows from the evidence." open /></CaptureProvider>);
+    expect(recorder.events).toHaveLength(2);
     expect(propsSchema.safeParse({ title: "", content: "x", open: false }).success).toBe(false);
   });
 });

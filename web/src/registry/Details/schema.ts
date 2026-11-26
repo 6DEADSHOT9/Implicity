@@ -1,4 +1,4 @@
 import { z } from "zod";
 
 export const propsSchema = z.object({ title: z.string().min(1), content: z.string().min(1), open: z.boolean() }).strict();
-export const slotsSchema = z.object({ details: z.array(z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/)).min(1) }).strict();
+export const slotsSchema = z.object({ details: z.array(z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/)).optional() }).strict();

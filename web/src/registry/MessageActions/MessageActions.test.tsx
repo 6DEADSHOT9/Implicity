@@ -9,11 +9,24 @@ import { propsSchema } from "./schema";
 
 describe("MessageActions", () => {
   it("calls control callbacks and records only the displayed form change", async () => {
-    const user = userEvent.setup(); const recorder = recordingCapture(); const onCopy = vi.fn(); const onAnswerFormChange = vi.fn();
-    const view = render(<CaptureProvider sink={recorder.sink}><MessageActions answer_form="prose" onCopy={onCopy} onAnswerFormChange={onAnswerFormChange} /></CaptureProvider>);
-    await user.click(screen.getByRole("button", { name: "Copy" })); await user.click(screen.getByRole("button", { name: "table" })); expect(onCopy).toHaveBeenCalledOnce(); expect(onAnswerFormChange).toHaveBeenCalledWith("table");
-    view.rerender(<CaptureProvider sink={recorder.sink}><MessageActions answer_form="table" /></CaptureProvider>);
-    expect(recorder.events).toContainEqual({ name: "representation_switched", dimension: "answer_form", from: "prose", to: "table" });
-    expect(propsSchema.safeParse(meta.galleryStates[0].props).success).toBe(true); expect(propsSchema.safeParse({ answer_form: "chart" }).success).toBe(false);
+    const user = userEvent.setup(); const recorder = recordingCapture(); const onCopy = vi.fn(); const onAnswerFormChange = vi.fn(); const onFeedback = vi.fn(); const onVersionChange = vi.fn(); const onRemember = vi.fn();
+    const view = render(<CaptureProvider sink={recorder.sink}><MessageActions answer_form="prose" version_index={2} version_count={3} onCopy={onCopy} onAnswerFormChange={onAnswerFormChange} onFeedback={onFeedback} onVersionChange={onVersionChange} onRemember={onRemember} /></CaptureProvider>);
+    await user.click(screen.getByRole("button", { name: "Copy" }));
+    await user.click(screen.getByRole("button", { name: "Helpful" }));
+    await user.click(screen.getByRole("button", { name: "Previous version" }));
+    await user.click(screen.getByRole("button", { name: "Remember this" }));
+    await user.click(screen.getByRole("button", { name: "Table" }));
+    expect(onCopy).toHaveBeenCalledOnce(); expect(onFeedback).toHaveBeenCalledWith("positive"); expect(onVersionChange).toHaveBeenCalledWith(1); expect(onRemember).toHaveBeenCalledOnce(); expect(onAnswerFormChange).toHaveBeenCalledWith("table");
+    expect(recorder.events).toEqual([{ name: "component_shown", component: "MessageActions", default_state: "prose" }]);
+    view.rerender(<CaptureProvider sink={recorder.sink}><MessageActions answer_form="table" version_index={2} version_count={3} /></CaptureProvider>);
+    expect(recorder.events).toEqual([
+      { name: "component_shown", component: "MessageActions", default_state: "prose" },
+      { name: "representation_switched", dimension: "answer_form", from: "prose", to: "table" },
+    ]);
+    view.rerender(<CaptureProvider sink={recorder.sink}><MessageActions answer_form="table" version_index={2} version_count={3} /></CaptureProvider>);
+    expect(recorder.events).toHaveLength(2);
+    expect(propsSchema.safeParse(meta.galleryStates[0].props).success).toBe(true);
+    expect(propsSchema.safeParse({ answer_form: "chart", version_index: 1, version_count: 1 }).success).toBe(false);
+    expect(propsSchema.safeParse({ answer_form: "prose", version_index: 3, version_count: 2 }).success).toBe(false);
   });
 });

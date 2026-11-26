@@ -9,22 +9,22 @@
           "type": "string",
           "minLength": 1
         },
-        "url": {
-          "type": "string",
-          "format": "uri"
-        },
         "source_type": {
           "type": "string",
           "enum": [
             "web",
             "memory"
           ]
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": [
         "label",
-        "url",
-        "source_type"
+        "source_type",
+        "source"
       ],
       "additionalProperties": false
     },
