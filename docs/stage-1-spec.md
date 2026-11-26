@@ -79,7 +79,7 @@ Stage 1 is 24 tickets after the spikes. Each becomes one GitHub issue with its b
 | --- | --- | --- | --- |
 | T14 | Backend skeleton | FastAPI app, SQLAlchemy and Alembic, the module boundaries, every module's tables, daily backup | T3 |
 | T15 | Agent module | The one file that talks to Hermes: conversations as sessions, streaming, cancel, quota | T14, S1 |
-| T16 | Chat end to end | Stream relay to the browser, chat state, markdown with code as CodeBlock and tables as DataTable, conversations stored | T15, T8, T9, T10 |
+| T16 | Chat end to end | Stream relay to the browser, chat state, markdown with code as CodeBlock and tables as DataTable, conversations stored; MessageBody's `long_answer` slot with its `folded` default state and section events, for the `long_answer_expanded` feature | T15, T8, T9, T10 |
 | T17 | MCP server | `catalogue` and `render`, message specs validated and stored with their message | T15, T6 |
 
 ### Capture

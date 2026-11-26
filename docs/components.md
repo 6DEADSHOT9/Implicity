@@ -33,7 +33,7 @@ These never move. Only additions, such as a new shortcut chip, are allowed.
 
 | Component | What it is | shadcn/ui base | Build |
 | --- | --- | --- | --- |
-| MessageBody | Rich text of a message. Code fences render as CodeBlock and markdown tables as DataTable. Images load automatically over https only, with no referrer and no cookies; one that cannot load shows a placeholder with its alt text and host. Images are not remembered per host and record no event | Message, Bubble, Typography, plus a markdown renderer | Composed |
+| MessageBody | Rich text of a message. Code fences render as CodeBlock and markdown tables as DataTable. It renders markdown only: raw HTML in a message is shown as text, never rendered. Images load automatically over https only, as a plain image with no referrer and no CORS mode, so the browser sends that host no cookies beyond what its third-party cookie rules allow; one that cannot load shows a placeholder with its alt text and host. Images are not remembered per host and record no event | Message, Bubble, Typography, plus a markdown renderer | Composed |
 | Details | A collapsible section, for reasoning and "why this works" | Reasoning, Collapsible | Direct |
 | RunActivity | Tool steps with their status | Tool and Task, built on Collapsible until AI Elements ships Trace | Direct |
 | MessageActions | Copy, regenerate, feedback, version switcher, answer-form switcher (prose, list, table), "Remember this" | Button Group, Tooltip, Pagination | Composed |
