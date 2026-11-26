@@ -24,7 +24,7 @@ async function panelMatrix(page: Page, look: string, mode: string) {
   const densities = ["compact", "comfortable", "spacious"];
   const textSizes = ["1", "2", "3", "4", "5"];
   const devices = ["desktop", "tablet"];
-  const labels = { Look: look, Mode: mode, Density: "", "Text size": "", "Screen size": "" };
+  const labels = { Look: "default", Mode: "light", Density: "comfortable", "Text size": "3", "Screen size": "desktop" };
   const setOption = async (label: keyof typeof labels, value: string) => {
     if (labels[label] === value) return;
     await page.getByLabel(label).selectOption(value);
