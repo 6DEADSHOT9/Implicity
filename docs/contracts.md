@@ -73,7 +73,7 @@ A field that does not apply to an event is left out, never sent as null. A suspe
 | `component_seen` | It stays on screen for a few seconds | Its default state, seconds visible. `slot` is required whenever the occasion is slot-scoped |
 | `section_expanded`, `section_collapsed` | A foldable section is toggled | None. `component` and `slot` are required and identify the section |
 | `representation_switched` | An answer or data result is switched between forms | Dimension (`data_form` or `answer_form`), from, to: values of that dimension |
-| `panel_opened`, `panel_closed`, `panel_docked`, `panel_undocked` | A panel changes | None. `component` is required and identifies the panel |
+| `panel_opened`, `panel_closed`, `panel_docked`, `panel_undocked` | A panel changes | None. `component` is required and identifies the panel. WidgetPicker counts as a panel for opening and closing |
 | `answer_copied`, `code_copied` | Content is copied | Share copied: `some`, `most` or `all` |
 | `answer_regenerated`, `generation_stopped`, `message_edited` | The person redoes, stops or edits | Seconds since the answer began |
 | `shortcut_used` | A shortcut chip or key is used | The Command, never the key pressed |
@@ -414,6 +414,14 @@ web/src/registry/DataTable/
   meta.ts           role (shell | content | panel | home | system), limits, gallery states
   DataTable.test.tsx
 ```
+
+A widget's `meta.ts` also has a `widget` block declaring where its data comes from and how it refreshes:
+
+```ts
+widget: { source: string /* a source id, in slot-id form */, refresh: "on_open" | "interval" | "live", intervalMinutes?: number /* required when refresh is "interval" */ }
+```
+
+Every built-in widget declares one; WidgetFrame shows the last update and source from it. Stage 1 declares the block only; fetching and refreshing the data come with the widgets feature.
 
 `meta.ts` also lists the states the gallery must show, such as empty, loading, long content and error. Each gallery state carries the example props, and slot content where the skeleton has slots, that put the skeleton in that state. Registry validation parses each state's example with the entry's `schema.ts` and fails, naming the folder and the state, when one is missing or invalid. The ticket that adds a skeleton supplies its examples, and the gallery renders each state from its example as given. The registry is the list of these folders, and adding one raises the registry version.
 

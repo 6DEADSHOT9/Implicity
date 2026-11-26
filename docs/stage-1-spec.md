@@ -10,7 +10,7 @@ Stage 1 builds the foundation: everything that later stages adapt, capture or bu
 
 - [ ] One command brings the whole system up from a fresh clone.
 - [ ] A chat works end to end through Hermes on the Codex subscription.
-- [ ] The gallery shows all 35 component skeletons in three looks, on desktop and tablet.
+- [ ] The gallery shows all 39 component skeletons in three looks, on desktop and tablet.
 - [ ] Behaviour events appear in PostHog with no message content.
 - [ ] The engine's demo app adapts one toy setting from canned counts, with a working Undo.
 
@@ -20,7 +20,7 @@ Stage 1 builds the foundation: everything that later stages adapt, capture or bu
 - The setup command.
 - The contracts and their generated types.
 - Design tokens and three hand-written looks: default, focused, notebook.
-- The component registry, all 35 skeletons, and the gallery.
+- The component registry, all 39 skeletons, and the gallery.
 - The backend skeleton with its module boundaries and tables.
 - The agent module, chat through Hermes, and the MCP server with `catalogue` and `render`.
 - Capture of the eight signal families Stage 1 produces. Media playback is captured in Stage 4 (ADR 0021).
