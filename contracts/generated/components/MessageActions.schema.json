@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "props": {
+      "type": "object",
+      "properties": {
+        "answer_form": {
+          "type": "string",
+          "enum": [
+            "prose",
+            "list",
+            "table"
+          ]
+        },
+        "version_index": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "version_count": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "answer_form",
+        "version_index",
+        "version_count"
+      ],
+      "additionalProperties": false
+    },
+    "slots": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "props",
+    "slots"
+  ],
+  "additionalProperties": false
+}
