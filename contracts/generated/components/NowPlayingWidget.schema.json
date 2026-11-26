@@ -5,10 +5,6 @@
     "props": {
       "type": "object",
       "properties": {
-        "title": {
-          "type": "string",
-          "minLength": 1
-        },
         "progress": {
           "type": "number",
           "minimum": 0,
@@ -16,7 +12,6 @@
         }
       },
       "required": [
-        "title",
         "progress"
       ],
       "additionalProperties": false

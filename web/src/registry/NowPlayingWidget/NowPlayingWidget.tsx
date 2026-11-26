@@ -1,15 +1,45 @@
-import { useEffect, useId, useRef } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import { useEffect, useRef } from "react";
+import { Empty, EmptyDescription, EmptyTitle } from "../../components/ui/empty";
+import { Item, ItemContent, ItemGroup, ItemTitle } from "../../components/ui/item";
 import { Progress } from "../../components/ui/progress";
 import { useCapture } from "../capture";
 import { useSeen } from "../use-seen";
 import { events } from "./events";
-type Props = { title: string; progress: number; slots?: { content?: React.ReactNode } };
-export function NowPlayingWidget({ title, progress, slots }: Props) {
+
+type Props = {
+  progress: number;
+  slots?: { content?: React.ReactNode[] };
+};
+
+export function NowPlayingWidget({ progress, slots }: Props) {
   const { emit } = useCapture<(typeof events)[number]>();
-  const emitRef = useRef(emit); emitRef.current = emit;
-  const titleId = useId();
+  const emitRef = useRef(emit);
   const seenRef = useSeen({ component: "NowPlayingWidget", defaultState: "now-playing" });
-  useEffect(() => { emitRef.current("component_shown", { component: "NowPlayingWidget", default_state: "now-playing" }); }, []);
-  return <Card ref={seenRef} role="region" aria-labelledby={titleId} className="min-w-0 overflow-hidden"><CardHeader><CardTitle><h2 id={titleId} style={{fontSize:"var(--heading-4)"}} className="break-words break-all">{title}</h2></CardTitle></CardHeader><CardContent className="min-w-0 break-all"><Progress aria-label="Playback progress" value={progress} max={100}/>{slots?.content}</CardContent></Card>;
+  emitRef.current = emit;
+
+  useEffect(() => {
+    emitRef.current("component_shown", { component: "NowPlayingWidget", default_state: "now-playing" });
+  }, []);
+
+  return (
+    <div ref={seenRef} className="min-w-0 break-words">
+      <Progress aria-label="Playback progress" value={progress} max={100} />
+      {slots?.content?.length ? (
+        <ItemGroup>
+          {slots.content.map((item, index) => (
+            <Item role="listitem" key={index} className="min-w-0 break-words">
+              <ItemContent className="min-w-0 break-words">
+                <ItemTitle className="min-w-0 break-words">{item}</ItemTitle>
+              </ItemContent>
+            </Item>
+          ))}
+        </ItemGroup>
+      ) : (
+        <Empty>
+          <EmptyTitle>Nothing is playing</EmptyTitle>
+          <EmptyDescription>Start audio or video to see it here.</EmptyDescription>
+        </Empty>
+      )}
+    </div>
+  );
 }

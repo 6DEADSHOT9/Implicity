@@ -16,6 +16,15 @@ export const skeletonMetaSchema = z.object({
     props: z.record(z.string(), z.unknown()),
     slots: z.record(z.string(), z.array(z.string())).optional(),
   }).strict()).min(1),
+  widget: z.object({
+    source: z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/),
+    refresh: z.enum(["on_open", "interval", "live"]),
+    intervalMinutes: z.number().int().positive().optional(),
+  }).strict().optional().superRefine((widget, ctx) => {
+    if (widget?.refresh === "interval" && widget.intervalMinutes === undefined) {
+      ctx.addIssue({ code: "custom", message: "intervalMinutes is required for interval refresh" });
+    }
+  }),
 }).strict();
 
 export type GalleryState = {
@@ -31,6 +40,7 @@ export type SkeletonMeta = {
   commands: readonly string[];
   limits: { minWidth: number; minHeight: number; minContrast: number };
   galleryStates: readonly GalleryState[];
+  widget?: { source: string; refresh: "on_open" | "interval" | "live"; intervalMinutes?: number };
 };
 export type SkeletonEntry = {
   id: string;
