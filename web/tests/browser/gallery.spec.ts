@@ -555,17 +555,24 @@ test("Notebook applies its bundled body font, paper texture, and both mode palet
   const root = page.locator("[data-gallery-root]");
   const bodyFont = await root.evaluate((element) => getComputedStyle(element).fontFamily);
   expect(bodyFont).toContain("Source Serif 4");
-  const previewHeading = page.frameLocator("iframe[title='ReviewPanel · plain']").locator("[data-preview-heading]");
-  const previewBodyFont = await frame.contentFrame().locator("body").evaluate((element) => getComputedStyle(element).fontFamily);
+  const preview = page.frameLocator("iframe[title='ReviewPanel · plain']");
+  const previewRoot = preview.locator("html");
+  await expect(previewRoot).toHaveAttribute("data-look", "notebook");
+  await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentDocument?.fonts.status)).toBe("loaded");
+  await waitForStableHeight(frame);
+  const previewHeading = preview.locator("[data-preview-heading]");
+  const previewBodyFont = await preview.locator("body").evaluate((element) => getComputedStyle(element).fontFamily);
   expect(await previewHeading.evaluate((element) => getComputedStyle(element).fontFamily)).toBe(previewBodyFont);
   for (const size of ["1", "2", "3", "4", "5"] as const) {
     await page.getByLabel("Text size").selectOption(size);
+    await expect(previewRoot).toHaveAttribute("data-text-size", size);
+    await waitForStableHeight(frame);
     const actual = Number.parseFloat(await previewHeading.evaluate((element) => getComputedStyle(element).fontSize));
     const expected = Number.parseFloat(tokens.derivedTokens.textSize[size].headings["--heading-2"]) * 16;
     expect(actual).toBeCloseTo(expected, 1);
   }
   expect(await root.evaluate((element) => getComputedStyle(element).backgroundImage)).toContain("paper-grain.svg");
-  const textureDetails = async () => page.frameLocator("iframe[title='ReviewPanel · plain']").locator("html").evaluate(async (element) => {
+  const textureDetails = async () => previewRoot.evaluate(async (element) => {
     const url = getComputedStyle(element).backgroundImage.match(/url\(["']?(.*?)["']?\)/)?.[1];
     if (!url) return null;
     const image = new Image();
@@ -577,6 +584,8 @@ test("Notebook applies its bundled body font, paper texture, and both mode palet
   expect((await textureDetails())?.slice(1)).toEqual([160, 160, "rgb(251, 247, 237)"]);
   expect(await root.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe("rgb(251, 247, 237)");
   await page.getByLabel("Mode").selectOption("dark");
+  await expect(previewRoot).toHaveAttribute("data-mode", "dark");
+  await waitForStableHeight(frame);
   expect(await root.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe("rgb(32, 31, 26)");
   expect(await root.evaluate((element) => getComputedStyle(element).backgroundImage)).toContain("paper-grain.svg");
   expect((await textureDetails())?.slice(0, 1)[0]).toMatch(/\/textures\/paper-grain\.svg$/);
@@ -591,7 +600,7 @@ test("content skeletons render every declared gallery state across gallery setti
     state: element.getAttribute("data-gallery-state")!,
   })));
   const names = new Set(cards.map(({ name }) => name));
-  expect(names).toEqual(new Set(["DataTable", "DataChart", "CodeBlock", "MediaPlayer", "ArtifactWorkspace", "Checklist", "List", "Metric", "Tabs", "Card"]));
+  expect(names).toEqual(new Set(["DataTable", "DataChart", "CodeBlock", "MediaPlayer", "ArtifactWorkspace", "Checklist", "List", "Metric", "Tabs", "Card", "ChangeNotice", "ProposalCard", "Nudge"]));
   for (const { name, state } of cards) {
     const frame = page.frameLocator(`iframe[title="${name} · ${state}"]`);
     await expect(page.locator(`iframe[title="${name} · ${state}"]`)).toBeVisible();
@@ -648,11 +657,14 @@ test("content skeletons survive every gallery setting combination", async ({ pag
   const modes = ["light", "dark"] as const;
   const devices = ["desktop", "tablet"] as const;
   const skeletonNames = ["DataTable", "DataChart", "CodeBlock", "MediaPlayer", "ArtifactWorkspace", "Checklist", "List", "Metric", "Tabs", "Card"];
+  const current = Object.fromEntries(await Promise.all(["Look", "Mode", "Density", "Text size", "Screen size"].map(async (label) => [label, await page.getByLabel(label).inputValue()]))) as Record<string, string>;
   let combinations = 0;
   for (const device of devices) for (const look of looks) for (const mode of modes) for (const density of densities) for (const textSize of sizes) {
     for (const [label, value] of [["Look", look], ["Mode", mode], ["Density", density], ["Text size", textSize], ["Screen size", device]]) {
-      const select = page.getByLabel(label);
-      if (await select.inputValue() !== value) await select.selectOption(value);
+      if (current[label] !== value) {
+        await page.getByLabel(label).selectOption(value);
+        current[label] = value;
+      }
     }
     const expected = { names: skeletonNames, look, mode, density, densitySpace: tokens.derivedTokens.density[density]["--space-1"], checkTokens: textSize === "1" && device === "desktop", checkReadiness: textSize === "1" && density === "compact" && mode === "light" && device === "desktop", textSize, width: device === "tablet" ? 800 : 1440 };
     await expect.poll(() => page.evaluate(async ({ names, density, densitySpace, checkTokens, checkReadiness, ...settings }) => {

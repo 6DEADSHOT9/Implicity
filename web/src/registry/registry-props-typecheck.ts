@@ -9,6 +9,11 @@ import { propsSchema as CardProps, slotsSchema as CardSlots } from "./Card/schem
 import { events as CardEvents } from "./Card/events.ts";
 import { meta as CardMeta } from "./Card/meta.ts";
 defineSkeleton(defineSkeletonDefinition({ id: "Card", props: CardProps, slots: CardSlots, events: CardEvents, meta: CardMeta }), CardComponent);
+import { ChangeNotice as ChangeNoticeComponent } from "./ChangeNotice/ChangeNotice.tsx";
+import { propsSchema as ChangeNoticeProps, slotsSchema as ChangeNoticeSlots } from "./ChangeNotice/schema.ts";
+import { events as ChangeNoticeEvents } from "./ChangeNotice/events.ts";
+import { meta as ChangeNoticeMeta } from "./ChangeNotice/meta.ts";
+defineSkeleton(defineSkeletonDefinition({ id: "ChangeNotice", props: ChangeNoticeProps, slots: ChangeNoticeSlots, events: ChangeNoticeEvents, meta: ChangeNoticeMeta }), ChangeNoticeComponent);
 import { Checklist as ChecklistComponent } from "./Checklist/Checklist.tsx";
 import { propsSchema as ChecklistProps, slotsSchema as ChecklistSlots } from "./Checklist/schema.ts";
 import { events as ChecklistEvents } from "./Checklist/events.ts";
@@ -44,6 +49,16 @@ import { propsSchema as MetricProps, slotsSchema as MetricSlots } from "./Metric
 import { events as MetricEvents } from "./Metric/events.ts";
 import { meta as MetricMeta } from "./Metric/meta.ts";
 defineSkeleton(defineSkeletonDefinition({ id: "Metric", props: MetricProps, slots: MetricSlots, events: MetricEvents, meta: MetricMeta }), MetricComponent);
+import { Nudge as NudgeComponent } from "./Nudge/Nudge.tsx";
+import { propsSchema as NudgeProps, slotsSchema as NudgeSlots } from "./Nudge/schema.ts";
+import { events as NudgeEvents } from "./Nudge/events.ts";
+import { meta as NudgeMeta } from "./Nudge/meta.ts";
+defineSkeleton(defineSkeletonDefinition({ id: "Nudge", props: NudgeProps, slots: NudgeSlots, events: NudgeEvents, meta: NudgeMeta }), NudgeComponent);
+import { ProposalCard as ProposalCardComponent } from "./ProposalCard/ProposalCard.tsx";
+import { propsSchema as ProposalCardProps, slotsSchema as ProposalCardSlots } from "./ProposalCard/schema.ts";
+import { events as ProposalCardEvents } from "./ProposalCard/events.ts";
+import { meta as ProposalCardMeta } from "./ProposalCard/meta.ts";
+defineSkeleton(defineSkeletonDefinition({ id: "ProposalCard", props: ProposalCardProps, slots: ProposalCardSlots, events: ProposalCardEvents, meta: ProposalCardMeta }), ProposalCardComponent);
 import { Tabs as TabsComponent } from "./Tabs/Tabs.tsx";
 import { propsSchema as TabsProps, slotsSchema as TabsSlots } from "./Tabs/schema.ts";
 import { events as TabsEvents } from "./Tabs/events.ts";

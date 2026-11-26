@@ -1,15 +1,8 @@
 {
   "registry_version": 3,
   "components": [
-    "ArtifactWorkspace",
-    "Card",
-    "Checklist",
-    "CodeBlock",
-    "DataChart",
-    "DataTable",
-    "List",
-    "MediaPlayer",
-    "Metric",
-    "Tabs"
+    "ChangeNotice",
+    "Nudge",
+    "ProposalCard"
   ]
 }
