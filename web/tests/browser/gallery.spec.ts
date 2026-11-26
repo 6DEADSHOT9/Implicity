@@ -192,6 +192,9 @@ test("gallery progress bar paints its token track and primary value", async ({ p
     };
   });
   expect(motion.actual).toEqual(motion.expected);
+  await indeterminate.evaluate((element) => (element as HTMLElement).style.setProperty("--motion-progress-indeterminate", "progress-indeterminate 3s linear infinite"));
+  await expect(indeterminate).toHaveCSS("animation-duration", "3s");
+  await indeterminate.evaluate((element) => (element as HTMLElement).style.removeProperty("--motion-progress-indeterminate"));
   const tokenColors = await indeterminate.evaluate((element) => {
     const root = getComputedStyle(element.ownerDocument.documentElement);
     return { primary: root.getPropertyValue("--primary"), muted: root.getPropertyValue("--muted") };
