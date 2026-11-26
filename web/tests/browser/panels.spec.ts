@@ -299,20 +299,25 @@ for (const width of [375, 288] as const) test(`ProjectPanel keeps its short labe
 
 async function assertFocusedProjectLabels(page: Page, viewportWidth: 288 | 1440, panelWidth?: 288 | 375) {
   await page.goto("/");
-  await page.getByLabel("Screen size").selectOption(viewportWidth === 1440 ? "desktop" : "tablet");
+  const frame = page.locator('iframe[title="ProjectPanel · decisions"]');
+  const section = frame.contentFrame().locator('section[aria-label="Project"]');
+  await expect(section).toBeVisible();
+  if (viewportWidth === 288) {
+    await page.getByLabel("Screen size").selectOption("tablet");
+    await expect(section).toBeVisible();
+    await frame.evaluate((element) => { (element as HTMLIFrameElement).width = "288"; });
+    await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentWindow?.innerWidth)).toBe(288);
+  }
   await page.getByLabel("Look").selectOption("focused");
   await page.getByLabel("Density").selectOption("spacious");
   await page.getByLabel("Text size").selectOption("5");
-  const frame = page.locator('iframe[title="ProjectPanel · decisions"]');
-  if (viewportWidth === 288) {
-    await frame.evaluate((element) => { (element as HTMLIFrameElement).width = "288"; });
-  }
   const previewHtml = frame.contentFrame().locator("html");
   await expect(previewHtml).toHaveAttribute("data-look", "focused");
   await expect(previewHtml).toHaveAttribute("data-density", "spacious");
   await expect(previewHtml).toHaveAttribute("data-text-size", "5");
   await frame.evaluate(async (element) => { await (element as HTMLIFrameElement).contentDocument!.fonts.ready; });
-  await expect.poll(() => frame.evaluate((element, width) => (element as HTMLIFrameElement).contentWindow?.innerWidth, viewportWidth)).toBe(viewportWidth);
+  await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentDocument?.fonts.status)).toBe("loaded");
+  await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentWindow?.innerWidth)).toBe(viewportWidth);
 
   if (viewportWidth === 1440 && panelWidth) {
     await frame.evaluate((element, width) => {
