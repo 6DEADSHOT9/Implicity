@@ -113,14 +113,19 @@ test("Button variants and Tabs triggers meet 4.5:1 contrast in every look and mo
         await ghost.evaluate((element) => { (element as HTMLElement).style.color = ""; element.parentElement!.style.opacity = "0.1"; });
         expect((await ghost.evaluate(measureContrast)).ratio).toBeLessThan(4.5);
         await ghost.evaluate((element) => { element.parentElement!.style.opacity = ""; });
+        const outline = page.locator("[data-slot='button'][data-variant='outline']").first();
+        await outline.evaluate((element) => { Object.assign((element as HTMLElement).style, { color: "black", backgroundColor: "rgb(100 100 100)", opacity: "0.7" }); });
+        expect((await outline.evaluate(measureContrast)).ratio).toBeLessThan(4.5);
+        await outline.evaluate((element) => { (element as HTMLElement).removeAttribute("style"); });
       }
-      for (const [opener, close, buttons] of [
-        ["Open dialog", "[data-slot='dialog-close']", ["Outline dialog", "Ghost dialog"]],
-        ["Open sheet", "[data-slot='sheet-content'] button", ["Outline sheet", "Ghost sheet"]],
+      for (const [opener, overlay, buttons] of [
+        ["Open dialog", "[data-slot='dialog-content']", ["Outline dialog", "Ghost dialog"]],
+        ["Open sheet", "[data-slot='sheet-content']", ["Outline sheet", "Ghost sheet"]],
       ] as const) {
         await page.getByRole("button", { name: opener }).click();
         if (opener === "Open dialog") await expect(page.locator("[data-slot='dialog-content']")).toHaveCSS("opacity", "1");
-        for (const button of [page.locator(close).first(), ...buttons.map((name) => page.getByRole("button", { name }))]) {
+        const close = page.locator(overlay).getByRole("button", { name: "Close" });
+        for (const button of [close, ...buttons.map((name) => page.getByRole("button", { name }))]) {
           const result = await button.evaluate(measureContrast);
           expect(result.ratio, `${look} ${mode} overlay: ${await button.evaluate((element) => element.outerHTML)} (${result.foreground} on ${result.background})`).toBeGreaterThanOrEqual(4.5);
         }
@@ -150,7 +155,7 @@ test("gallery progress bar paints its token track and primary value", async ({ p
     await page.getByLabel("Look").selectOption(look);
     for (const mode of ["light", "dark"]) {
       await page.getByLabel("Mode").selectOption(mode);
-      const progress = page.locator("[data-slot='progress']");
+      const progress = page.getByRole("progressbar", { name: "Task progress", exact: true });
       const colors = await progress.evaluate((element) => {
         const canvas = document.createElement("canvas");
         const context = canvas.getContext("2d")!;
@@ -173,6 +178,27 @@ test("gallery progress bar paints its token track and primary value", async ({ p
       expect(pixels.value, JSON.stringify(pixels)).toEqual(colors.primary);
     }
   }
+  const indeterminate = page.getByLabel("Indeterminate task progress");
+  await expect(indeterminate).not.toHaveAttribute("value");
+  expect(await indeterminate.evaluate((element) => (element as HTMLProgressElement).position)).toBe(-1);
+  await expect(indeterminate).toHaveCSS("animation-name", "progress-indeterminate");
+  await indeterminate.evaluate((element) => Object.assign((element as HTMLElement).style, { animation: "none", backgroundPosition: "0% 0" }));
+  const image = await indeterminate.screenshot();
+  const paintedPrimary = await page.evaluate(async ({ base64, primary }) => {
+    const image = await createImageBitmap(await fetch(`data:image/png;base64,${base64}`).then((response) => response.blob()));
+    const canvas = document.createElement("canvas");
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const context = canvas.getContext("2d")!;
+    context.drawImage(image, 0, 0);
+    const data = context.getImageData(0, 0, image.width, image.height).data;
+    const probe = document.createElement("canvas").getContext("2d")!;
+    probe.fillStyle = primary;
+    probe.fillRect(0, 0, 1, 1);
+    const expected = probe.getImageData(0, 0, 1, 1).data;
+    return Array.from({ length: data.length / 4 }, (_, index) => index * 4).some((index) => data[index] === expected[0] && data[index + 1] === expected[1] && data[index + 2] === expected[2]);
+  }, { base64: image.toString("base64"), primary: await indeterminate.evaluate((element) => getComputedStyle(element.ownerDocument.documentElement).getPropertyValue("--primary")) });
+  expect(paintedPrimary).toBe(true);
 });
 
 test("Preflight preserves gallery heading hierarchy and token-bordered controls", async ({ page }) => {
@@ -717,6 +743,14 @@ test("content skeletons render every declared gallery state across gallery setti
     await expect(frame.locator("#root")).not.toContainText("Preview unavailable");
     await expect(frame.locator("#root")).not.toContainText("preview failed");
   }
+  const cardEmpty = page.frameLocator('iframe[title="Card · empty"]').locator("[data-slot='empty']");
+  const emptyBorder = await cardEmpty.evaluate((element) => ({
+    width: getComputedStyle(element).borderTopWidth,
+    style: getComputedStyle(element).borderTopStyle,
+    token: getComputedStyle(element.ownerDocument.documentElement).getPropertyValue("--border-width").trim(),
+  }));
+  expect(emptyBorder.width).toBe(emptyBorder.token);
+  expect(emptyBorder.style).toBe("dashed");
 
   await page.getByLabel("Look").selectOption("notebook");
   await page.getByLabel("Mode").selectOption("dark");

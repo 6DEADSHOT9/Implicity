@@ -50,7 +50,6 @@ for (const name of ["--icon-size", "--focus-ring-width", "--border-width", ...Ar
 for (let level = 1; level <= 6; level += 1) utilityNames.add(`text-preview-heading-${level}`);
 utilityNames.add("size-icon");
 utilityNames.add("grid-cols-icon-content");
-for (const prefix of ["border", "border-x", "border-y", "border-t", "border-r", "border-b", "border-l", "border-s", "border-e"]) utilityNames.add(`${prefix}-token`);
 utilityNames.add("ring-token");
 utilityNames.add("focus-ring-token");
 utilityNames.add("outline-token-hidden");

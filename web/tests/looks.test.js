@@ -110,7 +110,7 @@ function parseFontStylesheet(css) {
     .toEqual(['"tailwindcss/preflight.css"', '"tailwindcss/theme.css"', '"tailwindcss/utilities.css"', '"tw-animate-css"']);
   expect(stylesheet.nodes.every((node) => node.type === "comment" ||
     (node.type === "atrule" && ["import", "custom-variant", "theme", "utility", "font-face", "keyframes", "media"].includes(node.name.toLowerCase())) ||
-    (node.type === "rule" && ["html", "body", "progress", "progress::-webkit-progress-bar", "progress::-webkit-progress-value", "progress::-moz-progress-bar", "ul, ol", ":where(button, input, select, textarea)"].includes(node.selector)))).toBe(true);
+    (node.type === "rule" && ["html", "body", "progress", "progress::-webkit-progress-bar", "progress::-webkit-progress-value", "progress::-moz-progress-bar", "progress:not([value])", "progress:not([value])::-webkit-progress-bar", "progress:not([value])::-moz-progress-bar", "ul, ol", ":where(button, input, select, textarea)"].includes(node.selector)))).toBe(true);
   const nodes = stylesheet.nodes.filter((node) => node.type === "atrule" && node.name.toLowerCase() === "font-face");
   expect(nodes).toHaveLength(4);
   const faces = [];

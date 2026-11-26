@@ -7,20 +7,30 @@ export async function measureContrast(element: Element, property: "color" | "bor
     context.fillRect(0, 0, 1, 1);
     return [...context.getImageData(0, 0, 1, 1).data];
   };
-  const composite = (source: number[], backdrop: number[], opacity: number) => {
-    const alpha = source[3] / 255 * opacity;
-    return source.slice(0, 3).map((channel, index) => channel * alpha + backdrop[index] * (1 - alpha));
+  const composite = (source: number[], backdrop: number[], opacity = 1) => {
+    const sourceAlpha = source[3] / 255 * opacity;
+    const backdropAlpha = backdrop[3] / 255;
+    const alpha = sourceAlpha + backdropAlpha * (1 - sourceAlpha);
+    return alpha ? [0, 1, 2].map((index) => (source[index] * sourceAlpha + backdrop[index] * backdropAlpha * (1 - sourceAlpha)) / alpha).concat(alpha * 255) : [0, 0, 0, 0];
   };
   const ancestors: Element[] = [];
   for (let node: Element | null = element; node; node = node.parentElement) ancestors.push(node);
-  let background = [255, 255, 255];
-  let opacity = 1;
-  for (const node of ancestors.reverse()) {
-    const style = getComputedStyle(node);
-    opacity *= Number(style.opacity);
-    background = composite(rgba(style.backgroundColor), background, opacity);
-  }
-  const foreground = composite(rgba(getComputedStyle(element)[property]), background, opacity);
+  ancestors.reverse();
+  const render = (includeForeground: boolean) => {
+    const paint = (index: number, backdrop: number[]): number[] => {
+      if (index === ancestors.length) return includeForeground ? composite(rgba(getComputedStyle(element)[property]), backdrop) : backdrop;
+      const node = ancestors[index];
+      const style = getComputedStyle(node);
+      if (Number(style.opacity) < 1) {
+        const group = paint(index + 1, composite(rgba(style.backgroundColor), [0, 0, 0, 0]));
+        return composite(group, backdrop, Number(style.opacity));
+      }
+      return paint(index + 1, composite(rgba(style.backgroundColor), backdrop));
+    };
+    return paint(0, [255, 255, 255, 255]);
+  };
+  const background = render(false).slice(0, 3);
+  const foreground = render(true).slice(0, 3);
   const luminance = (rgb: number[]) => rgb.map((value) => {
     const channel = value / 255;
     return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
