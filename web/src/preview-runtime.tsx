@@ -1,4 +1,4 @@
-import { Component, useEffect, type ReactNode } from "react";
+import { Component, useEffect, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import type { SkeletonEntry } from "./registry";
 import { ChangeNoticeToastHost } from "./components/change-notice-toast-host";
@@ -7,6 +7,17 @@ class PreviewBoundary extends Component<{ children: ReactNode; label: string }, 
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
   render() { return this.state.failed ? <p style={{ color: "var(--destructive)" }} role="alert">{this.props.label}: preview failed</p> : this.props.children; }
+}
+
+function PreviewExample({ entry, props, slots, label }: { entry: SkeletonEntry; props: Record<string, unknown>; slots: Record<string, ReactNode>; label: string }) {
+  const [exampleProps, setExampleProps] = useState(props);
+  useEffect(() => setExampleProps(props), [props]);
+  const onAction = (action?: string, value?: string | number | boolean) => {
+    if (action === "representation" && (value === "table" || value === "chart")) setExampleProps((current) => ({ ...current, form: value }));
+    if (action === "tab_select" && typeof value === "string") setExampleProps((current) => ({ ...current, selected: value }));
+    if (action === "checklist_toggle" && typeof value === "number") setExampleProps((current) => ({ ...current, items: (current.items as Array<{ label: string; checked: boolean }>).map((item, index) => index === value ? { ...item, checked: !item.checked } : item) }));
+  };
+  return <PreviewBoundary label={label}><entry.Component props={exampleProps} slots={slots} onAction={onAction} /></PreviewBoundary>;
 }
 
 function PreviewMounted({ children, onMounted, version }: { children: ReactNode; onMounted: (version: number) => void; version: number }) {
@@ -63,7 +74,7 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
     document.body.className = "gallery-preview-root";
     document.body.dataset.previewState = state?.id;
     root.render(<PreviewMounted onMounted={onMounted} version={version}>{entry && state
-      ? <PreviewBoundary label={`${entry.id} · ${state.id}`}><entry.Component props={state.props} slots={state.slots ?? {}} /></PreviewBoundary>
+      ? <PreviewExample entry={entry} props={state.props} slots={state.slots ?? {}} label={`${entry.id} · ${state.id}`} />
       : <p role="alert">Preview unavailable</p>}<ChangeNoticeToastHost mode={config.mode === "dark" ? "dark" : "light"} /></PreviewMounted>);
   };
   window.addEventListener("message", (event: MessageEvent<unknown>) => {

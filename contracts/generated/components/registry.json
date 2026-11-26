@@ -1,11 +1,126 @@
 {
-  "registry_version": 3,
+  "registry_version": 4,
   "components": [
+    "ArtifactWorkspace",
+    "Card",
     "ChangeNotice",
+    "Checklist",
+    "CodeBlock",
+    "DataChart",
+    "DataTable",
+    "List",
+    "MediaPlayer",
+    "Metric",
     "Nudge",
-    "ProposalCard"
+    "ProposalCard",
+    "Tabs"
   ],
   "catalogue": [
+    {
+      "name": "ArtifactWorkspace",
+      "role": "content",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "state": {
+            "default": "default",
+            "type": "string",
+            "enum": [
+              "default",
+              "empty",
+              "loading",
+              "long_content",
+              "error"
+            ]
+          }
+        },
+        "required": [
+          "title",
+          "content",
+          "state"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 120,
+        "minContrast": 4.5
+      }
+    },
+    {
+      "name": "Card",
+      "role": "content",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "state": {
+            "default": "default",
+            "type": "string",
+            "enum": [
+              "default",
+              "empty",
+              "loading",
+              "error"
+            ]
+          }
+        },
+        "required": [
+          "title",
+          "state"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [
+        "content"
+      ],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "content": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            }
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 120,
+        "minContrast": 4.5
+      }
+    },
     {
       "name": "ChangeNotice",
       "role": "system",
@@ -51,6 +166,429 @@
       "limits": {
         "minWidth": 320,
         "minHeight": 64,
+        "minContrast": 4.5
+      }
+    },
+    {
+      "name": "Checklist",
+      "role": "content",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "checked": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "label",
+                "checked"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "state": {
+            "default": "default",
+            "type": "string",
+            "enum": [
+              "default",
+              "empty",
+              "long_content",
+              "error"
+            ]
+          }
+        },
+        "required": [
+          "title",
+          "items",
+          "state"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 120,
+        "minContrast": 4.5
+      }
+    },
+    {
+      "name": "CodeBlock",
+      "role": "content",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "language": {
+            "default": "text",
+            "type": "string"
+          },
+          "variant": {
+            "default": "code",
+            "type": "string",
+            "enum": [
+              "code",
+              "diff",
+              "stack_trace",
+              "terminal"
+            ]
+          },
+          "state": {
+            "default": "default",
+            "type": "string",
+            "enum": [
+              "default",
+              "empty",
+              "long_content",
+              "error"
+            ]
+          }
+        },
+        "required": [
+          "code",
+          "language",
+          "variant",
+          "state"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 120,
+        "minContrast": 4.5
+      }
+    },
+    {
+      "name": "DataChart",
+      "role": "content",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "chartType": {
+            "default": "bar",
+            "type": "string",
+            "enum": [
+              "bar",
+              "line"
+            ]
+          },
+          "state": {
+            "default": "default",
+            "type": "string",
+            "enum": [
+              "default",
+              "empty",
+              "loading",
+              "long_content",
+              "error"
+            ]
+          }
+        },
+        "required": [
+          "title",
+          "labels",
+          "values",
+          "chartType",
+          "state"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 120,
+        "minContrast": 4.5
+      }
+    },
+    {
+      "name": "DataTable",
+      "role": "content",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "chartValues": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "form": {
+            "default": "table",
+            "type": "string",
+            "enum": [
+              "table",
+              "chart"
+            ]
+          },
+          "state": {
+            "default": "default",
+            "type": "string",
+            "enum": [
+              "default",
+              "empty",
+              "loading",
+              "long_content",
+              "error"
+            ]
+          }
+        },
+        "required": [
+          "columns",
+          "rows",
+          "form",
+          "state"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 120,
+        "minContrast": 4.5
+      }
+    },
+    {
+      "name": "List",
+      "role": "content",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "ordered": {
+            "default": false,
+            "type": "boolean"
+          },
+          "state": {
+            "default": "default",
+            "type": "string",
+            "enum": [
+              "default",
+              "empty",
+              "long_content",
+              "error"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "ordered",
+          "state"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 120,
+        "minContrast": 4.5
+      }
+    },
+    {
+      "name": "MediaPlayer",
+      "role": "content",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "mediaType": {
+            "type": "string",
+            "enum": [
+              "audio",
+              "video"
+            ]
+          },
+          "sourceKind": {
+            "default": "attachment",
+            "type": "string",
+            "enum": [
+              "youtube",
+              "attachment"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "format": "uri"
+          },
+          "state": {
+            "default": "default",
+            "type": "string",
+            "enum": [
+              "default",
+              "empty",
+              "loading",
+              "error"
+            ]
+          }
+        },
+        "required": [
+          "title",
+          "mediaType",
+          "sourceKind",
+          "state"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 120,
+        "minContrast": 4.5
+      }
+    },
+    {
+      "name": "Metric",
+      "role": "content",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "progress": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "number",
+                "minimum": 0
+              },
+              "max": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              }
+            },
+            "required": [
+              "value",
+              "max"
+            ],
+            "additionalProperties": false
+          },
+          "context": {
+            "type": "string"
+          },
+          "state": {
+            "default": "default",
+            "type": "string",
+            "enum": [
+              "default",
+              "empty",
+              "loading",
+              "error"
+            ]
+          }
+        },
+        "required": [
+          "label",
+          "value",
+          "state"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 120,
         "minContrast": 4.5
       }
     },
@@ -148,6 +686,74 @@
       "limits": {
         "minWidth": 320,
         "minHeight": 160,
+        "minContrast": 4.5
+      }
+    },
+    {
+      "name": "Tabs",
+      "role": "content",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "tabs": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "label"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "selected": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          },
+          "state": {
+            "default": "default",
+            "type": "string",
+            "enum": [
+              "default",
+              "empty",
+              "error"
+            ]
+          }
+        },
+        "required": [
+          "tabs",
+          "selected",
+          "state"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {},
+        "additionalProperties": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          }
+        }
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 120,
         "minContrast": 4.5
       }
     }

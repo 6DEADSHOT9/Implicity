@@ -39,11 +39,12 @@ export type SkeletonEntry = {
   schema: z.ZodObject<{ props: z.ZodObject<z.ZodRawShape>; slots: z.ZodObject<z.ZodRawShape> }>;
   events: readonly string[];
   meta: SkeletonMeta;
-  Component: ComponentType<{ props: unknown; slots: Record<string, ReactNode> }>;
+  Component: ComponentType<{ props: unknown; slots: Record<string, ReactNode>; onAction?: (action?: string, value?: string | number | boolean) => void }>;
 };
 
 type ComponentProps<P extends z.ZodObject<z.ZodRawShape>, S extends z.ZodObject<z.ZodRawShape>> = z.infer<P> & {
   slots?: Partial<Record<Extract<keyof z.infer<S>, string>, ReactNode[]>>;
+  onAction?: (action?: string, value?: string | number | boolean) => void;
 };
 export type SkeletonDefinition<P extends z.ZodObject<z.ZodRawShape> = z.ZodObject<z.ZodRawShape>, S extends z.ZodObject<z.ZodRawShape> = z.ZodObject<z.ZodRawShape>> = {
   id: string;
@@ -54,8 +55,14 @@ export type SkeletonDefinition<P extends z.ZodObject<z.ZodRawShape> = z.ZodObjec
   meta: SkeletonMeta;
 };
 
-export function createSkeletonSchema<P extends z.ZodObject<z.ZodRawShape>, S extends z.ZodObject<z.ZodRawShape>>(props: P, slots: S) {
-  return z.object({ props: props.strict(), slots: slots.strict() }).strict();
+export function createSkeletonSchema<P extends z.ZodObject<z.ZodRawShape>, S extends z.ZodObject<z.ZodRawShape>>(props: P, slots: S, namedPartProp?: string) {
+  return z.object({ props: props.strict(), slots: slots._def.catchall ? slots : slots.strict() }).strict().superRefine((value, ctx) => {
+    if (!namedPartProp) return;
+    const parts = (value.props as Record<string, unknown>)[namedPartProp];
+    if (!Array.isArray(parts)) return;
+    const ids = new Set(parts.map((part) => (part as { id?: unknown }).id));
+    for (const slot of Object.keys(value.slots)) if (!ids.has(slot)) ctx.addIssue({ code: "custom", path: ["slots", slot], message: "Slot must match a named part" });
+  });
 }
 
 export function defineSkeletonDefinition<P extends z.ZodObject<z.ZodRawShape>, S extends z.ZodObject<z.ZodRawShape>>(entry: {
@@ -64,10 +71,11 @@ export function defineSkeletonDefinition<P extends z.ZodObject<z.ZodRawShape>, S
   slots: S;
   events: readonly string[];
   meta: SkeletonMeta;
+  namedPartProp?: string;
 }): SkeletonDefinition<P, S> {
   const propsSchema = entry.props.strict() as P;
-  const slotsSchema = entry.slots.strict() as S;
-  const schema = createSkeletonSchema(propsSchema, slotsSchema);
+  const slotsSchema = (entry.slots._def.catchall ? entry.slots : entry.slots.strict()) as S;
+  const schema = createSkeletonSchema(propsSchema, slotsSchema, entry.namedPartProp);
   return { id: entry.id, propsSchema, slotsSchema, schema, events: entry.events, meta: entry.meta };
 }
 
@@ -75,12 +83,13 @@ export function defineSkeleton<P extends z.ZodObject<z.ZodRawShape>, S extends z
   definition: SkeletonDefinition<P, S>,
   Skeleton: ComponentType<ComponentProps<P, S>>,
 ) {
-  function Component({ props, slots }: { props: unknown; slots: Record<string, ReactNode> }) {
+  function Component({ props, slots, onAction }: { props: unknown; slots: Record<string, ReactNode>; onAction?: (action?: string, value?: string | number | boolean) => void }) {
     const propsSchema = definition.propsSchema;
     const parsed = propsSchema.safeParse(props);
     if (!parsed.success) throw new Error("Skeleton props failed runtime validation");
     const slotArrays = Object.fromEntries(Object.entries(slots).map(([name, children]) => [name, Array.isArray(children) ? children : [children]]));
-    return createElement(Skeleton, { ...(parsed.data as ComponentProps<P, S>), slots: slotArrays as ComponentProps<P, S>["slots"] });
+    const action = definition.id === "Nudge" && onAction ? () => onAction() : onAction;
+    return createElement(Skeleton, { ...(parsed.data as ComponentProps<P, S>), slots: slotArrays as ComponentProps<P, S>["slots"], onAction: action });
   }
   return {
     ...definition,
