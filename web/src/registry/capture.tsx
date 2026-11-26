@@ -26,6 +26,10 @@ export function CaptureProvider({ sink, children }: { sink: CaptureSink; childre
   return <CaptureContext.Provider value={sink}>{children}</CaptureContext.Provider>;
 }
 
+export function useCaptureSink() {
+  return useContext(CaptureContext);
+}
+
 /** A skeleton passes the union of the event names it declares in events.ts. */
 export function useCapture<Declared extends EventName>() {
   const sink = useContext(CaptureContext);

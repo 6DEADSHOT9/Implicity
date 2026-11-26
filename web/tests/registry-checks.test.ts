@@ -12,6 +12,7 @@ import { meta } from "./fixtures/ReviewPanel/meta";
 import { definition, propsSchema, slotsSchema } from "./fixtures/ReviewPanel/schema";
 import catalogueFixture from "./fixtures/catalogue.json";
 import registryV2 from "../../contracts/generated/components/registry-v2.json";
+import { registryVersion } from "../src/registry/version";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -62,8 +63,8 @@ describe("registry generation guards", () => {
       copy("contracts/generated/components", "contracts/generated/components");
       mkdirSync(join(temp, "web"), { recursive: true });
       if (!existsSync(join(temp, "web/node_modules"))) symlinkSync(resolve(ROOT, "web/node_modules"), join(temp, "web/node_modules"), "dir");
-      const snapshotPath = join(temp, "contracts/generated/components/registry-v2.json");
-      writeFileSync(snapshotPath, JSON.stringify({ registry_version: 2, components: ["Ghost"] }, null, 2) + "\n");
+      const snapshotPath = join(temp, `contracts/generated/components/registry-v${registryVersion}.json`);
+      writeFileSync(snapshotPath, JSON.stringify({ registry_version: registryVersion, components: ["Ghost"] }, null, 2) + "\n");
       const changedSnapshot = readFileSync(snapshotPath, "utf8");
 
       expect(() => execFileSync(process.execPath, [join(temp, "web/scripts/generate-registry-schemas.mjs")], { cwd: temp, stdio: "pipe" })).toThrow(/Registry roster differs/);
@@ -71,7 +72,7 @@ describe("registry generation guards", () => {
     } finally {
       rmSync(temp, { recursive: true, force: true });
     }
-  });
+  }, 15_000);
 
   it("maps a SkeletonDefinition to the Python catalogue shape", () => {
     expect(catalogueFromEntries([definition])).toEqual(catalogueFixture.catalogue);

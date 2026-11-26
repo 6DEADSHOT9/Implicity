@@ -49,10 +49,16 @@ class TestIntersectionObserver {
   }
 }
 
-type ProbeProps = { slot?: string; tag?: "section" | "article" };
-function Probe({ slot, tag: Tag = "section" }: ProbeProps) {
-  const ref = useSeen({ component: "ReviewPanel", defaultState: "plain", slot });
+type ProbeProps = { slot?: string; tag?: "section" | "article"; onVisible?: () => void };
+function Probe({ slot, tag: Tag = "section", onVisible }: ProbeProps) {
+  const ref = useSeen({ component: "ReviewPanel", defaultState: "plain", slot, onVisible });
   return <Tag ref={ref}>probe</Tag>;
+}
+
+function ActionProbe({ captureRef, onVisible }: { captureRef: (ref: ReturnType<typeof useSeen>) => void; onVisible: () => void }) {
+  const ref = useSeen({ component: "ReviewPanel", defaultState: "plain", onVisible });
+  captureRef(ref);
+  return <section ref={ref}>action probe</section>;
 }
 
 function setup(slot?: string) {
@@ -93,6 +99,46 @@ describe("useSeen", () => {
     await passTime(3000);
     expect(capture.events).toEqual([{ ...seen, slot: "main" }]);
     expect(element.checkVisibility).toHaveBeenCalledWith({ opacityProperty: true, visibilityProperty: true });
+  });
+
+  it("signals first displayability through the same visibility observation", async () => {
+    const onVisible = vi.fn();
+    const capture = recordingCapture();
+    const view = render(<CaptureProvider sink={capture.sink}><Probe onVisible={onVisible} /></CaptureProvider>);
+    const shownObserver = TestIntersectionObserver.instances.at(-1)!;
+    setVisible(view.getByText("probe"), false);
+    act(() => shownObserver.setRatio(1));
+    expect(onVisible).not.toHaveBeenCalled();
+    setVisible(view.getByText("probe"), true);
+    await passTime(3000);
+    expect(onVisible).toHaveBeenCalledOnce();
+  });
+
+  it("rechecks native visibility synchronously before reporting an action", () => {
+    const onVisible = vi.fn();
+    let reportVisible!: ReturnType<typeof useSeen>["reportVisible"];
+    const view = render(<CaptureProvider sink={() => undefined}><ActionProbe captureRef={(ref) => { reportVisible = ref.reportVisible; }} onVisible={onVisible} /></CaptureProvider>);
+    const element = view.getByText("action probe");
+    const checkVisibility = setVisible(element, false);
+    act(() => TestIntersectionObserver.instances.at(-1)!.setRatio(1));
+    expect(reportVisible()).toBe(false);
+    expect(onVisible).not.toHaveBeenCalled();
+    checkVisibility.mockReturnValue(true);
+    expect(reportVisible()).toBe(true);
+    expect(onVisible).toHaveBeenCalledOnce();
+    expect(reportVisible()).toBe(true);
+    expect(onVisible).toHaveBeenCalledOnce();
+  });
+
+  it("uses the final intersection in a batch before signaling displayability", () => {
+    const onVisible = vi.fn();
+    const view = render(<CaptureProvider sink={() => undefined}><Probe onVisible={onVisible} /></CaptureProvider>);
+    setVisible(view.getByText("probe"), true);
+    const observer = TestIntersectionObserver.instances.at(-1)!;
+    act(() => observer.deliver([0.8, 0]));
+    expect(onVisible).not.toHaveBeenCalled();
+    act(() => observer.deliver([0, 0.8]));
+    expect(onVisible).toHaveBeenCalledOnce();
   });
 
   it("does not emit when under half visible", async () => {
