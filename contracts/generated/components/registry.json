@@ -1,9 +1,17 @@
 {
-  "registry_version": 3,
+  "registry_version": 4,
   "components": [
     "ChangeNotice",
+    "HomeGrid",
+    "NowPlayingWidget",
     "Nudge",
-    "ProposalCard"
+    "ProjectsWidget",
+    "ProposalCard",
+    "QuickPromptsWidget",
+    "ResumeWidget",
+    "ScheduledWidget",
+    "WidgetFrame",
+    "WidgetPicker"
   ],
   "catalogue": [
     {
@@ -55,6 +63,100 @@
       }
     },
     {
+      "name": "HomeGrid",
+      "role": "home",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [
+        "widgets"
+      ],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "widgets": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            }
+          }
+        },
+        "required": [
+          "widgets"
+        ],
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 120,
+        "minContrast": 4.5
+      }
+    },
+    {
+      "name": "NowPlayingWidget",
+      "role": "home",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "progress": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "title",
+          "progress"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [
+        "content"
+      ],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "content": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            }
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 120,
+        "minContrast": 4.5
+      }
+    },
+    {
       "name": "Nudge",
       "role": "system",
       "props_schema": {
@@ -91,6 +193,50 @@
       "limits": {
         "minWidth": 320,
         "minHeight": 88,
+        "minContrast": 4.5
+      }
+    },
+    {
+      "name": "ProjectsWidget",
+      "role": "home",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [
+        "content"
+      ],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "content": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            }
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 120,
         "minContrast": 4.5
       }
     },
@@ -148,6 +294,240 @@
       "limits": {
         "minWidth": 320,
         "minHeight": 160,
+        "minContrast": 4.5
+      }
+    },
+    {
+      "name": "QuickPromptsWidget",
+      "role": "home",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [
+        "content"
+      ],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "content": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            }
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 120,
+        "minContrast": 4.5
+      }
+    },
+    {
+      "name": "ResumeWidget",
+      "role": "home",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [
+        "content"
+      ],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "content": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            }
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 120,
+        "minContrast": 4.5
+      }
+    },
+    {
+      "name": "ScheduledWidget",
+      "role": "home",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [
+        "content"
+      ],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "content": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            }
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 120,
+        "minContrast": 4.5
+      }
+    },
+    {
+      "name": "WidgetFrame",
+      "role": "home",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "lastUpdate": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "title",
+          "lastUpdate",
+          "source"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [
+        "content"
+      ],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "content": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            }
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 120,
+        "minContrast": 4.5
+      }
+    },
+    {
+      "name": "WidgetPicker",
+      "role": "home",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "open": {
+            "type": "boolean"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "open",
+          "title"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [
+        "widgets"
+      ],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "widgets": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            }
+          }
+        },
+        "required": [
+          "widgets"
+        ],
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 120,
         "minContrast": 4.5
       }
     }

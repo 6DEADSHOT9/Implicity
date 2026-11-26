@@ -1,0 +1,16 @@
+{
+  "registry_version": 4,
+  "components": [
+    "ChangeNotice",
+    "HomeGrid",
+    "NowPlayingWidget",
+    "Nudge",
+    "ProjectsWidget",
+    "ProposalCard",
+    "QuickPromptsWidget",
+    "ResumeWidget",
+    "ScheduledWidget",
+    "WidgetFrame",
+    "WidgetPicker"
+  ]
+}

@@ -1,0 +1,1 @@
+export const meta = { role: "home", slots: ["content"], defaultStates: ["resume"], commands: [], limits: { minWidth: 320, minHeight: 120, minContrast: 4.5 }, galleryStates: [{ id: "resume", props: { title: "Pick up where you left off" }, slots: { content: ["example_content"] } }] } as const;

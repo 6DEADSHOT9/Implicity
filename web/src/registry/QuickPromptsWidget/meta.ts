@@ -1,0 +1,1 @@
+export const meta = { role: "home", slots: ["content"], defaultStates: ["quick-prompts"], commands: [], limits: { minWidth: 320, minHeight: 120, minContrast: 4.5 }, galleryStates: [{ id: "quick-prompts", props: { title: "Quick prompts" }, slots: { content: ["example_content"] } }] } as const;
