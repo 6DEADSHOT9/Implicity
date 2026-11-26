@@ -64,7 +64,7 @@ These never move. Only additions, such as a new shortcut chip, are allowed.
 | --- | --- | --- | --- |
 | DockedPanel | A side panel that can hold any tabs (one or more `{ id, label }` entries, the active one among them). Docked, it is a resizable pane beside the content; undocked, and on small screens, it opens as a Sheet over the content. On small screens it hides Dock and Undock and is shown as undocked, without changing the person's saved docked preference; crossing the breakpoint records no dock event | Resizable when docked, Sheet when undocked or on small screens, Tabs | Composed |
 | SourcesPanel | Sources for the current answer | Sources | Direct |
-| ProjectPanel | Decisions, constraints and files for a project, as tabs with fixed ids; it shows any non-empty subset of them that includes the active tab | Tabs, Item | Composed |
+| ProjectPanel | Decisions, constraints and files for a project, as tabs with fixed ids; it shows any non-empty subset of them that includes the active tab. The tabs sit beside the content; when the panel itself is too narrow for both a whole tab label and readable content, they move to a row above the content, so the content gets the full width. The switch depends on the panel's own width, not the window's | Tabs, Item | Composed |
 
 ### Home
 
