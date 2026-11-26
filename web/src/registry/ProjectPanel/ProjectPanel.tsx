@@ -25,12 +25,12 @@ export function ProjectPanel({ title, tabs, activeTab, slots, onTabChange }: {
   return <section ref={seenRef} aria-label={title} className="flex flex-col gap-space-4 bg-card p-space-4 text-card-foreground">
     <h2 className="text-heading-3">{title}</h2>
     <Tabs value={activeTab} onValueChange={(value) => onTabChange?.(value as typeof activeTab)} orientation="vertical">
-      <TabsList className="w-1/3 max-w-full shrink-0 items-stretch">
+      <TabsList className="w-fit max-w-2/3 shrink-0 items-stretch sm:max-w-5/12">
         {tabs.map(({ id, label }) => <TabsTrigger key={id} value={id} className="min-w-0 max-w-full whitespace-normal wrap-anywhere bg-muted text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground" style={{ minHeight: "var(--target-min-size)" }}>{label}</TabsTrigger>)}
       </TabsList>
       {tabs.map(({ id }) => <TabsContent key={id} value={id} className="min-w-0 focus-visible:focus-ring-token focus-visible:ring-ring">
         {slots?.[id]?.length ? <ItemGroup aria-label={id}>
-          {slots[id]?.map((child, index) => <Item key={`${id}-${index}`} role="listitem"><ItemContent>{child}</ItemContent></Item>)}
+          {slots[id]?.map((child, index) => <Item key={`${id}-${index}`} role="listitem" className="min-w-0"><ItemContent className="min-w-0 wrap-anywhere">{child}</ItemContent></Item>)}
         </ItemGroup> : <Empty role="status"><EmptyTitle className="text-heading-4">No {id}</EmptyTitle></Empty>}
       </TabsContent>)}
     </Tabs>

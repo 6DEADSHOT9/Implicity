@@ -34,11 +34,12 @@ describe("DockedPanel public interface", () => {
 
   it("validates metadata states, events, and tab relationships in runtime and JSON Schema", () => {
     const recorder = recordingCapture();
+    expect(meta.galleryStates.map(({ id }) => id)).toEqual(expect.arrayContaining(meta.defaultStates.map(String)));
     for (const state of meta.galleryStates) {
       expect(propsSchema.safeParse(state.props).success).toBe(true);
       const view = render(<CaptureProvider sink={recorder.sink}><DockedPanel {...state.props} /></CaptureProvider>);
-      expect(meta.defaultStates.map(String)).toContain(state.id);
-      expect(recorder.events.at(-1)).toMatchObject({ name: "component_shown", default_state: state.id });
+      const defaultState = !state.props.open ? "closed" : state.props.docked ? "open_docked" : "open_undocked";
+      expect(recorder.events.at(-1)).toMatchObject({ name: "component_shown", default_state: defaultState });
       view.unmount();
     }
     const props = meta.galleryStates[0].props;

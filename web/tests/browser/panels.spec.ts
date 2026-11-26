@@ -3,12 +3,14 @@ import { expect, test, type Page } from "@playwright/test";
 const panelStates = [
   ["DockedPanel", "open_docked", "panel_content"],
   ["DockedPanel", "open_undocked", "panel_content"],
+  ["DockedPanel", "stress", "panel_content"],
   ["DockedPanel", "closed", "Open Workspace"],
   ["SourcesPanel", "docked", "Reference one"],
   ["SourcesPanel", "closed", "Sources (2)"],
   ["ProjectPanel", "decisions", "decision_one"],
   ["ProjectPanel", "constraints", "constraint_one"],
   ["ProjectPanel", "files", "file_one"],
+  ["ProjectPanel", "labels", "decision_one"],
 ] as const;
 
 async function panelMatrix(page: Page, look: string, mode: string) {
@@ -117,13 +119,13 @@ for (const look of ["default", "focused", "notebook"]) for (const mode of ["ligh
 
 test("DockedPanel wraps and lets people select among 18 tabs on tablet", async ({ page }) => {
   const longLabel = "Release readiness and operational handover checklist for the production rollout, including service ownership, alert response and rollback notes";
-  const unbrokenLabel = `https://example.com/${"release-readiness-".repeat(15)}`;
+  const unbrokenLabel = "x".repeat(400);
   await page.goto("/");
   await page.getByLabel("Screen size").selectOption("tablet");
-  const tabs = page.frameLocator('iframe[title="DockedPanel · open_undocked"]');
+  const tabs = page.frameLocator('iframe[title="DockedPanel · stress"]');
   const dialog = tabs.getByRole("dialog", { name: "Workspace" });
   await expect(dialog).toBeVisible();
-  const sheetFrame = page.locator('iframe[title="DockedPanel · open_undocked"]');
+  const sheetFrame = page.locator('iframe[title="DockedPanel · stress"]');
   await expect.poll(() => dialog.evaluate((element) => {
     const tabTriggers = [...element.querySelectorAll<HTMLElement>("[role=tab]")];
     const tabBoxes = tabTriggers.map((tab) => tab.getBoundingClientRect());
@@ -133,8 +135,8 @@ test("DockedPanel wraps and lets people select among 18 tabs on tablet", async (
   })).toBe("ok");
   await expect(tabs.getByRole("tab", { name: longLabel })).toBeVisible();
   await expect(tabs.getByRole("tab", { name: unbrokenLabel })).toBeVisible();
-  await expect.poll(() => page.locator('iframe[title="DockedPanel · open_undocked"]').getAttribute("height").then(Number)).toBeGreaterThan(852);
-  await page.locator('iframe[title="DockedPanel · open_undocked"]').scrollIntoViewIfNeeded();
+  await expect.poll(() => sheetFrame.getAttribute("height").then(Number)).toBeGreaterThan(852);
+  await sheetFrame.scrollIntoViewIfNeeded();
   await expect(tabs.getByRole("tab", { name: longLabel })).toBeVisible();
   await tabs.getByRole("tab", { name: longLabel }).click({ timeout: 5000 });
   await expect(tabs.getByRole("tab", { name: longLabel })).toHaveAttribute("aria-selected", "true");
@@ -149,9 +151,9 @@ test("gallery previews complete panel callbacks, fit overlays, and preserve keyb
   await page.goto("/");
 
   const project = page.frameLocator('iframe[title="ProjectPanel · decisions"]');
-  const longProjectLabel = "Release readiness and operational handover checklist for the production rollout, including service ownership, alert response and rollback notes";
-  const longProjectTab = project.getByRole("tab", { name: longProjectLabel });
-  const projectFrame = page.locator('iframe[title="ProjectPanel · decisions"]');
+  const longProjectLabel = "x".repeat(400);
+  const longProjectTab = page.frameLocator('iframe[title="ProjectPanel · labels"]').getByRole("tab", { name: longProjectLabel });
+  const projectFrame = page.locator('iframe[title="ProjectPanel · labels"]');
   const decisions = project.getByText("decision_one", { exact: true });
   await expect(decisions).toBeVisible();
   const decisionsTab = project.getByRole("tab", { name: "decisions" });
@@ -173,16 +175,23 @@ test("gallery previews complete panel callbacks, fit overlays, and preserve keyb
     await expect(longProjectTab).toBeVisible();
     const labelLayout = await projectFrame.evaluate((frame) => {
       const section = (frame as HTMLIFrameElement).contentDocument!.querySelector('section[aria-label="Project"]')!;
-      return { sectionWidth: section.clientWidth, sectionScrollWidth: section.scrollWidth, tablistWidth: section.querySelector('[role="tablist"]')!.clientWidth, panelWidth: section.querySelector('[role="tabpanel"]')!.clientWidth };
+      const unbrokenTab = [...section.querySelectorAll<HTMLElement>("[role=tab]")].find((tab) => tab.textContent === "x".repeat(400))!;
+      const range = section.ownerDocument.createRange();
+      range.selectNodeContents(unbrokenTab);
+      const rects = [...range.getClientRects()];
+      const bounds = unbrokenTab.getBoundingClientRect();
+      return { sectionWidth: section.clientWidth, sectionScrollWidth: section.scrollWidth, tablistWidth: section.querySelector('[role="tablist"]')!.clientWidth, panelWidth: section.querySelector('[role="tabpanel"]')!.clientWidth, unbrokenLines: rects.length, unbrokenTextFits: rects.every(({ left, right }) => left >= bounds.left && right <= bounds.right) };
     });
     expect(labelLayout.sectionScrollWidth).toBeLessThanOrEqual(labelLayout.sectionWidth);
+    expect(labelLayout.unbrokenLines).toBeGreaterThan(1);
+    expect(labelLayout.unbrokenTextFits).toBe(true);
     expect(labelLayout.tablistWidth).toBeLessThan(labelLayout.sectionWidth);
-    expect(labelLayout.panelWidth).toBeGreaterThanOrEqual(labelLayout.sectionWidth / 2);
+    expect(labelLayout.panelWidth).toBeGreaterThanOrEqual(labelLayout.sectionWidth * 0.44);
     await projectFrame.evaluate((frame) => {
       const item = (frame as HTMLIFrameElement).contentDocument!.querySelector('[role="listitem"]')!;
       item.textContent = "The team decided to keep the existing service and migrate in two carefully measured stages.";
     });
-    await expect(page.frameLocator('iframe[title="ProjectPanel · decisions"]').getByText("The team decided to keep the existing service and migrate in two carefully measured stages.")).toBeVisible();
+    await expect(page.frameLocator('iframe[title="ProjectPanel · labels"]').getByText("The team decided to keep the existing service and migrate in two carefully measured stages.")).toBeVisible();
     const layout = await projectFrame.evaluate((frame) => {
       const document = (frame as HTMLIFrameElement).contentDocument!;
       return { tabs: document.querySelector('[role="tablist"]')!.getBoundingClientRect().width, content: document.querySelector('[role="tabpanel"]')!.getBoundingClientRect().width };
@@ -261,6 +270,29 @@ test("gallery previews complete panel callbacks, fit overlays, and preserve keyb
   await expect(smallPreview.getByRole("dialog", { name: "Workspace" })).toBeVisible();
   await smallScreen.evaluate((frame) => { (frame as HTMLIFrameElement).width = "768"; });
   await expect(smallPreview.getByRole("dialog", { name: "Workspace" })).toHaveCount(0);
+});
+
+test("ProjectPanel keeps its fixed short labels on one line at its minimum widths", async ({ page }) => {
+  await page.goto("/");
+  const frame = page.locator('iframe[title="ProjectPanel · decisions"]');
+  await expect(frame.contentFrame().locator('section[aria-label="Project"]')).toBeVisible();
+  for (const width of [375, 288]) for (const density of ["compact", "comfortable", "spacious"]) for (const textSize of ["1", "2", "3", "4", "5"]) {
+    await page.getByLabel("Density").selectOption(density);
+    await page.getByLabel("Text size").selectOption(textSize);
+    await frame.evaluate((element, value) => { (element as HTMLIFrameElement).width = String(value); }, width);
+    await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentWindow?.innerWidth)).toBe(width);
+    await expect.poll(() => frame.evaluate((element) => {
+      const document = (element as HTMLIFrameElement).contentDocument!;
+      const section = document.querySelector('section[aria-label="Project"]')!;
+      const list = section.querySelector<HTMLElement>('[role="tablist"]')!;
+      const labels = [...list.querySelectorAll<HTMLElement>("[role=tab]")].map((tab) => {
+        const range = document.createRange();
+        range.selectNodeContents(tab);
+        return { label: tab.textContent, lines: range.getClientRects().length };
+      });
+      return section.scrollWidth <= section.clientWidth && list.scrollWidth <= list.clientWidth && labels.every(({ lines }) => lines === 1) ? "ok" : JSON.stringify({ width: section.clientWidth, scroll: section.scrollWidth, listWidth: list.clientWidth, listScroll: list.scrollWidth, labels });
+    })).toBe("ok");
+  }
 });
 
 test("SourcesPanel disclosure follows its controlled docked state", async ({ page }) => {

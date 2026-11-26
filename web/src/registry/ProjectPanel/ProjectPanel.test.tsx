@@ -16,7 +16,8 @@ describe("ProjectPanel public interface", () => {
       const slots = Object.fromEntries(Object.entries(state.slots ?? {}).map(([slot, ids]) => [slot, (ids as readonly string[]).map((id) => <span key={id}>{id}</span>)]));
       const selectedSlot = (state.slots as Readonly<Record<string, readonly string[]>> | undefined)?.[String(state.props.activeTab)]?.[0];
       const view = render(<ProjectPanel {...state.props} slots={slots} />);
-      expect(screen.getByRole("tab", { name: state.id[0].toUpperCase() + state.id.slice(1) }).getAttribute("aria-selected")).toBe("true");
+      const selectedLabel = state.props.tabs.find(({ id }) => id === state.props.activeTab)?.label;
+      expect(screen.getByRole("tab", { name: selectedLabel }).getAttribute("aria-selected")).toBe("true");
       expect(screen.getByText(selectedSlot!)).toBeTruthy();
       view.unmount();
     }
