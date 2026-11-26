@@ -80,7 +80,7 @@ A field that does not apply to an event is left out, never sent as null. A suspe
 | `search_used` | Search is opened and used | |
 | `attachment_added` | A file or photo is attached | Type: `image`, `document`, `audio`, `video` or `other`. Never the file name |
 | `draft_deleted` | A draft of meaningful length is cleared before sending | Length bucket only. The text goes to the backend, never to PostHog |
-| `setting_changed` | The person sets something by hand | Dimension, value, and the Command for `shortcut_chips`. A WidgetPicker switch records dimension `home_widgets`, value `on` or `off`, and the widget's component id, when the widget's shown state actually changes |
+| `setting_changed` | The person sets something by hand | Dimension, value, and the Command for `shortcut_chips`. A WidgetPicker switch records dimension `home_widgets`, value `on` or `off`, and the widget's component id, when the person moved that widget's Switch and the parent then shows the change. A Switch the parent refuses records nothing (ADR 0025), and neither does a change the app makes without the Switch being moved |
 | `change_shown`, `change_kept`, `change_undone` | An admitted change is displayed, kept or undone. Only once the arbiter has created a decision | Decision id |
 | `proposal_shown`, `proposal_kept`, `proposal_dismissed` | A proposal is shown on a ProposalCard and answered, before any decision exists | Proposal id, proposal type copied from the stored proposal |
 | `widget_seen`, `widget_used`, `widget_pinned`, `widget_dismissed` | Home widgets (Stage 4; schema added in Stage 4) | Widget id |
@@ -125,7 +125,7 @@ Features and dimensions are data files in `contracts`, so adding one needs no en
 
 **A feature** is a pair of daily counts per kind of chat. The setup command registers each one in PostHog as a saved query.
 
-**The setup command** takes a fresh clone to a running system and is safe to re-run: each step reports what it did or skipped. It stops below 16 GB of memory, creates `.env` from `.env.example` without overwriting values, brings up the Compose stack, runs the migrations, and then needs two things only the person can do, each a one-time stop with exact instructions that resumes on the next run:
+**The setup command** takes a fresh clone to a running system and is safe to re-run: each step reports what it did or skipped. It stops below 16 GB of memory, creates `.env` from `.env.example` without overwriting values, fills `TZ` with the machine's IANA time zone (for example `Asia/Kolkata`) if it is empty, brings up the Compose stack, runs the migrations, and then needs two things only the person can do, each a one-time stop with exact instructions that resumes on the next run:
 - **PostHog.** The person creates their own account in the local PostHog and a personal API key with the scopes setup names, and gives setup the key, which goes in `.env` and is never printed. With it, setup finds or creates the project and its project key, then calls the PostHog event source implementation's `register_features()`, which creates or updates each feature's saved query and leaves matching ones unchanged. Setup never creates PostHog users or writes to PostHog's database.
 - **Feature registration lives in the event source implementation** (rule 6: PostHog is named only there and in the capture wrapper). `register_features()` loads feature definitions with the engine's feature loader, so there is one reading of them, and builds each saved query from one HogQL query shape that the event source's runtime reads reuse, with room for the date window and excluded sessions. Setup only calls it and reports the result; a failed write stops setup with an error.
 - **Codex.** The person signs in inside the Hermes container (`hermes auth add openai-codex`). Setup only checks the sign-in and never handles the credential.
@@ -220,6 +220,11 @@ class EventSource(Protocol):
 ```
 
 Three implementations exist: PostHog through saved endpoints, PostHog through the query API as a fallback, and a fake that returns canned numbers for tests.
+
+- **The window.** `start` and `end` are the person's local days, and both are included: a row counts when `start <= day <= end`, as the fake defines it. An implementation whose query takes an exclusive bound passes the day after `end`.
+- **Whose day.** A day is the person's local day in the time zone `TZ` names (ADR 0028). The PostHog event source takes that zone when it is constructed, as the fake does, and buckets each event with `toDate(timestamp, '<zone>')`.
+- **Session summaries** are read through a saved endpoint too. `register_features()` registers a `session_summaries` endpoint beside the features, with the same start, end and excluded-sessions variables, and reuses its query for runtime reads.
+- **When PostHog is down.** A connection failure, timeout or 5xx response raises `EventSourceUnavailable`, defined in the engine beside `EventSource`. The host catches it and skips that evaluation, so learning pauses and chat carries on. A 4xx response means the setup or the key is wrong and raises a plain error carrying PostHog's response.
 
 **Engine.** The Stage 1 interface:
 
