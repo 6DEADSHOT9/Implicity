@@ -8,3 +8,4 @@ export const propsSchema = z.object({ title: z.string(), tabs: z.array(z.object(
   if (!ids.includes(activeTab)) context.addIssue({ code: "custom", path: ["activeTab"], message: "The active tab must be present" });
 });
 export const slotsSchema = z.object({ decisions: z.array(childId).optional(), constraints: z.array(childId).optional(), files: z.array(childId).optional() }).strict();
+export const namedPartProp = "tabs";

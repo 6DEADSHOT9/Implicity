@@ -120,6 +120,35 @@ describe("registry and renderer", () => {
     expect(new Ajv2020({ strict: false }).compile(slotSchema)({ WrongSlot: ["note"] })).toBe(false);
   });
 
+  it("reports inherited static slot names as gallery validation errors", () => {
+    const card = registry.getSkeleton("Card")!;
+    const invalid = {
+      ...card,
+      meta: {
+        ...card.meta,
+        defaultStates: ["bad"],
+        galleryStates: [{ id: "bad", props: { title: "Card" }, slots: { constructor: ["child"] } }],
+      },
+    };
+    expect(() => createRegistry([invalid], registry.version)).toThrow(/Card gallery state bad slot constructor example does not match its slot schema/);
+  });
+
+  it("rejects ProjectPanel slots that do not match a declared tab", async () => {
+    const project = registry.getSkeleton("ProjectPanel")!;
+    const props = { title: "Project", tabs: [{ id: "decisions", label: "Decisions" }], activeTab: "decisions" };
+    const slots = { files: ["card"] };
+    expect(project.schema.safeParse({ props, slots }).success).toBe(false);
+    const spec = {
+      registry_version: registry.version,
+      root: "project",
+      elements: {
+        project: { type: "ProjectPanel", props, slots },
+        card: { type: "Card", props: { title: "File card", content: "Must not disappear" }, slots: { content: [] } },
+      },
+    };
+    expect(await markup(renderMessage(spec, "plain answer", registry))).toContain("plain answer");
+  });
+
   it("keeps shared registry props strict in runtime and JSON Schema", () => {
     const entry = defineSkeletonDefinition({ id: "ReviewPanel", props: z.object({ count: z.number() }), slots: z.object({ main: z.array(z.string()) }), events, meta });
     const input = { props: { count: 1, unexpected: true }, slots: { main: [] } };

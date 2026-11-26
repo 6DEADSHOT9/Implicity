@@ -95,7 +95,7 @@ export function validateRegistryDefinitions(entries: readonly SkeletonDefinition
         throw new Error(`${entry.id} gallery state ${state.id} is missing example slots`);
       }
       for (const [slot, example] of Object.entries(state.slots ?? {})) {
-        const slotSchema = staticSlotSchema?.shape[slot];
+        const slotSchema = staticSlotSchema && Object.hasOwn(staticSlotSchema.shape, slot) ? staticSlotSchema.shape[slot] : undefined;
         const validSlot = staticSlotSchema
           ? slotSchema && z.object({ [slot]: slotSchema }).strict().safeParse({ [slot]: example }).success
           : entry.slotsSchema.safeParse({ [slot]: example }).success;
