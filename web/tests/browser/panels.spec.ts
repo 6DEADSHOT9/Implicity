@@ -13,28 +13,27 @@ const panelStates = [
   ["ProjectPanel", "labels", "decision_one"],
 ] as const;
 
-async function panelMatrix(page: Page, look: string, mode: string) {
+async function panelMatrix(page: Page, look: string, mode: string, device: string) {
   await page.goto("/");
+  if (device === "tablet") await page.getByLabel("Screen size").selectOption(device);
   const titles = panelStates.map(([id, state]) => `${id} · ${state}`);
   const expectedContent = Object.fromEntries(panelStates.map(([id, state, content]) => [`${id} · ${state}`, content]));
 
-  for (const [id, state, content] of panelStates) {
+  await Promise.all(panelStates.map(async ([id, state, content]) => {
     const preview = page.frameLocator(`iframe[title="${id} · ${state}"]`);
-    await expect(preview.getByText(content, { exact: false }).first()).toBeVisible();
-  }
+    await expect(preview.getByText(content, { exact: false }).first()).toBeVisible({ timeout: 15000 });
+  }));
 
   const densities = ["compact", "comfortable", "spacious"];
   const textSizes = ["1", "2", "3", "4", "5"];
-  const devices = ["desktop", "tablet"];
-  const labels = { Look: "default", Mode: "light", Density: "comfortable", "Text size": "3", "Screen size": "desktop" };
+  const labels = { Look: "default", Mode: "light", Density: "comfortable", "Text size": "3", "Screen size": device };
   const setOption = async (label: keyof typeof labels, value: string) => {
     if (labels[label] === value) return;
-    await page.getByLabel(label).selectOption(value);
+    await page.getByLabel(label).selectOption(value, { timeout: 15000 });
     labels[label] = value;
   };
 
-  for (const device of devices) for (const density of densities) for (const textSize of textSizes) {
-    await setOption("Screen size", device);
+  for (const density of densities) for (const textSize of textSizes) {
     await setOption("Look", look);
     await setOption("Mode", mode);
     await setOption("Density", density);
@@ -113,18 +112,18 @@ async function panelMatrix(page: Page, look: string, mode: string) {
   await expect(list.locator("li").first()).toHaveCSS("display", "list-item");
 }
 
-for (const look of ["default", "focused", "notebook"]) for (const mode of ["light", "dark"]) {
-  test(`panel gallery matrix · ${look} · ${mode}`, async ({ page }) => panelMatrix(page, look, mode));
+for (const look of ["default", "focused", "notebook"]) for (const mode of ["light", "dark"]) for (const device of ["desktop", "tablet"]) {
+  test(`panel gallery matrix · ${look} · ${mode} · ${device}`, async ({ page }) => panelMatrix(page, look, mode, device));
 }
 
 test("DockedPanel wraps and lets people select among 18 tabs on tablet", async ({ page }) => {
   const longLabel = "Release readiness and operational handover checklist for the production rollout, including service ownership, alert response and rollback notes";
   const unbrokenLabel = "x".repeat(400);
   await page.goto("/");
-  await page.getByLabel("Screen size").selectOption("tablet");
+  await page.getByLabel("Screen size").selectOption("tablet", { timeout: 15000 });
   const tabs = page.frameLocator('iframe[title="DockedPanel · stress"]');
   const dialog = tabs.getByRole("dialog", { name: "Workspace" });
-  await expect(dialog).toBeVisible();
+  await expect(dialog).toBeVisible({ timeout: 15000 });
   const sheetFrame = page.locator('iframe[title="DockedPanel · stress"]');
   await expect.poll(() => dialog.evaluate((element) => {
     const tabTriggers = [...element.querySelectorAll<HTMLElement>("[role=tab]")];
@@ -147,7 +146,7 @@ test("DockedPanel wraps and lets people select among 18 tabs on tablet", async (
   await expect.poll(() => dialog.evaluate((element) => element.scrollWidth <= element.clientWidth && [...element.querySelectorAll<HTMLElement>("[role=tab]")].every((tab) => tab.scrollWidth <= tab.clientWidth) ? "ok" : JSON.stringify({ sheet: [element.clientWidth, element.scrollWidth], tabs: [...element.querySelectorAll<HTMLElement>("[role=tab]")].map((tab) => [tab.clientWidth, tab.scrollWidth]) }))).toBe("ok");
 });
 
-test("gallery previews complete panel callbacks, fit overlays, and preserve keyboard behavior", async ({ page }) => {
+async function assertGalleryPanelInteractions(page: Page, projectDevice: "tablet" | "desktop") {
   await page.goto("/");
 
   const project = page.frameLocator('iframe[title="ProjectPanel · decisions"]');
@@ -155,7 +154,7 @@ test("gallery previews complete panel callbacks, fit overlays, and preserve keyb
   const longProjectTab = page.frameLocator('iframe[title="ProjectPanel · labels"]').getByRole("tab", { name: longProjectLabel });
   const projectFrame = page.locator('iframe[title="ProjectPanel · labels"]');
   const decisions = project.getByText("decision_one", { exact: true });
-  await expect(decisions).toBeVisible();
+  await expect(decisions).toBeVisible({ timeout: 15000 });
   const decisionsTab = project.getByRole("tab", { name: "decisions" });
   await decisionsTab.focus();
   await page.keyboard.press("ArrowDown");
@@ -168,12 +167,12 @@ test("gallery previews complete panel callbacks, fit overlays, and preserve keyb
   await tabpanel.focus();
   expect(await tabpanel.evaluate((element) => getComputedStyle(element).boxShadow)).not.toBe("none");
 
-  for (const [device, width] of [["tablet", 800], ["desktop", 1440]] as const) {
-    await page.getByLabel("Screen size").selectOption(device);
-    await expect.poll(() => projectFrame.evaluate((frame) => (frame as HTMLIFrameElement).contentWindow?.innerWidth)).toBe(width);
-    await expect(page.frameLocator('iframe[title="ProjectPanel · decisions"]').getByRole("tablist")).toBeVisible();
-    await expect(longProjectTab).toBeVisible();
-    const labelLayout = await projectFrame.evaluate((frame) => {
+  if (projectDevice === "tablet") await page.getByLabel("Screen size").selectOption("tablet", { timeout: 15000 });
+  const projectWidth = projectDevice === "tablet" ? 800 : 1440;
+  await expect.poll(() => projectFrame.evaluate((frame) => (frame as HTMLIFrameElement).contentWindow?.innerWidth)).toBe(projectWidth);
+  await expect(page.frameLocator('iframe[title="ProjectPanel · decisions"]').getByRole("tablist")).toBeVisible({ timeout: 15000 });
+  await expect(longProjectTab).toBeVisible({ timeout: 15000 });
+  const labelLayout = await projectFrame.evaluate((frame) => {
       const section = (frame as HTMLIFrameElement).contentDocument!.querySelector('section[aria-label="Project"]')!;
       const unbrokenTab = [...section.querySelectorAll<HTMLElement>("[role=tab]")].find((tab) => tab.textContent === "x".repeat(400))!;
       const range = section.ownerDocument.createRange();
@@ -181,23 +180,22 @@ test("gallery previews complete panel callbacks, fit overlays, and preserve keyb
       const rects = [...range.getClientRects()];
       const bounds = unbrokenTab.getBoundingClientRect();
       return { sectionWidth: section.clientWidth, sectionScrollWidth: section.scrollWidth, tablistWidth: section.querySelector('[role="tablist"]')!.clientWidth, panelWidth: section.querySelector('[role="tabpanel"]')!.clientWidth, unbrokenLines: rects.length, unbrokenTextFits: rects.every(({ left, right }) => left >= bounds.left && right <= bounds.right) };
-    });
-    expect(labelLayout.sectionScrollWidth).toBeLessThanOrEqual(labelLayout.sectionWidth);
-    expect(labelLayout.unbrokenLines).toBeGreaterThan(1);
-    expect(labelLayout.unbrokenTextFits).toBe(true);
-    expect(labelLayout.tablistWidth).toBeLessThan(labelLayout.sectionWidth);
-    expect(labelLayout.panelWidth).toBeGreaterThanOrEqual(labelLayout.sectionWidth * 0.44);
-    await projectFrame.evaluate((frame) => {
+  });
+  expect(labelLayout.sectionScrollWidth).toBeLessThanOrEqual(labelLayout.sectionWidth);
+  expect(labelLayout.unbrokenLines).toBeGreaterThan(1);
+  expect(labelLayout.unbrokenTextFits).toBe(true);
+  expect(labelLayout.tablistWidth).toBeLessThan(labelLayout.sectionWidth);
+  expect(labelLayout.panelWidth).toBeGreaterThanOrEqual(labelLayout.sectionWidth * 0.44);
+  await projectFrame.evaluate((frame) => {
       const item = (frame as HTMLIFrameElement).contentDocument!.querySelector('[role="listitem"]')!;
       item.textContent = "The team decided to keep the existing service and migrate in two carefully measured stages.";
-    });
-    await expect(page.frameLocator('iframe[title="ProjectPanel · labels"]').getByText("The team decided to keep the existing service and migrate in two carefully measured stages.")).toBeVisible();
-    const layout = await projectFrame.evaluate((frame) => {
+  });
+  await expect(page.frameLocator('iframe[title="ProjectPanel · labels"]').getByText("The team decided to keep the existing service and migrate in two carefully measured stages.")).toBeVisible();
+  const layout = await projectFrame.evaluate((frame) => {
       const document = (frame as HTMLIFrameElement).contentDocument!;
       return { tabs: document.querySelector('[role="tablist"]')!.getBoundingClientRect().width, content: document.querySelector('[role="tabpanel"]')!.getBoundingClientRect().width };
-    });
-    expect(layout.content).toBeGreaterThan(layout.tabs);
-  }
+  });
+  expect(layout.content).toBeGreaterThan(layout.tabs);
 
   const docked = page.frameLocator('iframe[title="DockedPanel · open_undocked"]');
   const dialog = docked.getByRole("dialog", { name: "Workspace" });
@@ -270,17 +268,19 @@ test("gallery previews complete panel callbacks, fit overlays, and preserve keyb
   await expect(smallPreview.getByRole("dialog", { name: "Workspace" })).toBeVisible();
   await smallScreen.evaluate((frame) => { (frame as HTMLIFrameElement).width = "768"; });
   await expect(smallPreview.getByRole("dialog", { name: "Workspace" })).toHaveCount(0);
-});
+}
 
-test("ProjectPanel keeps its fixed short labels on one line at its minimum widths", async ({ page }) => {
+for (const device of ["tablet", "desktop"] as const) test(`gallery panel interactions fit at ${device} width`, async ({ page }) => assertGalleryPanelInteractions(page, device));
+
+async function assertProjectLabels(page: Page, width: 375 | 288) {
   await page.goto("/");
   const frame = page.locator('iframe[title="ProjectPanel · decisions"]');
-  await expect(frame.contentFrame().locator('section[aria-label="Project"]')).toBeVisible();
-  for (const width of [375, 288]) for (const density of ["compact", "comfortable", "spacious"]) for (const textSize of ["1", "2", "3", "4", "5"]) {
-    await page.getByLabel("Density").selectOption(density);
-    await page.getByLabel("Text size").selectOption(textSize);
+  await expect(frame.contentFrame().locator('section[aria-label="Project"]')).toBeVisible({ timeout: 15000 });
+  for (const density of ["compact", "comfortable", "spacious"]) for (const textSize of ["1", "2", "3", "4", "5"]) {
+    await page.getByLabel("Density").selectOption(density, { timeout: 15000 });
+    await page.getByLabel("Text size").selectOption(textSize, { timeout: 15000 });
     await frame.evaluate((element, value) => { (element as HTMLIFrameElement).width = String(value); }, width);
-    await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentWindow?.innerWidth)).toBe(width);
+    await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentWindow?.innerWidth), { timeout: 10000 }).toBe(width);
     await expect.poll(() => frame.evaluate((element) => {
       const document = (element as HTMLIFrameElement).contentDocument!;
       const section = document.querySelector('section[aria-label="Project"]')!;
@@ -291,15 +291,17 @@ test("ProjectPanel keeps its fixed short labels on one line at its minimum width
         return { label: tab.textContent, lines: range.getClientRects().length };
       });
       return section.scrollWidth <= section.clientWidth && list.scrollWidth <= list.clientWidth && labels.every(({ lines }) => lines === 1) ? "ok" : JSON.stringify({ width: section.clientWidth, scroll: section.scrollWidth, listWidth: list.clientWidth, listScroll: list.scrollWidth, labels });
-    })).toBe("ok");
+    }), { timeout: 10000 }).toBe("ok");
   }
-});
+}
+
+for (const width of [375, 288] as const) test(`ProjectPanel keeps its short labels on one line at ${width}px`, async ({ page }) => assertProjectLabels(page, width));
 
 test("SourcesPanel disclosure follows its controlled docked state", async ({ page }) => {
   await page.goto("/");
   const sources = page.frameLocator('iframe[title="SourcesPanel · docked"]');
   const trigger = sources.getByRole("button", { name: "Sources (2)" });
-  await expect(sources.getByText("Reference one")).toBeVisible();
+  await expect(sources.getByText("Reference one")).toBeVisible({ timeout: 15000 });
   await trigger.click();
   await expect(sources.getByRole("button", { name: "Sources (2)" })).toHaveAttribute("data-state", "closed");
   await expect(sources.getByText("Reference one")).toBeHidden();

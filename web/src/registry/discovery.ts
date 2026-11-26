@@ -4,7 +4,7 @@ export type RegistryFolderModules = {
   id: string;
   files: readonly string[];
   componentExports: readonly string[];
-  schema?: { propsSchema?: SkeletonDefinition["propsSchema"]; slotsSchema?: SlotsSchema };
+  schema?: { propsSchema?: SkeletonDefinition["propsSchema"]; slotsSchema?: SlotsSchema; namedPartProp?: string };
   events?: { events?: readonly string[] };
   metadata?: { meta?: SkeletonEntry["meta"] };
 };
@@ -28,6 +28,6 @@ export function discoverRegistryFolders(folders: readonly RegistryFolderModules[
     if (!schema?.propsSchema || !schema.slotsSchema) throw new Error(`${id} registry entry schema.ts must export propsSchema and slotsSchema`);
     if (!events?.events) throw new Error(`${id} registry entry events.ts must export events`);
     if (!metadata?.meta) throw new Error(`${id} registry entry meta.ts must export meta`);
-    return { id, definition: defineSkeletonDefinition({ id, props: schema.propsSchema, slots: schema.slotsSchema, events: events.events, meta: metadata.meta }) };
+    return { id, definition: defineSkeletonDefinition({ id, props: schema.propsSchema, slots: schema.slotsSchema, namedPartProp: schema.namedPartProp, events: events.events, meta: metadata.meta }) };
   });
 }

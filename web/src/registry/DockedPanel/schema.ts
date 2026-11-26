@@ -14,3 +14,4 @@ export const propsSchema = z.object({
   if (!ids.includes(activeTab)) context.addIssue({ code: "custom", path: ["activeTab"], message: "The active tab must be present" });
 });
 export const slotsSchema = z.record(identifier, z.array(childId));
+export const namedPartProp = "tabs";

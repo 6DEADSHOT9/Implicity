@@ -1,11 +1,18 @@
 {
   "registry_version": 4,
   "components": [
+    "ArtifactWorkspace",
+    "Card",
     "ChangeNotice",
-    "DockedPanel",
+    "Checklist",
+    "CodeBlock",
+    "DataChart",
+    "DataTable",
+    "List",
+    "MediaPlayer",
+    "Metric",
     "Nudge",
-    "ProjectPanel",
     "ProposalCard",
-    "SourcesPanel"
+    "Tabs"
   ]
 }
