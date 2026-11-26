@@ -71,10 +71,12 @@ async function panelMatrix(page: Page, look: string, mode: string) {
       });
       const target = Number.parseFloat(document.documentElement.style.getPropertyValue("--target-min-size")) * 16;
       const controls = [...document.querySelectorAll("button, [role=tab]")].filter((control) => control.getClientRects().length > 0).map((control) => control.getBoundingClientRect());
+      const tabTriggers = [...document.querySelectorAll<HTMLElement>("[role=tab]")];
       const heading = document?.querySelector("h2");
       const headingSize = heading && view ? view.getComputedStyle(heading).fontSize : undefined;
       const headingToken = document?.documentElement.style.getPropertyValue("--heading-3").trim();
       const dialog = document.querySelector('[role="dialog"]');
+      const panel = dialog ?? document.querySelector('section[aria-label="Project"]') ?? [...document.querySelectorAll<HTMLElement>('[data-slot="resizable-panel"]')].at(-1);
       return {
         title: iframe.title,
         ready: true,
@@ -88,11 +90,12 @@ async function panelMatrix(page: Page, look: string, mode: string) {
         healthy: !document?.body.innerText.includes("preview failed") && !document?.body.innerText.includes("Preview unavailable"),
         headingsMatchToken: !heading || headingSize === `${Number.parseFloat(headingToken ?? "") * 16}px`,
         controlsMeetTarget: controls.length > 0 && controls.every(({ width: controlWidth, height }) => controlWidth >= target && height >= target),
+        labelsAndPanelFit: (!iframe.title.startsWith("DockedPanel") || tabTriggers.every((tab) => tab.scrollWidth <= tab.clientWidth)) && (!panel || panel.scrollWidth <= panel.clientWidth),
         textMeetsContrast: texts.length > 0 && texts.every((contrastRatio) => contrastRatio >= 4.5),
         sheetSurfaceMatches: !dialog || view!.getComputedStyle(dialog).backgroundColor === view!.getComputedStyle(document!.body).backgroundColor,
       };
       });
-      return previews.length === names.length && previews.every((preview) => preview.ready && preview.background === tokens.background && preview.space === tokens.space && preview.text === tokens.text && preview.target === tokens.target && preview.mode === expectedMode && preview.width === width && preview.content && preview.healthy && preview.headingsMatchToken && preview.controlsMeetTarget && preview.textMeetsContrast && preview.sheetSurfaceMatches) ? "ok" : JSON.stringify(previews.map(({ title, ready, background, space, text, target, mode, width: actualWidth, content, healthy, headingsMatchToken, controlsMeetTarget, textMeetsContrast, sheetSurfaceMatches }) => ({ title, ready, background, space, text, target, mode, width: actualWidth, content, healthy, headingsMatchToken, controlsMeetTarget, textMeetsContrast, sheetSurfaceMatches })));
+      return previews.length === names.length && previews.every((preview) => preview.ready && preview.background === tokens.background && preview.space === tokens.space && preview.text === tokens.text && preview.target === tokens.target && preview.mode === expectedMode && preview.width === width && preview.content && preview.healthy && preview.headingsMatchToken && preview.controlsMeetTarget && preview.labelsAndPanelFit && preview.textMeetsContrast && preview.sheetSurfaceMatches) ? "ok" : JSON.stringify(previews.map(({ title, ready, background, space, text, target, mode, width: actualWidth, content, healthy, headingsMatchToken, controlsMeetTarget, labelsAndPanelFit, textMeetsContrast, sheetSurfaceMatches }) => ({ title, ready, background, space, text, target, mode, width: actualWidth, content, healthy, headingsMatchToken, controlsMeetTarget, labelsAndPanelFit, textMeetsContrast, sheetSurfaceMatches })));
     }, {
       expectedTitles: titles,
       expectedContent,
@@ -114,35 +117,41 @@ for (const look of ["default", "focused", "notebook"]) for (const mode of ["ligh
 
 test("DockedPanel wraps and lets people select among 18 tabs on tablet", async ({ page }) => {
   const longLabel = "Release readiness and operational handover checklist for the production rollout, including service ownership, alert response and rollback notes";
+  const unbrokenLabel = `https://example.com/${"release-readiness-".repeat(15)}`;
   await page.goto("/");
   await page.getByLabel("Screen size").selectOption("tablet");
   const tabs = page.frameLocator('iframe[title="DockedPanel · open_undocked"]');
   const dialog = tabs.getByRole("dialog", { name: "Workspace" });
   await expect(dialog).toBeVisible();
   const sheetFrame = page.locator('iframe[title="DockedPanel · open_undocked"]');
-  await sheetFrame.evaluate((frame, label) => {
-    const tabTriggers = (frame as HTMLIFrameElement).contentDocument!.querySelectorAll<HTMLElement>("[role=tab]");
-    tabTriggers[0].textContent = label;
-    tabTriggers[1].textContent = "A";
-  }, longLabel);
-  await expect.poll(() => dialog.evaluate((element, label) => {
+  await expect.poll(() => dialog.evaluate((element) => {
     const tabTriggers = [...element.querySelectorAll<HTMLElement>("[role=tab]")];
     const tabBoxes = tabTriggers.map((tab) => tab.getBoundingClientRect());
     const tabPanel = element.querySelector('[role="tabpanel"]:not([hidden])')!.getBoundingClientRect();
     const target = Number.parseFloat(getComputedStyle(element.ownerDocument.documentElement).getPropertyValue("--target-min-size")) * 16;
-    return tabBoxes.length === 18 && tabBoxes.every(({ left, right, top, bottom, width, height }) => left >= 0 && right <= innerWidth && top >= 0 && bottom <= innerHeight && bottom <= tabPanel.top && width >= target && height >= target) && tabTriggers[0].textContent === label ? "ok" : JSON.stringify({ tabs: tabBoxes.map(({ left, right, top, bottom, width, height }) => ({ left, right, top, bottom, width, height })), panelTop: tabPanel.top, viewport: { width: innerWidth, height: innerHeight } });
-  }, longLabel)).toBe("ok");
+    return tabBoxes.length === 18 && tabBoxes.every(({ left, right, top, bottom, width, height }) => left >= 0 && right <= innerWidth && top >= 0 && bottom <= innerHeight && bottom <= tabPanel.top && width >= target && height >= target) && element.scrollWidth <= element.clientWidth && tabTriggers.every((tab) => tab.scrollWidth <= tab.clientWidth) ? "ok" : JSON.stringify({ tabs: tabTriggers.map((tab) => { const { left, right, top, bottom, width, height } = tab.getBoundingClientRect(); return { left, right, top, bottom, width, height, scrollWidth: tab.scrollWidth, clientWidth: tab.clientWidth }; }), sheet: { clientWidth: element.clientWidth, scrollWidth: element.scrollWidth }, panelTop: tabPanel.top, viewport: { width: innerWidth, height: innerHeight } });
+  })).toBe("ok");
+  await expect(tabs.getByRole("tab", { name: longLabel })).toBeVisible();
+  await expect(tabs.getByRole("tab", { name: unbrokenLabel })).toBeVisible();
   await expect.poll(() => page.locator('iframe[title="DockedPanel · open_undocked"]').getAttribute("height").then(Number)).toBeGreaterThan(852);
   await page.locator('iframe[title="DockedPanel · open_undocked"]').scrollIntoViewIfNeeded();
   await expect(tabs.getByRole("tab", { name: longLabel })).toBeVisible();
   await tabs.getByRole("tab", { name: longLabel }).click({ timeout: 5000 });
   await expect(tabs.getByRole("tab", { name: longLabel })).toHaveAttribute("aria-selected", "true");
+  await page.getByLabel("Text size").selectOption("5");
+  await expect.poll(() => sheetFrame.getAttribute("height").then(Number)).toBeGreaterThan(852);
+  await sheetFrame.evaluate((frame) => { (frame as HTMLIFrameElement).width = "375"; });
+  await expect.poll(() => sheetFrame.evaluate((frame) => (frame as HTMLIFrameElement).contentWindow?.innerWidth)).toBe(375);
+  await expect.poll(() => dialog.evaluate((element) => element.scrollWidth <= element.clientWidth && [...element.querySelectorAll<HTMLElement>("[role=tab]")].every((tab) => tab.scrollWidth <= tab.clientWidth) ? "ok" : JSON.stringify({ sheet: [element.clientWidth, element.scrollWidth], tabs: [...element.querySelectorAll<HTMLElement>("[role=tab]")].map((tab) => [tab.clientWidth, tab.scrollWidth]) }))).toBe("ok");
 });
 
 test("gallery previews complete panel callbacks, fit overlays, and preserve keyboard behavior", async ({ page }) => {
   await page.goto("/");
 
   const project = page.frameLocator('iframe[title="ProjectPanel · decisions"]');
+  const longProjectLabel = "Release readiness and operational handover checklist for the production rollout, including service ownership, alert response and rollback notes";
+  const longProjectTab = project.getByRole("tab", { name: longProjectLabel });
+  const projectFrame = page.locator('iframe[title="ProjectPanel · decisions"]');
   const decisions = project.getByText("decision_one", { exact: true });
   await expect(decisions).toBeVisible();
   const decisionsTab = project.getByRole("tab", { name: "decisions" });
@@ -157,11 +166,18 @@ test("gallery previews complete panel callbacks, fit overlays, and preserve keyb
   await tabpanel.focus();
   expect(await tabpanel.evaluate((element) => getComputedStyle(element).boxShadow)).not.toBe("none");
 
-  const projectFrame = page.locator('iframe[title="ProjectPanel · decisions"]');
   for (const [device, width] of [["tablet", 800], ["desktop", 1440]] as const) {
     await page.getByLabel("Screen size").selectOption(device);
     await expect.poll(() => projectFrame.evaluate((frame) => (frame as HTMLIFrameElement).contentWindow?.innerWidth)).toBe(width);
     await expect(page.frameLocator('iframe[title="ProjectPanel · decisions"]').getByRole("tablist")).toBeVisible();
+    await expect(longProjectTab).toBeVisible();
+    const labelLayout = await projectFrame.evaluate((frame) => {
+      const section = (frame as HTMLIFrameElement).contentDocument!.querySelector('section[aria-label="Project"]')!;
+      return { sectionWidth: section.clientWidth, sectionScrollWidth: section.scrollWidth, tablistWidth: section.querySelector('[role="tablist"]')!.clientWidth, panelWidth: section.querySelector('[role="tabpanel"]')!.clientWidth };
+    });
+    expect(labelLayout.sectionScrollWidth).toBeLessThanOrEqual(labelLayout.sectionWidth);
+    expect(labelLayout.tablistWidth).toBeLessThan(labelLayout.sectionWidth);
+    expect(labelLayout.panelWidth).toBeGreaterThanOrEqual(labelLayout.sectionWidth / 2);
     await projectFrame.evaluate((frame) => {
       const item = (frame as HTMLIFrameElement).contentDocument!.querySelector('[role="listitem"]')!;
       item.textContent = "The team decided to keep the existing service and migrate in two carefully measured stages.";

@@ -85,15 +85,16 @@ describe("DockedPanel public interface", () => {
     const onOpenChange = vi.fn();
     const onTabChange = vi.fn();
     const props = meta.galleryStates[0].props;
+    const historyLabel = props.tabs[1].label;
     const slots = { details: [], history: [<p key="history">History entry</p>] };
     const view = render(<CaptureProvider sink={recorder.sink}><DockedPanel {...props} onOpenChange={onOpenChange} onTabChange={onTabChange} slots={slots} /></CaptureProvider>);
     await user.keyboard("{Escape}");
     expect(onOpenChange).toHaveBeenCalledWith(false);
     expect(recorder.events.some(({ name }) => name === "panel_closed")).toBe(false);
-    await user.click(screen.getByRole("tab", { name: "History" }));
+    await user.click(screen.getByRole("tab", { name: historyLabel }));
     expect(onTabChange).toHaveBeenCalledWith("history");
     view.rerender(<CaptureProvider sink={recorder.sink}><DockedPanel {...props} activeTab="history" onOpenChange={onOpenChange} onTabChange={onTabChange} slots={slots} /></CaptureProvider>);
-    expect(screen.getByRole("tab", { name: "History" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("tab", { name: historyLabel }).getAttribute("aria-selected")).toBe("true");
     expect(screen.getByText("History entry")).toBeTruthy();
   });
 
