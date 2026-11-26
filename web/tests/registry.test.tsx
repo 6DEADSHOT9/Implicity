@@ -77,6 +77,25 @@ describe("registry and renderer", () => {
       },
     };
     expect(await markup(renderMessage(spec, "fallback", current))).toContain("<strong>1</strong>");
+    const invalidSlot = {
+      ...spec,
+      elements: {
+        ...spec.elements,
+        panel: { ...spec.elements.panel, slots: { orphan: ["note"] } },
+      },
+    };
+    expect(panel.schema.safeParse({ props: spec.elements.panel.props, slots: invalidSlot.elements.panel.slots }).success).toBe(false);
+    expect(await markup(renderMessage(invalidSlot, "fallback", current))).toContain("fallback");
+    expect(panel.slotsSchema.safeParse({ WrongSlot: ["note"] }).success).toBe(false);
+    const slotSchema = panel.slotsSchema.toJSONSchema();
+    expect(new Ajv2020({ strict: false }).compile(slotSchema)({ WrongSlot: ["note"] })).toBe(false);
+  });
+
+  it("keeps shared registry props strict in runtime and JSON Schema", () => {
+    const entry = defineSkeletonDefinition({ id: "ReviewPanel", props: z.object({ count: z.number() }), slots: z.object({ main: z.array(z.string()) }), events, meta });
+    const input = { props: { count: 1, unexpected: true }, slots: { main: [] } };
+    expect(entry.schema.safeParse(input).success).toBe(false);
+    expect(new Ajv2020({ strict: false }).compile(entry.schema.toJSONSchema())(input)).toBe(false);
   });
 
   it("falls back for inherited, unknown and missing-root component ids", async () => {

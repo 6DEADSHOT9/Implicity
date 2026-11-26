@@ -89,7 +89,6 @@ function isRenderableSpec(value: unknown, current: Registry): value is Spec {
     const slots = element.slots ?? {};
     return !!entry
       && entry.schema.safeParse({ props: element.props, slots }).success
-      && Object.keys(slots).every((slot) => Object.hasOwn(entry.slotsSchema.shape, slot) || entry.slotsSchema._zod.def.catchall?._zod.def.type !== undefined && entry.slotsSchema._zod.def.catchall._zod.def.type !== "never" && /^[a-z][a-z0-9_-]{0,63}$/.test(slot))
       && Object.values(slots).flat().every((child) => Object.hasOwn(spec.elements, child));
   });
   return valid && cyclicElements(spec.elements).size === 0;
@@ -123,7 +122,6 @@ function messageSpec(value: unknown, current: Registry): Spec | undefined {
     const refsExist = Object.values(slots).flat().every((child) => Object.hasOwn(envelope.elements, child));
     const componentValid = entry
       && entry.schema.safeParse({ props: element.props, slots }).success
-      && Object.keys(slots).every((slot) => Object.hasOwn(entry.slotsSchema.shape, slot) || entry.slotsSchema._zod.def.catchall?._zod.def.type !== undefined && entry.slotsSchema._zod.def.catchall._zod.def.type !== "never" && /^[a-z][a-z0-9_-]{0,63}$/.test(slot))
       && refsExist;
     return [id, componentValid ? element : { type: PlainTextFallback, props: {} }];
   }));

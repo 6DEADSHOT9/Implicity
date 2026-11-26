@@ -61,7 +61,10 @@
       "slots_schema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
-        "properties": {},
+        "propertyNames": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
         "additionalProperties": {
           "type": "array",
           "items": {

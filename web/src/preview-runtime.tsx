@@ -16,10 +16,7 @@ function PreviewMounted({ children, onMounted, version }: { children: ReactNode;
 function InteractivePreview({ entry, state }: { entry: SkeletonEntry; state: SkeletonEntry["meta"]["galleryStates"][number] }) {
   const [props, setProps] = useState<Record<string, unknown>>(() => ({ ...state.props }));
   const update = (key: string) => (value: unknown) => setProps((current) => ({ ...current, [key]: value }));
-  const selectedState = entry.id === "ProjectPanel"
-    ? entry.meta.galleryStates.find(({ props: example }) => example.activeTab === props.activeTab)
-    : undefined;
-  const slots = selectedState?.slots ?? state.slots ?? {};
+  const slots = state.slots ?? {};
   return <entry.Component props={props} slots={slots} interactions={{
     ...(Object.hasOwn(props, "activeTab") ? { onTabChange: update("activeTab") } : {}),
     ...(Object.hasOwn(props, "open") ? { onOpenChange: update("open") } : {}),

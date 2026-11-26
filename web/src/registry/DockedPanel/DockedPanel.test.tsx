@@ -78,6 +78,25 @@ describe("DockedPanel public interface", () => {
     expect(recorder.events.at(-1)).toEqual({ name: "panel_undocked", component: "DockedPanel" });
   });
 
+  it("keeps Sheet dismissal controlled and reports a tab choice by id", async () => {
+    mobile.value = true;
+    const user = userEvent.setup();
+    const recorder = recordingCapture();
+    const onOpenChange = vi.fn();
+    const onTabChange = vi.fn();
+    const props = meta.galleryStates[0].props;
+    const slots = { details: [], history: [<p key="history">History entry</p>] };
+    const view = render(<CaptureProvider sink={recorder.sink}><DockedPanel {...props} onOpenChange={onOpenChange} onTabChange={onTabChange} slots={slots} /></CaptureProvider>);
+    await user.keyboard("{Escape}");
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(recorder.events.some(({ name }) => name === "panel_closed")).toBe(false);
+    await user.click(screen.getByRole("tab", { name: "History" }));
+    expect(onTabChange).toHaveBeenCalledWith("history");
+    view.rerender(<CaptureProvider sink={recorder.sink}><DockedPanel {...props} activeTab="history" onOpenChange={onOpenChange} onTabChange={onTabChange} slots={slots} /></CaptureProvider>);
+    expect(screen.getByRole("tab", { name: "History" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByText("History entry")).toBeTruthy();
+  });
+
   it("reports the small-screen Sheet without changing the saved dock preference", async () => {
     mobile.value = true;
     const capture = recordingCapture();

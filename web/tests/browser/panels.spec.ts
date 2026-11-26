@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const panelStates = [
   ["DockedPanel", "open_docked", "panel_content"],
@@ -11,8 +11,7 @@ const panelStates = [
   ["ProjectPanel", "files", "file_one"],
 ] as const;
 
-test("panel gallery states render with the selected settings across every configuration", async ({ page }) => {
-  test.setTimeout(120_000);
+async function panelMatrix(page: Page, look: string, mode: string) {
   await page.goto("/");
   const titles = panelStates.map(([id, state]) => `${id} · ${state}`);
   const expectedContent = Object.fromEntries(panelStates.map(([id, state, content]) => [`${id} · ${state}`, content]));
@@ -22,18 +21,22 @@ test("panel gallery states render with the selected settings across every config
     await expect(preview.getByText(content, { exact: false }).first()).toBeVisible();
   }
 
-  const looks = ["default", "focused", "notebook"];
-  const modes = ["light", "dark"];
   const densities = ["compact", "comfortable", "spacious"];
   const textSizes = ["1", "2", "3", "4", "5"];
   const devices = ["desktop", "tablet"];
+  const labels = { Look: look, Mode: mode, Density: "", "Text size": "", "Screen size": "" };
+  const setOption = async (label: keyof typeof labels, value: string) => {
+    if (labels[label] === value) return;
+    await page.getByLabel(label).selectOption(value);
+    labels[label] = value;
+  };
 
-  for (const look of looks) for (const mode of modes) for (const density of densities) for (const textSize of textSizes) for (const device of devices) {
-    await page.getByLabel("Look").selectOption(look);
-    await page.getByLabel("Mode").selectOption(mode);
-    await page.getByLabel("Density").selectOption(density);
-    await page.getByLabel("Text size").selectOption(textSize);
-    await page.getByLabel("Screen size").selectOption(device);
+  for (const density of densities) for (const textSize of textSizes) for (const device of devices) {
+    await setOption("Look", look);
+    await setOption("Mode", mode);
+    await setOption("Density", density);
+    await setOption("Text size", textSize);
+    await setOption("Screen size", device);
     await expect(page.locator("[data-gallery-root]")).toHaveAttribute("data-look", look);
     const rootTokens = await page.locator("[data-gallery-root]").evaluate((element) => {
       const style = getComputedStyle(element);
@@ -64,11 +67,14 @@ test("panel gallery states render with the selected settings across every config
         }
         if (background[3] < 1) background = background.slice(0, 3).map((channel) => channel * background[3] + 1 * (1 - background[3])).concat(1);
         const color = rgba(style.color);
-        return { height: element instanceof HTMLButtonElement ? element.getBoundingClientRect().height : undefined, contrast: contrast(color.slice(0, 3).map((channel, index) => channel * color[3] + background[index] * (1 - color[3])), background) };
+        return contrast(color.slice(0, 3).map((channel, index) => channel * color[3] + background[index] * (1 - color[3])), background);
       });
+      const target = Number.parseFloat(document.documentElement.style.getPropertyValue("--target-min-size")) * 16;
+      const controls = [...document.querySelectorAll("button, [role=tab]")].filter((control) => control.getClientRects().length > 0).map((control) => control.getBoundingClientRect());
       const heading = document?.querySelector("h2");
       const headingSize = heading && view ? view.getComputedStyle(heading).fontSize : undefined;
       const headingToken = document?.documentElement.style.getPropertyValue("--heading-3").trim();
+      const dialog = document.querySelector('[role="dialog"]');
       return {
         title: iframe.title,
         ready: true,
@@ -81,24 +87,46 @@ test("panel gallery states render with the selected settings across every config
         content: document?.body.innerText.includes(contentByTitle[iframe.title]),
         healthy: !document?.body.innerText.includes("preview failed") && !document?.body.innerText.includes("Preview unavailable"),
         headingsMatchToken: !heading || headingSize === `${Number.parseFloat(headingToken ?? "") * 16}px`,
-        controlsMeetTarget: texts.filter(({ height }) => height !== undefined).every(({ height }) => height! >= Number.parseFloat(document?.documentElement.style.getPropertyValue("--target-min-size") ?? "") * 16),
-        textMeetsContrast: texts.every(({ contrast }) => contrast >= 4.5),
+        controlsMeetTarget: controls.length > 0 && controls.every(({ width: controlWidth, height }) => controlWidth >= target && height >= target),
+        textMeetsContrast: texts.length > 0 && texts.every((contrastRatio) => contrastRatio >= 4.5),
+        sheetSurfaceMatches: !dialog || view!.getComputedStyle(dialog).backgroundColor === view!.getComputedStyle(document!.body).backgroundColor,
       };
       });
-      return previews.length === names.length && previews.every((preview) => preview.ready && preview.background === tokens.background && preview.space === tokens.space && preview.text === tokens.text && preview.target === tokens.target && preview.mode === expectedMode && preview.width === width && preview.content && preview.healthy && preview.headingsMatchToken && preview.controlsMeetTarget && preview.textMeetsContrast);
+      return previews.length === names.length && previews.every((preview) => preview.ready && preview.background === tokens.background && preview.space === tokens.space && preview.text === tokens.text && preview.target === tokens.target && preview.mode === expectedMode && preview.width === width && preview.content && preview.healthy && preview.headingsMatchToken && preview.controlsMeetTarget && preview.textMeetsContrast && preview.sheetSurfaceMatches) ? "ok" : JSON.stringify(previews.map(({ title, ready, background, space, text, target, mode, width: actualWidth, content, healthy, headingsMatchToken, controlsMeetTarget, textMeetsContrast, sheetSurfaceMatches }) => ({ title, ready, background, space, text, target, mode, width: actualWidth, content, healthy, headingsMatchToken, controlsMeetTarget, textMeetsContrast, sheetSurfaceMatches })));
     }, {
       expectedTitles: titles,
       expectedContent,
       tokens: rootTokens,
       expectedMode: mode,
       width: expectedWidth,
-    })).toBe(true);
+    }), { message: `panel invariant failed for ${JSON.stringify({ look, mode, density, textSize, device })}` }).toBe("ok");
   }
 
   const sources = page.frameLocator('iframe[title="SourcesPanel · docked"]');
   const list = sources.locator("ul");
   await expect(list).toHaveCSS("list-style-type", "disc");
   await expect(list.locator("li").first()).toHaveCSS("display", "list-item");
+}
+
+for (const look of ["default", "focused", "notebook"]) for (const mode of ["light", "dark"]) {
+  test(`panel gallery matrix · ${look} · ${mode}`, async ({ page }) => panelMatrix(page, look, mode));
+}
+
+test("DockedPanel wraps and lets people select among 18 tabs on tablet", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Screen size").selectOption("tablet");
+  const tabs = page.frameLocator('iframe[title="DockedPanel · open_undocked"]');
+  const dialog = tabs.getByRole("dialog", { name: "Workspace" });
+  await expect(dialog).toBeVisible();
+  await expect.poll(() => dialog.evaluate((element) => {
+    const tabBoxes = [...element.querySelectorAll("[role=tab]")].map((tab) => tab.getBoundingClientRect());
+    const tabPanel = element.querySelector('[role="tabpanel"]:not([hidden])')!.getBoundingClientRect();
+    return tabBoxes.length === 18 && tabBoxes.every(({ left, right, top, bottom }) => left >= 0 && right <= innerWidth && top >= 0 && bottom <= innerHeight && bottom <= tabPanel.top) ? "ok" : JSON.stringify({ tabs: tabBoxes.map(({ left, right, top, bottom }) => ({ left, right, top, bottom })), panelTop: tabPanel.top, viewport: { width: innerWidth, height: innerHeight } });
+  })).toBe("ok");
+  await expect.poll(() => page.locator('iframe[title="DockedPanel · open_undocked"]').getAttribute("height").then(Number)).toBeGreaterThan(852);
+  await page.locator('iframe[title="DockedPanel · open_undocked"]').scrollIntoViewIfNeeded();
+  await tabs.getByRole("tab", { name: "Details" }).click({ timeout: 5000 });
+  await expect(tabs.getByRole("tab", { name: "Details" })).toHaveAttribute("aria-selected", "true");
 });
 
 test("gallery previews complete panel callbacks, fit overlays, and preserve keyboard behavior", async ({ page }) => {
@@ -120,14 +148,15 @@ test("gallery previews complete panel callbacks, fit overlays, and preserve keyb
   expect(await tabpanel.evaluate((element) => getComputedStyle(element).boxShadow)).not.toBe("none");
 
   const projectFrame = page.locator('iframe[title="ProjectPanel · decisions"]');
-  await projectFrame.evaluate((frame) => {
-    const item = (frame as HTMLIFrameElement).contentDocument!.querySelector('[role="listitem"]')!;
-    item.textContent = "The team decided to keep the existing service and migrate in two carefully measured stages.";
-  });
   for (const [device, width] of [["tablet", 800], ["desktop", 1440]] as const) {
     await page.getByLabel("Screen size").selectOption(device);
     await expect.poll(() => projectFrame.evaluate((frame) => (frame as HTMLIFrameElement).contentWindow?.innerWidth)).toBe(width);
     await expect(page.frameLocator('iframe[title="ProjectPanel · decisions"]').getByRole("tablist")).toBeVisible();
+    await projectFrame.evaluate((frame) => {
+      const item = (frame as HTMLIFrameElement).contentDocument!.querySelector('[role="listitem"]')!;
+      item.textContent = "The team decided to keep the existing service and migrate in two carefully measured stages.";
+    });
+    await expect(page.frameLocator('iframe[title="ProjectPanel · decisions"]').getByText("The team decided to keep the existing service and migrate in two carefully measured stages.")).toBeVisible();
     const layout = await projectFrame.evaluate((frame) => {
       const document = (frame as HTMLIFrameElement).contentDocument!;
       return { tabs: document.querySelector('[role="tablist"]')!.getBoundingClientRect().width, content: document.querySelector('[role="tabpanel"]')!.getBoundingClientRect().width };

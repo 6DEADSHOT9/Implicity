@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DockedPanel } from "./DockedPanel/DockedPanel";
 import { meta as dockedMeta } from "./DockedPanel/meta";
@@ -8,7 +8,7 @@ import { meta as projectMeta } from "./ProjectPanel/meta";
 import { recordingCapture, CaptureProvider } from "./capture";
 import { SourcesPanel } from "./SourcesPanel/SourcesPanel";
 import { meta as sourcesMeta } from "./SourcesPanel/meta";
-import { enterSeenTarget, installVisibleIntersectionObserver, passSeenInterval } from "./panel-seen-test-utils";
+import { enterSeenTarget, installVisibleIntersectionObserver, passSeenInterval, sampleSeenTargetIfObserved } from "./panel-seen-test-utils";
 
 const mobile = vi.hoisted(() => ({ value: false }));
 vi.mock("@/hooks/use-mobile", () => ({ useIsMobile: () => mobile.value }));
@@ -67,7 +67,8 @@ describe("panel useSeen wiring", () => {
     enterSeenTarget(panel);
     await vi.advanceTimersByTimeAsync(1000);
     view.rerender(<CaptureProvider sink={capture.sink}><DockedPanel {...dockedMeta.galleryStates[0].props} open={false} /></CaptureProvider>);
-    await passSeenInterval();
+    sampleSeenTargetIfObserved(screen.getByRole("button", { name: "Open Workspace" }));
+    await act(async () => { vi.advanceTimersByTime(3000); });
     expect(capture.events.some(({ name }) => name === "component_seen")).toBe(false);
   });
 });

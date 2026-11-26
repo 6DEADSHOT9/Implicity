@@ -35,17 +35,19 @@ export type SkeletonMeta = {
 export type SkeletonEntry = {
   id: string;
   propsSchema: z.ZodObject<z.ZodRawShape>;
-  slotsSchema: z.ZodObject<z.ZodRawShape>;
-  schema: z.ZodObject<{ props: z.ZodObject<z.ZodRawShape>; slots: z.ZodObject<z.ZodRawShape> }>;
+  slotsSchema: SlotsSchema;
+  schema: z.ZodObject<{ props: z.ZodObject<z.ZodRawShape>; slots: SlotsSchema }>;
   events: readonly string[];
   meta: SkeletonMeta;
   Component: ComponentType<{ props: unknown; slots: Record<string, ReactNode>; interactions?: Record<string, unknown> }>;
 };
 
-type ComponentProps<P extends z.ZodObject<z.ZodRawShape>, S extends z.ZodObject<z.ZodRawShape>> = z.infer<P> & {
+export type SlotsSchema = z.ZodObject<z.ZodRawShape> | z.ZodRecord<z.ZodString, z.ZodType>;
+
+type ComponentProps<P extends z.ZodObject<z.ZodRawShape>, S extends SlotsSchema> = z.infer<P> & {
   slots?: Partial<Record<Extract<keyof z.infer<S>, string>, ReactNode[]>>;
 };
-export type SkeletonDefinition<P extends z.ZodObject<z.ZodRawShape> = z.ZodObject<z.ZodRawShape>, S extends z.ZodObject<z.ZodRawShape> = z.ZodObject<z.ZodRawShape>> = {
+export type SkeletonDefinition<P extends z.ZodObject<z.ZodRawShape> = z.ZodObject<z.ZodRawShape>, S extends SlotsSchema = SlotsSchema> = {
   id: string;
   propsSchema: P;
   slotsSchema: S;
@@ -54,24 +56,31 @@ export type SkeletonDefinition<P extends z.ZodObject<z.ZodRawShape> = z.ZodObjec
   meta: SkeletonMeta;
 };
 
-export function createSkeletonSchema<P extends z.ZodObject<z.ZodRawShape>, S extends z.ZodObject<z.ZodRawShape>>(props: P, slots: S) {
-  return z.object({ props, slots }).strict();
+export function createSkeletonSchema<P extends z.ZodObject<z.ZodRawShape>, S extends SlotsSchema>(props: P, slots: S) {
+  return z.object({ props: props.strict() as P, slots }).strict().superRefine((rawValue, context) => {
+    const value = rawValue as { props: unknown; slots: unknown };
+    const props = value.props as Record<string, unknown>;
+    const slots = value.slots as Record<string, unknown>;
+    if (!Array.isArray(props.tabs)) return;
+    const tabIds = new Set(props.tabs.flatMap((tab) => tab && typeof tab === "object" && "id" in tab && typeof tab.id === "string" ? [tab.id] : []));
+    for (const slot of Object.keys(slots)) if (!tabIds.has(slot)) context.addIssue({ code: "custom", path: ["slots", slot], message: "Slot ids must match declared tabs" });
+  });
 }
 
-export function defineSkeletonDefinition<P extends z.ZodObject<z.ZodRawShape>, S extends z.ZodObject<z.ZodRawShape>>(entry: {
+export function defineSkeletonDefinition<P extends z.ZodObject<z.ZodRawShape>, S extends SlotsSchema>(entry: {
   id: string;
   props: P;
   slots: S;
   events: readonly string[];
   meta: SkeletonMeta;
 }): SkeletonDefinition<P, S> {
-  const propsSchema = entry.props;
+  const propsSchema = entry.props.strict() as P;
   const slotsSchema = entry.slots;
   const schema = createSkeletonSchema(propsSchema, slotsSchema);
   return { id: entry.id, propsSchema, slotsSchema, schema, events: entry.events, meta: entry.meta };
 }
 
-export function defineSkeleton<P extends z.ZodObject<z.ZodRawShape>, S extends z.ZodObject<z.ZodRawShape>>(
+export function defineSkeleton<P extends z.ZodObject<z.ZodRawShape>, S extends SlotsSchema>(
   definition: SkeletonDefinition<P, S>,
   Skeleton: ComponentType<ComponentProps<P, S>>,
 ) {

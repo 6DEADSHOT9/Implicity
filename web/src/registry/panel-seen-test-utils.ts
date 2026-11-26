@@ -42,6 +42,12 @@ export function enterSeenTarget(target: Element) {
   act(() => observer.enter());
 }
 
+export function sampleSeenTargetIfObserved(target: Element) {
+  Object.defineProperty(target, "checkVisibility", { configurable: true, value: () => true });
+  const observer = [...VisibleIntersectionObserver.observers].reverse().find((instance) => instance.target === target);
+  if (observer) act(() => observer.enter());
+}
+
 export async function passSeenInterval() {
   await act(async () => { vi.advanceTimersByTime(3000); });
 }

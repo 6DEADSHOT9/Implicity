@@ -14,10 +14,10 @@ describe("ProjectPanel public interface", () => {
   it("renders only the selected tab's slot content", () => {
     for (const state of meta.galleryStates) {
       const slots = Object.fromEntries(Object.entries(state.slots ?? {}).map(([slot, ids]) => [slot, (ids as readonly string[]).map((id) => <span key={id}>{id}</span>)]));
-      const selectedSlot = Object.values(state.slots ?? {}).flat()[0];
+      const selectedSlot = (state.slots as Readonly<Record<string, readonly string[]>> | undefined)?.[String(state.props.activeTab)]?.[0];
       const view = render(<ProjectPanel {...state.props} slots={slots} />);
       expect(screen.getByRole("tab", { name: state.id[0].toUpperCase() + state.id.slice(1) }).getAttribute("aria-selected")).toBe("true");
-      expect(screen.getByText(selectedSlot)).toBeTruthy();
+      expect(screen.getByText(selectedSlot!)).toBeTruthy();
       view.unmount();
     }
   });
@@ -27,10 +27,11 @@ describe("ProjectPanel public interface", () => {
     expect(propsSchema.safeParse(props).success).toBe(true);
     render(<ProjectPanel {...props} slots={{ files: [<span key="file">Release plan</span>] }} />);
     expect(screen.getByRole("tab", { name: "Work files" }).getAttribute("aria-selected")).toBe("true");
+    expect(document.querySelector('[data-slot="item"]')).toBeTruthy();
     expect(screen.getByText("Release plan")).toBeTruthy();
   });
 
-  it("rejects missing and duplicate active tabs in runtime and JSON Schema", async () => {
+  it("rejects missing and duplicate active tabs at runtime while JSON Schema checks shape", async () => {
     const state = meta.galleryStates[0];
     const missing = { ...state.props, tabs: [{ id: "files", label: "Files" }], activeTab: "decisions" };
     const duplicate = { ...state.props, tabs: [{ id: "decisions", label: "Decisions" }, { id: "decisions", label: "More decisions" }] };

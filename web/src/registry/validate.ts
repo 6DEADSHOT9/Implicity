@@ -72,16 +72,14 @@ export function validateRegistryDefinitions(entries: readonly SkeletonDefinition
       }
       throw new Error(`${entry.id} metadata is incomplete: ${meta.error.issues.map((issue) => issue.path.join(".")).join(", ")}`);
     }
-    const declaredSlots = Object.keys(entry.slotsSchema.shape).sort();
+    const staticSlotSchema = "shape" in entry.slotsSchema ? entry.slotsSchema : undefined;
+    const declaredSlots = staticSlotSchema ? Object.keys(staticSlotSchema.shape).sort() : [];
     const metadataSlots = [...meta.data.slots].sort();
-    const catchall = entry.slotsSchema._zod.def.catchall;
-    const dynamicSlots = catchall !== undefined && catchall._zod.def.type !== "never";
+    const dynamicSlots = !staticSlotSchema;
     if (dynamicSlots ? declaredSlots.length !== 0 || metadataSlots.length !== 0 : declaredSlots.join("\0") !== metadataSlots.join("\0")) throw new Error(`${entry.id} slot metadata does not match its schema`);
     if (meta.data.slots.some((slot) => !slotIdValid(slot))) throw new Error(`${entry.id} declares a slot id not in T3`);
-    if (declaredSlots.length) {
-      const invalidChildren = Object.fromEntries(declaredSlots.map((slot) => [slot, ["Upper"]]));
-      if (entry.slotsSchema.safeParse(invalidChildren).success) throw new Error(`${entry.id} slot schema does not enforce T3 child ids`);
-    }
+    const invalidChildren = Object.fromEntries((dynamicSlots ? ["main"] : declaredSlots).map((slot) => [slot, ["Upper"]]));
+    if ((dynamicSlots || declaredSlots.length) && entry.slotsSchema.safeParse(invalidChildren).success) throw new Error(`${entry.id} slot schema does not enforce T3 child ids`);
     if (meta.data.defaultStates.some((state) => !stateIdValid(state))) throw new Error(`${entry.id} declares a default state id not in T3`);
     if (meta.data.galleryStates.some(({ id }) => !stateIdValid(id))) throw new Error(`${entry.id} declares a gallery state id not in T3`);
     if (meta.data.defaultStates.some((state) => !meta.data.galleryStates.some(({ id }) => id === state))) throw new Error(`${entry.id} gallery states must include every default state`);
@@ -89,18 +87,23 @@ export function validateRegistryDefinitions(entries: readonly SkeletonDefinition
       if (!entry.propsSchema.safeParse(state.props).success) {
         throw new Error(`${entry.id} gallery state ${state.id} example props do not match its props schema`);
       }
-      if ((Object.keys(entry.slotsSchema.shape).length || dynamicSlots) && state.slots === undefined) {
+      if ((declaredSlots.length || dynamicSlots) && state.slots === undefined) {
         throw new Error(`${entry.id} gallery state ${state.id} is missing example slots`);
       }
       for (const [slot, example] of Object.entries(state.slots ?? {})) {
-        const slotSchema = entry.slotsSchema.shape[slot] ?? (dynamicSlots ? catchall : undefined);
-        const validSlot = slotSchema && z.object({ [slot]: slotSchema }).strict().safeParse({ [slot]: example }).success;
-        if (!validSlot || (dynamicSlots && !/^[a-z][a-z0-9_-]{0,63}$/.test(slot)) || (example as string[]).some((child) => !slotIdValid(child))) {
+        const slotSchema = staticSlotSchema?.shape[slot];
+        const validSlot = staticSlotSchema
+          ? slotSchema && z.object({ [slot]: slotSchema }).strict().safeParse({ [slot]: example }).success
+          : entry.slotsSchema.safeParse({ [slot]: example }).success;
+        if (!validSlot || (example as string[]).some((child) => !slotIdValid(child))) {
           throw new Error(`${entry.id} gallery state ${state.id} slot ${slot} example does not match its slot schema`);
         }
       }
       if (!entry.slotsSchema.safeParse(state.slots ?? {}).success) {
         throw new Error(`${entry.id} gallery state ${state.id} example slots do not match its slots schema`);
+      }
+      if (!entry.schema.safeParse({ props: state.props, slots: state.slots ?? {} }).success) {
+        throw new Error(`${entry.id} gallery state ${state.id} props and slots do not match`);
       }
     }
     if (meta.data.commands.some((command) => command.startsWith("cmd_"))) throw new Error(`${entry.id} Command uses reserved cmd_ prefix`);

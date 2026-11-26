@@ -1,10 +1,10 @@
-import { defineSkeletonDefinition, type SkeletonDefinition, type SkeletonEntry } from "./define-skeleton.ts";
+import { defineSkeletonDefinition, type SkeletonDefinition, type SkeletonEntry, type SlotsSchema } from "./define-skeleton.ts";
 
 export type RegistryFolderModules = {
   id: string;
   files: readonly string[];
   componentExports: readonly string[];
-  schema?: { propsSchema?: SkeletonDefinition["propsSchema"]; slotsSchema?: SkeletonDefinition["slotsSchema"] };
+  schema?: { propsSchema?: SkeletonDefinition["propsSchema"]; slotsSchema?: SlotsSchema };
   events?: { events?: readonly string[] };
   metadata?: { meta?: SkeletonEntry["meta"] };
 };

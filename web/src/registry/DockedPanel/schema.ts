@@ -13,4 +13,4 @@ export const propsSchema = z.object({
   if (new Set(ids).size !== ids.length) context.addIssue({ code: "custom", path: ["tabs"], message: "Tab ids must be unique" });
   if (!ids.includes(activeTab)) context.addIssue({ code: "custom", path: ["activeTab"], message: "The active tab must be present" });
 });
-export const slotsSchema = z.object({}).catchall(z.array(childId));
+export const slotsSchema = z.record(identifier, z.array(childId));
