@@ -80,7 +80,7 @@ A field that does not apply to an event is left out, never sent as null. A suspe
 | `search_used` | Search is opened and used | |
 | `attachment_added` | A file or photo is attached | Type: `image`, `document`, `audio`, `video` or `other`. Never the file name |
 | `draft_deleted` | A draft of meaningful length is cleared before sending | Length bucket only. The text goes to the backend, never to PostHog |
-| `setting_changed` | The person sets something by hand | Dimension, value, and the Command for `shortcut_chips` |
+| `setting_changed` | The person sets something by hand | Dimension, value, and the Command for `shortcut_chips`. A WidgetPicker switch records dimension `home_widgets`, value `on` or `off`, and the widget's component id, when the widget's shown state actually changes |
 | `change_shown`, `change_kept`, `change_undone` | An admitted change is displayed, kept or undone. Only once the arbiter has created a decision | Decision id |
 | `proposal_shown`, `proposal_kept`, `proposal_dismissed` | A proposal is shown on a ProposalCard and answered, before any decision exists | Proposal id, proposal type copied from the stored proposal |
 | `widget_seen`, `widget_used`, `widget_pinned`, `widget_dismissed` | Home widgets (Stage 4; schema added in Stage 4) | Widget id |
@@ -418,10 +418,10 @@ web/src/registry/DataTable/
 A widget's `meta.ts` also has a `widget` block declaring where its data comes from and how it refreshes:
 
 ```ts
-widget: { source: string /* a source id, in slot-id form */, refresh: "on_open" | "interval" | "live", intervalMinutes?: number /* required when refresh is "interval" */ }
+widget: { source: string /* a source id, in slot-id form */, refresh: "on_open" | "interval" | "live", intervalMinutes?: number /* required when refresh is "interval", at least 60 */ }
 ```
 
-Every built-in widget declares one; WidgetFrame shows the last update and source from it. Stage 1 declares the block only; fetching and refreshing the data come with the widgets feature.
+An `interval` refresh is a schedule, so it runs hourly at most (docs/architecture.md): `intervalMinutes` is at least 60, as a minimum in the schema. `on_open` and `live` are not schedules and have no minimum. Every built-in widget declares one; WidgetFrame shows the last update and source from it. Stage 1 declares the block only; fetching and refreshing the data come with the widgets feature.
 
 `meta.ts` also lists the states the gallery must show, such as empty, loading, long content and error. Each gallery state carries the example props, and slot content where the skeleton has slots, that put the skeleton in that state. Registry validation parses each state's example with the entry's `schema.ts` and fails, naming the folder and the state, when one is missing or invalid. The ticket that adds a skeleton supplies its examples, and the gallery renders each state from its example as given. The registry is the list of these folders, and adding one raises the registry version.
 
