@@ -127,9 +127,9 @@ def event_store():
             return self.reply(200, {"query": query})
 
         def do_POST(self):
+            body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
             if self.path in failures:
                 return self.reply(*failures[self.path])
-            body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
             if self.path.endswith("/insight_variables/"):
                 item = {
                     "id": str(UUID(int=len(definitions) + 1)),
