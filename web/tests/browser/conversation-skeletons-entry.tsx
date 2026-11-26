@@ -30,7 +30,7 @@ const markdown = [
   "| Column | Value |\n| --- | --- |\n| Name | A |",
   "![blocked](http://tracker.invalid/pixel.png)",
   `![${longAlt}](http://tracker.invalid/long-alt.png)`,
-  "![failed preview](https://tracker.invalid/fail.png)",
+  `![failed preview](${new URL("/fail.png", httpsFixtureUrl).href})`,
   `![Cross-origin preview](${httpsFixtureUrl})`,
   '<picture><source srcset="http://tracker.invalid/picture.png 1x, data:image/png;base64,AAAA 2x"><img src="http://tracker.invalid/picture.png" alt="raw html"></picture>',
 ].join("\n\n");

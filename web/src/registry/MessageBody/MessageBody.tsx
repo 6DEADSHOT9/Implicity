@@ -31,8 +31,8 @@ function RemoteImage({ src, alt }: { src?: string; alt?: string }) {
   } catch { /* Keep the invalid URL placeholder. */ }
   const unavailable = failed || imageUrl?.protocol !== "https:" || !!imageUrl.username || !!imageUrl.password;
   return unavailable
-    ? <span role="img" aria-label={`${alt || "Image"} — ${host}`} className="box-border inline-flex min-h-control max-w-full flex-wrap items-center gap-space-2 rounded-md border-token bg-muted px-space-3 text-sm"><span className="min-w-0 flex-1 break-words">{alt || "Image unavailable"}</span><span className="break-all text-muted-foreground">{host}</span></span>
-    : <img src={src} alt={alt ?? ""} referrerPolicy="no-referrer" onError={() => setFailed(true)} className="max-h-full max-w-full rounded-md border-token object-contain" />;
+    ? <span role="img" aria-label={`${alt || "Image"} — ${host}`} className="box-border inline-flex min-h-control max-w-full flex-wrap items-center gap-space-2 rounded-md token-border bg-muted px-space-3 text-sm"><span className="min-w-0 flex-1 break-words">{alt || "Image unavailable"}</span><span className="break-all text-muted-foreground">{host}</span></span>
+    : <img src={src} alt={alt ?? ""} referrerPolicy="no-referrer" onError={() => setFailed(true)} className="max-h-full max-w-full rounded-md token-border object-contain" />;
 }
 
 export function MessageBody({ content }: { content: string }) {
@@ -53,12 +53,12 @@ export function MessageBody({ content }: { content: string }) {
           components={{
             a: ({ href, children }) => <a href={href} target="_blank" rel="noreferrer" className="break-all font-medium text-primary">{children}</a>,
             code: ({ children, className }) => <code className={className ? "font-mono text-sm" : "rounded-md bg-muted px-space-2 py-space-1 font-mono text-sm"}>{children}</code>,
-            blockquote: ({ children }) => <blockquote className="my-space-4 border-s-token ps-space-3 text-muted-foreground">{children}</blockquote>,
-            hr: () => <hr className="my-space-4 border-b-token border-border" />,
-            pre: ({ children }) => <pre className="max-w-full overflow-x-auto whitespace-pre-wrap break-words rounded-md border-token bg-muted p-space-3 font-mono text-sm">{children}</pre>,
-            table: ({ children }) => <div className="max-w-full overflow-x-auto rounded-md border-token"><table className="min-w-full text-sm">{children}</table></div>,
-            th: ({ children }) => <th className="border-token px-space-3 py-space-2 text-start font-medium">{children}</th>,
-            td: ({ children }) => <td className="border-token px-space-3 py-space-2 align-top">{children}</td>,
+            blockquote: ({ children }) => <blockquote className="my-space-4 token-border-s ps-space-3 text-muted-foreground">{children}</blockquote>,
+            hr: () => <hr className="my-space-4 token-border-b border-border" />,
+            pre: ({ children }) => <pre className="max-w-full overflow-x-auto whitespace-pre-wrap break-words rounded-md token-border bg-muted p-space-3 font-mono text-sm">{children}</pre>,
+            table: ({ children }) => <div className="max-w-full overflow-x-auto rounded-md token-border"><table className="min-w-full text-sm">{children}</table></div>,
+            th: ({ children }) => <th className="token-border px-space-3 py-space-2 text-start font-medium">{children}</th>,
+            td: ({ children }) => <td className="token-border px-space-3 py-space-2 align-top">{children}</td>,
             img: ({ src, alt }) => <RemoteImage src={typeof src === "string" ? src : undefined} alt={alt} />,
           }}
         >{content}</Streamdown>

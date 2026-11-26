@@ -17,7 +17,7 @@ export function Citation({ label, source, source_type, onOpenMemory }: Props) {
   return <span ref={seenRef}>
     <InlineCitation>
       {source_type === "web"
-        ? <a href={source} target="_blank" rel="noreferrer" className="inline-flex min-h-control max-w-full items-center rounded-full border-token bg-secondary px-space-3 py-space-2">{content}</a>
+        ? <a href={source} target="_blank" rel="noreferrer" className="inline-flex min-h-control max-w-full items-center rounded-full token-border bg-secondary px-space-3 py-space-2">{content}</a>
         : <Button type="button" variant="outline" className="min-h-control max-w-full whitespace-normal break-all" onClick={() => onOpenMemory?.(source)}>{content}</Button>}
     </InlineCitation>
   </span>;

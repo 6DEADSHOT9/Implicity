@@ -25,7 +25,7 @@ export function Details({ title, content, open, slots, onOpenChange }: Props) {
     previous.current = open;
   }, [open]);
 
-  return <Collapsible ref={seenRef} open={open} onOpenChange={onOpenChange} className="min-w-0 rounded-md border-token p-space-3">
+  return <Collapsible ref={seenRef} open={open} onOpenChange={onOpenChange} className="min-w-0 rounded-md token-border p-space-3">
     <CollapsibleTrigger asChild>
       <Button type="button" variant="ghost" className="h-auto min-h-control min-w-0 w-full justify-between whitespace-normal text-start">
         <span id={titleId} className="min-w-0 break-all">{title}</span><ChevronDown aria-hidden="true" className="size-icon shrink-0" />

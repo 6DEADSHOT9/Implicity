@@ -13,13 +13,18 @@ test.afterEach(async () => {
 });
 
 test("conversation skeletons wrap at 375px and MessageBody keeps links safe and controls absent", async ({ page }) => {
-  const imageServerRequests: Record<string, string | string[] | undefined>[] = [];
+  const imageServerRequests: { path: string; headers: Record<string, string | string[] | undefined> }[] = [];
   let imageResponseHeaders: Record<string, number | string | string[] | undefined> = {};
   imageServer = createServer({
     key: readFileSync(new URL("./fixtures/no-cors.key", import.meta.url)),
     cert: readFileSync(new URL("./fixtures/no-cors.crt", import.meta.url)),
   }, (request, response) => {
-    imageServerRequests.push(request.headers);
+    imageServerRequests.push({ path: request.url ?? "", headers: request.headers });
+    if (request.url === "/fail.png") {
+      response.writeHead(404);
+      response.end();
+      return;
+    }
     response.writeHead(200, { "content-type": "image/png" });
     imageResponseHeaders = response.getHeaders();
     response.end(Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jS2cAAAAASUVORK5CYII=", "base64"));
@@ -73,19 +78,22 @@ test("conversation skeletons wrap at 375px and MessageBody keeps links safe and 
   await expect.poll(() => image.evaluate((element) => (element as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
   await expect(image).toHaveAttribute("referrerpolicy", "no-referrer");
   expect(await image.getAttribute("crossorigin")).toBeNull();
+  await expect(message.getByRole("img", { name: "failed preview — 127.0.0.1" })).toBeVisible();
   await expect(message).toContainText('<picture><source srcset="http://tracker.invalid/picture.png 1x, data:image/png;base64,AAAA 2x"><img src="http://tracker.invalid/picture.png" alt="raw html"></picture>');
   await expect(message.locator("p code")).toHaveClass(/rounded-md/);
   await expect(message.locator("table")).toBeVisible();
   const unlabeledFence = message.locator("pre").filter({ hasText: "unlabeled code block" });
   await expect(unlabeledFence).toHaveClass(/bg-muted/);
   await expect(unlabeledFence.locator("code")).not.toHaveClass(/rounded-md/);
-  await expect(message.locator("blockquote")).toHaveClass(/border-s-token/);
-  await expect(message.locator("hr")).toHaveClass(/border-b-token/);
+  await expect(message.locator("blockquote")).toHaveClass(/token-border-s/);
+  await expect(message.locator("hr")).toHaveClass(/token-border-b/);
   expect(httpRequests).toEqual([]);
-  expect(imageServerRequests).toHaveLength(1);
-  expect(imageServerRequests[0]["sec-fetch-mode"]).toBe("no-cors");
-  expect(imageServerRequests[0].origin).toBeUndefined();
-  expect(imageServerRequests[0].referer).toBeUndefined();
-  expect(imageServerRequests[0]["access-control-request-method"]).toBeUndefined();
+  expect(imageServerRequests.map(({ path }) => path).sort()).toEqual(["/fail.png", "/favicon.ico"]);
+  for (const { headers } of imageServerRequests) {
+    expect(headers["sec-fetch-mode"]).toBe("no-cors");
+    expect(headers.origin).toBeUndefined();
+    expect(headers.referer).toBeUndefined();
+    expect(headers["access-control-request-method"]).toBeUndefined();
+  }
   expect(imageResponseHeaders["access-control-allow-origin"]).toBeUndefined();
 });
