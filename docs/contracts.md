@@ -97,7 +97,7 @@ A field that does not apply to an event is left out, never sent as null. A suspe
 | Share copied | `some` (under half), `most` (half or more, not all), `all` |
 | Attachment type | `image`, `document`, `audio`, `video`, `other`, from the file's media type in the browser |
 | Component, slot, default state, built-in Command | Fixed, reviewed ids declared by the registry. The schema checks the form of the identifier; the capture wrapper rejects any value the registry does not declare. A slot named in a message spec from Hermes is checked against the registry, never taken on trust |
-| Workflow Command, custom kind, proposal id, decision id | Opaque ids minted by the app, never derived from a label, a title or content |
+| Workflow Command, custom kind, proposal id, decision id, attachment id, memory item id | Opaque ids minted by the app, never derived from a label, a title or content |
 | Command key | Always `command`, on `message_sent`, `shortcut_used` and `setting_changed`. Never the key binding |
 | Measurements | Units, thresholds and formulas belong to the capture tickets (T18 for actions, T19 for summaries). The wire rule is below |
 
@@ -431,6 +431,8 @@ An entry is exactly these files: the component is the named export matching its 
 
 **Tabs and other named parts.** A skeleton that holds a list of named parts, such as tabs, takes `{ id, label }` entries: `id` is an identifier in the same form as a slot, `label` is display text. Each part's content arrives through the slot named by its id. Events name a part by its id, never its label, so display text never enters capture (rule 2). A skeleton may fix its ids when its parts are known views; otherwise any ids are allowed.
 
+**Built-in Commands of the shell.** The shell skeletons declare these Command ids, each one the Command it exposes: `search`, `go_home`, `new_chat`, `open_chat`, `open_project`, `open_recent`, `toggle_panel`, `open_settings`. A shortcut chip carries a declared built-in Command or an app-minted workflow Command.
+
 **Registry versions** are recorded in append-only snapshot files, `registry-v1.json`, `registry-v2.json` and so on, each listing that version's components. The check needs no git history: the current components must match the file for the current version, and the current version must be the highest file. Adding or removing a component adds a new snapshot file and raises the version. An existing snapshot file is never edited, which review enforces.
 
 **A look** is one file.
@@ -496,7 +498,7 @@ Quota {
 
 **A rendered spec and its message.** `render` stores a valid message spec unattached, through the app module, and returns its id; it never takes a message or conversation id from the model, because only trusted code assigns identifiers (ADR 0020). When the app saves an assistant turn, it attaches the spec ids from the `render` calls and results it saw in that conversation's relayed stream. Specs left unattached are discarded after a fixed retention period.
 
-**Message spec rules.** `render` rejects a spec, storing nothing, when its `registry_version` is not the current one, its root is missing, an element names an unknown component or child, a prop or slot fails its schema, it has a cycle, it has more than 200 elements, or its nesting is deeper than 10. The registry's `limits` are minimum sizes and contrast for adaptations, not content bounds, so these two caps bound a spec. `catalogue` and `render` read the current-version file `registry.json`; the append-only version snapshots keep only `registry_version` and `components`. A spec attaches to exactly one message and is never re-attached or moved; discarding unattached specs is one conditional delete, so it can never remove a spec attached in the meantime. Expiry runs at startup and then daily. Checking that the target is an assistant message waits until messages have a role (T16).
+**Message spec rules.** `render` rejects a spec, storing nothing, when it contains a shell-role component (AppShell, ConversationNavigation, ChatHeader, Composer, Search, Settings: only the app opens or places them; the browser renderer rejects them in a message spec too, so the answer falls back to plain text), when its `registry_version` is not the current one, its root is missing, an element names an unknown component or child, a prop or slot fails its schema, it has a cycle, it has more than 200 elements, or its nesting is deeper than 10. The registry's `limits` are minimum sizes and contrast for adaptations, not content bounds, so these two caps bound a spec. `catalogue` and `render` read the current-version file `registry.json`; the append-only version snapshots keep only `registry_version` and `components`. A spec attaches to exactly one message and is never re-attached or moved; discarding unattached specs is one conditional delete, so it can never remove a spec attached in the meantime. Expiry runs at startup and then daily. Checking that the target is an assistant message waits until messages have a role (T16).
 
 | Tool | Input | Result |
 | --- | --- | --- |

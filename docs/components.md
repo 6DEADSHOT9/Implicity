@@ -36,9 +36,9 @@ These never move. Only additions, such as a new shortcut chip, are allowed.
 | MessageBody | Rich text of a message. Code fences render as CodeBlock and markdown tables as DataTable | Message, Bubble, Typography, plus a markdown renderer | Composed |
 | Details | A collapsible section, for reasoning and "why this works" | Reasoning, Collapsible | Direct |
 | RunActivity | Tool steps with their status | Tool and Task, built on Collapsible until AI Elements ships Trace | Direct |
-| MessageActions | Copy, regenerate, feedback, version switcher, "Remember this" | Button Group, Tooltip, Pagination | Composed |
-| AttachmentTray | Files and photos attached to a message | Attachment | Direct |
-| Citation | A source chip, including links to the person's own memory | Inline Citation | Direct |
+| MessageActions | Copy, regenerate, feedback, version switcher, answer-form switcher (prose, list, table), "Remember this" | Button Group, Tooltip, Pagination | Composed |
+| AttachmentTray | Files and photos attached to a message; each attachment id is a UUID minted by the app | Attachment | Direct |
+| Citation | A source chip, including links to the person's own memory. A web source is an https link; a memory source is a memory item id (a UUID minted by the app), and the chip calls its callback with that id so the app opens it | Inline Citation | Direct |
 | ContextChip | What shaped this answer, with a one-tap correction. Variants: "Remembered", "Noticed", "Set" | Marker, Button | Composed |
 | ShortcutChips | Chips for Commands, including workflow chips | Suggestion | Direct |
 | ApprovalRequest | Approve, edit or deny before anything is run or changed | Confirmation | Direct |
@@ -94,7 +94,7 @@ Other widgets, such as a CI tracker or supplier watch, are a DataTable, DataChar
 ### Features that are not separate components
 
 - The table-or-chart switcher belongs to DataTable and DataChart.
-- The version switcher belongs to MessageActions.
+- The version switcher and the answer-form switcher (prose, list, table) belong to MessageActions.
 - Diffs and stack traces are variants of CodeBlock.
 - Empty states use shadcn/ui's Empty inside the navigation and widgets.
 - Locks and the change history live in Settings.
