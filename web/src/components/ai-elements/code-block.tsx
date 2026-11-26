@@ -6,7 +6,7 @@ export function CodeBlock({ language = "text", className, children, ...props }: 
 }
 
 export function CodeBlockHeader({ className, ...props }: ComponentProps<"div">) {
-  return <div data-slot="code-block-header" className={cn("flex items-center justify-between border-b-token px-space-3 py-space-2 text-sm", className)} {...props} />;
+  return <div data-slot="code-block-header" className={cn("flex items-center justify-between token-border-b px-space-3 py-space-2 text-sm", className)} {...props} />;
 }
 
 export function CodeBlockTitle({ className, ...props }: ComponentProps<"span">) {
