@@ -1,4 +1,4 @@
-import { expect, test, type Locator } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import tokens from "../../../contracts/looks/tokens.json" with { type: "json" };
 import defaultLook from "../../../contracts/looks/default.json" with { type: "json" };
 import focusedLook from "../../../contracts/looks/focused.json" with { type: "json" };
@@ -784,13 +784,12 @@ test("Notebook applies its bundled body font, paper texture, and both mode palet
 });
 
 
-async function waitForContentPreviewSettings(frame: Locator, settings: { look: string; mode: string; density: string; textSize: string; deviceClass: string }) {
-  const html = frame.contentFrame().locator("html");
-  for (const [attribute, value] of Object.entries({ look: settings.look, mode: settings.mode, density: settings.density, "text-size": settings.textSize, "device-class": settings.deviceClass })) {
-    await expect(html).toHaveAttribute(`data-${attribute}`, value);
-  }
-  await frame.evaluate(async (element) => { await (element as HTMLIFrameElement).contentDocument!.fonts.ready; });
-  await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentDocument?.fonts.status)).toBe("loaded");
+async function waitForContentPreviewSettings(page: Page, titles: string[], settings: { look: string; mode: string; density: string; textSize: string; deviceClass: string }) {
+  await expect.poll(() => page.locator("iframe").evaluateAll((frames, args) => args.titles.every((title) => {
+    const frame = frames.find((element) => element.getAttribute("title") === title) as HTMLIFrameElement | undefined;
+    const document = frame?.contentDocument;
+    return !!document && document.documentElement.dataset.look === args.settings.look && document.documentElement.dataset.mode === args.settings.mode && document.documentElement.dataset.density === args.settings.density && document.documentElement.dataset.textSize === args.settings.textSize && document.documentElement.dataset.deviceClass === args.settings.deviceClass && document.fonts.status === "loaded";
+  }), { titles, settings })).toBe(true);
 }
 
 test("content skeletons render every declared gallery state across gallery settings", async ({ page }) => {
@@ -802,6 +801,7 @@ test("content skeletons render every declared gallery state across gallery setti
   })).filter(({ name }) => names.includes(name)), [...contentNames]);
   const names = new Set(cards.map(({ name }) => name));
   expect(names).toEqual(new Set(["DataTable", "DataChart", "CodeBlock", "MediaPlayer", "ArtifactWorkspace", "Checklist", "List", "Metric", "Tabs", "Card", "ChangeNotice", "ProposalCard", "Nudge"]));
+  const titles = cards.map(({ name, state }) => `${name} · ${state}`);
   const initialSettings = {
     look: await page.getByLabel("Look").inputValue(),
     mode: await page.getByLabel("Mode").inputValue(),
@@ -809,10 +809,10 @@ test("content skeletons render every declared gallery state across gallery setti
     textSize: await page.getByLabel("Text size").inputValue(),
     deviceClass: await page.getByLabel("Screen size").inputValue(),
   };
+  await Promise.all(titles.map((title) => expect(page.locator(`iframe[title="${title}"]`)).toBeVisible()));
+  await waitForContentPreviewSettings(page, titles, initialSettings);
   for (const { name, state } of cards) {
     const frame = page.locator(`iframe[title="${name} · ${state}"]`);
-    await expect(frame).toBeVisible();
-    await waitForContentPreviewSettings(frame, initialSettings);
     await expect(frame.contentFrame().locator("#root")).not.toContainText("Preview unavailable");
     await expect(frame.contentFrame().locator("#root")).not.toContainText("preview failed");
   }
@@ -834,7 +834,7 @@ test("content skeletons render every declared gallery state across gallery setti
   await expect(page.locator("[data-gallery-root]")).toHaveAttribute("data-mode", "dark");
   await expect(page.locator("[data-gallery-root]")).toHaveAttribute("data-device-class", "tablet");
   const selectedSettings = { look: "notebook", mode: "dark", density: "spacious", textSize: "5", deviceClass: "tablet" };
-  for (const { name, state } of cards) await waitForContentPreviewSettings(page.locator(`iframe[title="${name} · ${state}"]`), selectedSettings);
+  await waitForContentPreviewSettings(page, titles, selectedSettings);
   await expect(page.frameLocator('iframe[title="DataTable · table"]').locator("table")).toBeVisible();
   await expect(page.frameLocator('iframe[title="Tabs · default"]').getByRole("tablist")).toBeVisible();
   const chartView = page.frameLocator('iframe[title="DataTable · chart"]');
@@ -854,10 +854,11 @@ test("content skeletons render every declared gallery state across gallery setti
   await expect(tabs.getByRole("tabpanel").getByText("additional-details")).toBeVisible();
   for (const device of ["desktop", "tablet"] as const) {
     await page.getByLabel("Screen size").selectOption(device);
+    const deviceTitles = [...names].map((name) => titles.find((title) => title.startsWith(`${name} · `))!);
+    await waitForContentPreviewSettings(page, deviceTitles, { ...selectedSettings, deviceClass: device });
     for (const name of names) {
       const frame = page.locator(`iframe[title^="${name} · "]`).first();
       await expect(frame).toBeVisible();
-      await waitForContentPreviewSettings(frame, { ...selectedSettings, deviceClass: device });
       await expect(frame.contentFrame().locator("#root")).not.toContainText("Preview unavailable");
       await expect(frame.contentFrame().locator("#root")).not.toContainText("preview failed");
     }

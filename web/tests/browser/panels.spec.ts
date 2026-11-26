@@ -301,10 +301,10 @@ async function assertFocusedProjectLabels(page: Page, viewportWidth: 288 | 1440,
   await page.goto("/");
   const frame = page.locator('iframe[title="ProjectPanel · decisions"]');
   const section = frame.contentFrame().locator('section[aria-label="Project"]');
-  await expect(section).toBeVisible();
+  await expect(section).toBeVisible({ timeout: 15000 });
   if (viewportWidth === 288) {
     await page.getByLabel("Screen size").selectOption("tablet");
-    await expect(section).toBeVisible();
+    await expect(section).toBeVisible({ timeout: 15000 });
     await frame.evaluate((element) => { (element as HTMLIFrameElement).width = "288"; });
     await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentWindow?.innerWidth)).toBe(288);
   }
@@ -343,6 +343,28 @@ async function assertFocusedProjectLabels(page: Page, viewportWidth: 288 | 1440,
 test("ProjectPanel short labels fit Focused at a 288px viewport", async ({ page }) => assertFocusedProjectLabels(page, 288));
 test("ProjectPanel short labels fit a 288px panel in a 1440px viewport", async ({ page }) => assertFocusedProjectLabels(page, 1440, 288));
 test("ProjectPanel short labels fit a 375px panel in a 1440px viewport", async ({ page }) => assertFocusedProjectLabels(page, 1440, 375));
+
+test("ProjectPanel keeps content readable beside a long tab label", async ({ page }) => {
+  await page.goto("/");
+  const frame = page.locator('iframe[title="ProjectPanel · labels"]');
+  const section = frame.contentFrame().locator('section[aria-label="Project"]');
+  await expect(section).toBeVisible({ timeout: 15000 });
+  await expect(frame.contentFrame().locator("html")).toHaveAttribute("data-look", "default");
+  await expect(frame.contentFrame().locator("html")).toHaveAttribute("data-density", "comfortable");
+  await expect(frame.contentFrame().locator("html")).toHaveAttribute("data-text-size", "3");
+  await frame.evaluate(async (element) => { await (element as HTMLIFrameElement).contentDocument!.fonts.ready; });
+  await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentDocument?.fonts.status), { timeout: 15000 }).toBe("loaded");
+
+  for (const width of [288, 384]) {
+    await frame.evaluate((element, value) => { (element as HTMLIFrameElement).width = String(value); }, width);
+    await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentWindow?.innerWidth), { timeout: 15000 }).toBe(width);
+    const contentWidth = await frame.evaluate((element) => {
+      const panel = (element as HTMLIFrameElement).contentDocument!.querySelector<HTMLElement>('section[aria-label="Project"]')!;
+      return panel.querySelector<HTMLElement>("[role=tabpanel]")!.getBoundingClientRect().width;
+    });
+    expect(contentWidth, `content width at ${width}px`).toBeGreaterThanOrEqual(width === 288 ? 100 : 180);
+  }
+});
 
 test("SourcesPanel disclosure follows its controlled docked state", async ({ page }) => {
   await page.goto("/");

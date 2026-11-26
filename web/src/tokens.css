@@ -162,7 +162,7 @@
 @utility visually-hidden { position: absolute; width: var(--border-width); height: var(--border-width); padding: 0; margin: calc(var(--border-width) * -1); overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; }
 @utility size-icon { width: var(--icon-size); height: var(--icon-size); }
 @utility grid-cols-icon-content { grid-template-columns: var(--icon-size) minmax(0, 1fr); }
-@utility max-w-project-tabs { max-width: min(75%, var(--panel-min-width)); }
+@utility max-w-project-tabs { max-width: min(75%, calc(var(--text-base) * 8)); }
 @utility rotate-arrow { rotate: var(--motion-arrow-rotation); }
 
 @keyframes spin { to { transform: rotate(360deg); } }
