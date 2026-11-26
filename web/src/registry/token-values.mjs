@@ -86,6 +86,7 @@ for (const name of Object.keys(tokens.derivedTokens.dimensions)) {
   }
 }
 utilityNames.add("w-content");
+utilityNames.add("max-w-project-tabs");
 for (const name of ["left", "right", "top", "bottom"]) for (const offset of ["1/2"]) utilityNames.add(`${name}-${offset}`);
 for (const color of tokens.colorKeys) for (const side of ["t", "r", "b", "l", "s", "e"]) utilityNames.add(`border-${side}-${color}`);
 for (const name of ["sidebar", "sidebar-icon", "sidebar-mobile", "panel", "panel-min", "panel-max", "content", "content-height", "icon", "attachment-preview", "attachment-thumbnail"]) {

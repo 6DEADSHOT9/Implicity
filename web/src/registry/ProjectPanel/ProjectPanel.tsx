@@ -25,7 +25,7 @@ export function ProjectPanel({ title, tabs, activeTab, slots, onTabChange }: {
   return <section ref={seenRef} aria-label={title} className="flex min-w-0 max-w-full flex-col gap-space-4 bg-card p-space-4 text-card-foreground">
     <h2 className="text-heading-3">{title}</h2>
     <Tabs value={activeTab} onValueChange={(value) => onTabChange?.(value as typeof activeTab)} orientation="vertical" className="min-w-0">
-      <TabsList className="w-fit max-w-3/4 shrink-0 items-stretch">
+      <TabsList className="w-fit max-w-project-tabs shrink-0 items-stretch">
         {tabs.map(({ id, label }) => <TabsTrigger key={id} value={id} className="min-w-0 whitespace-normal wrap-anywhere bg-muted text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground" style={{ minHeight: "var(--target-min-size)" }}>{label}</TabsTrigger>)}
       </TabsList>
       {tabs.map(({ id }) => <TabsContent key={id} value={id} className="min-w-0 focus-visible:focus-ring-token focus-visible:ring-ring">
