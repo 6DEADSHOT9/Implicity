@@ -241,6 +241,8 @@ describe("look contracts", () => {
     expect(tokenSet.derivedTokens.lineHeights).toEqual({
       "--line-height-body": "1.5", "--line-height-heading": "1.2", "--line-height-code": "1.5",
     });
+    expect(tokenSet.derivedTokens.motionAnimations["--motion-progress-indeterminate"])
+      .toBe("progress-indeterminate 1.2s linear infinite");
     for (const lineHeight of Object.values(tokenSet.derivedTokens.lineHeights)) {
       expect(Number.isFinite(Number(lineHeight)) && Number(lineHeight) > 0).toBe(true);
     }

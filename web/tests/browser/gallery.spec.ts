@@ -181,10 +181,24 @@ test("gallery progress bar paints its token track and primary value", async ({ p
   const indeterminate = page.getByLabel("Indeterminate task progress");
   await expect(indeterminate).not.toHaveAttribute("value");
   expect(await indeterminate.evaluate((element) => (element as HTMLProgressElement).position)).toBe(-1);
-  await expect(indeterminate).toHaveCSS("animation-name", "progress-indeterminate");
-  await indeterminate.evaluate((element) => Object.assign((element as HTMLElement).style, { animation: "none", backgroundPosition: "0% 0" }));
-  const image = await indeterminate.screenshot();
-  const paintedPrimary = await page.evaluate(async ({ base64, primary }) => {
+  const motion = await indeterminate.evaluate((element) => {
+    const token = getComputedStyle(document.documentElement).getPropertyValue("--motion-progress-indeterminate").trim();
+    const [name, duration, easing, iterations] = token.split(/\s+/);
+    const style = getComputedStyle(element);
+    return {
+      expected: { name, duration, easing, iterations },
+      actual: { name: style.animationName, duration: style.animationDuration, easing: style.animationTimingFunction, iterations: style.animationIterationCount },
+      durationMs: duration.endsWith("ms") ? Number.parseFloat(duration) : Number.parseFloat(duration) * 1000,
+    };
+  });
+  expect(motion.actual).toEqual(motion.expected);
+  const tokenColors = await indeterminate.evaluate((element) => {
+    const root = getComputedStyle(element.ownerDocument.documentElement);
+    return { primary: root.getPropertyValue("--primary"), muted: root.getPropertyValue("--muted") };
+  });
+  const paintedPixels = async () => {
+    const image = await indeterminate.screenshot();
+    return page.evaluate(async ({ base64, primary, muted }) => {
     const image = await createImageBitmap(await fetch(`data:image/png;base64,${base64}`).then((response) => response.blob()));
     const canvas = document.createElement("canvas");
     canvas.width = image.width;
@@ -193,12 +207,50 @@ test("gallery progress bar paints its token track and primary value", async ({ p
     context.drawImage(image, 0, 0);
     const data = context.getImageData(0, 0, image.width, image.height).data;
     const probe = document.createElement("canvas").getContext("2d")!;
-    probe.fillStyle = primary;
-    probe.fillRect(0, 0, 1, 1);
-    const expected = probe.getImageData(0, 0, 1, 1).data;
-    return Array.from({ length: data.length / 4 }, (_, index) => index * 4).some((index) => data[index] === expected[0] && data[index + 1] === expected[1] && data[index + 2] === expected[2]);
-  }, { base64: image.toString("base64"), primary: await indeterminate.evaluate((element) => getComputedStyle(element.ownerDocument.documentElement).getPropertyValue("--primary")) });
-  expect(paintedPrimary).toBe(true);
+    const matches = (color: string, x: number) => {
+      probe.clearRect(0, 0, 1, 1);
+      probe.fillStyle = color;
+      probe.fillRect(0, 0, 1, 1);
+      const expected = probe.getImageData(0, 0, 1, 1).data;
+      const offset = (Math.floor(image.height / 2) * image.width + x) * 4;
+      return data[offset] === expected[0] && data[offset + 1] === expected[1] && data[offset + 2] === expected[2];
+    };
+    const primaryPixels = Array.from({ length: image.width }, (_, x) => x).filter((x) => matches(primary, x));
+    return { width: image.width, primaryPixels, hasMuted: Array.from({ length: image.width }, (_, x) => x).some((x) => matches(muted, x)) };
+    }, { base64: image.toString("base64"), ...tokenColors });
+  };
+  const setAnimationTime = (time: number) => indeterminate.evaluate((element, currentTime) => {
+    const animation = element.getAnimations()[0];
+    animation.pause();
+    animation.currentTime = currentTime;
+  }, time);
+  await setAnimationTime(0);
+  const start = await paintedPixels();
+  expect(start.hasMuted).toBe(true);
+  expect(start.primaryPixels).toHaveLength(0);
+  await setAnimationTime(motion.durationMs * 0.25);
+  const left = await paintedPixels();
+  expect(left.primaryPixels).not.toHaveLength(0);
+  expect(left.primaryPixels.at(-1)).toBeLessThan(left.width * 0.5);
+  await setAnimationTime(motion.durationMs * 0.5);
+  const center = await paintedPixels();
+  expect(center.primaryPixels[0]).toBeLessThan(center.width * 0.5);
+  expect(center.primaryPixels.at(-1)).toBeGreaterThan(center.width * 0.5);
+  expect(center.hasMuted).toBe(true);
+  await setAnimationTime(motion.durationMs * 0.75);
+  const right = await paintedPixels();
+  expect(right.primaryPixels[0]).toBeGreaterThan(right.width * 0.5);
+  await setAnimationTime(motion.durationMs * 0.99);
+  const leaving = await paintedPixels();
+  expect(leaving.primaryPixels[0]).toBeGreaterThan(leaving.width * 0.95);
+  expect(leaving.primaryPixels.length).toBeLessThan(leaving.width * 0.05);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect(indeterminate).toHaveCSS("animation-name", "none");
+  await expect(indeterminate).toHaveCSS("background-position", "50% 0px");
+  const still = await paintedPixels();
+  expect(still.primaryPixels[0]).toBeGreaterThan(still.width * 0.15);
+  expect(still.primaryPixels.at(-1)).toBeLessThan(still.width * 0.85);
+  expect(still.hasMuted).toBe(true);
 });
 
 test("Preflight preserves gallery heading hierarchy and token-bordered controls", async ({ page }) => {

@@ -166,7 +166,10 @@
 
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes pulse { 50% { opacity: 0.5; } }
-@keyframes progress-indeterminate { to { background-position: -100% 0; } }
+@keyframes progress-indeterminate {
+  from { background-position: 100% 0; }
+  to { background-position: 0 0; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
@@ -179,12 +182,15 @@ progress::-webkit-progress-bar { background: var(--muted); }
 progress::-webkit-progress-value { background: var(--primary); }
 progress::-moz-progress-bar { background: var(--primary); }
 progress:not([value]) {
-  background: linear-gradient(90deg, var(--muted) 0 35%, var(--primary) 35% 65%, var(--muted) 65% 100%);
-  background-size: 150% 100%;
-  animation: progress-indeterminate 1.2s linear infinite;
+  background: linear-gradient(90deg, var(--muted) 0 40%, var(--primary) 40% 60%, var(--muted) 60% 100%);
+  background-size: 250% 100%;
+  animation: var(--motion-progress-indeterminate);
 }
 progress:not([value])::-webkit-progress-bar { background: transparent; }
 progress:not([value])::-moz-progress-bar { background: transparent; }
+@media (prefers-reduced-motion: reduce) {
+  progress:not([value]) { animation: none; background-position: 50% 0; }
+}
 ul, ol { margin: 0; padding: 0; list-style: none; }
 :where(button, input, select, textarea) { font: inherit; }
 
