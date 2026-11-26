@@ -93,7 +93,9 @@ test("conversation skeletons wrap at 375px and MessageBody keeps links safe and 
   await expect(message).toContainText('<picture><source srcset="http://tracker.invalid/picture.png 1x, data:image/png;base64,AAAA 2x"><img src="http://tracker.invalid/picture.png" alt="raw html"></picture>');
   await expect(message.locator("p code")).toHaveClass(/rounded-md/);
   await expect(message.locator("table")).toBeVisible();
-  await expect(message.locator("pre code").filter({ hasText: "unlabeled code block" })).toHaveClass(/language-text/);
+  const unlabeledFence = message.locator("pre").filter({ hasText: "unlabeled code block" });
+  await expect(unlabeledFence).toHaveClass(/bg-muted/);
+  await expect(unlabeledFence.locator("code")).not.toHaveClass(/rounded-md/);
   await expect(message.locator("blockquote")).toHaveClass(/border-s-token/);
   await expect(message.locator("hr")).toHaveClass(/border-b-token/);
   expect(httpRequests).toEqual([]);

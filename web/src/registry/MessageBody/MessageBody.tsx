@@ -52,7 +52,7 @@ export function MessageBody({ content }: { content: string }) {
           tableMaxHeight={0}
           components={{
             a: ({ href, children }) => <a href={href} target="_blank" rel="noreferrer" className="break-all font-medium text-primary">{children}</a>,
-            code: ({ children, className }) => <code className={className ? `${className} font-mono text-sm` : "rounded-md bg-muted px-space-2 py-space-1 font-mono text-sm"}>{children}</code>,
+            code: ({ children, className }) => <code className={className ? "font-mono text-sm" : "rounded-md bg-muted px-space-2 py-space-1 font-mono text-sm"}>{children}</code>,
             blockquote: ({ children }) => <blockquote className="my-space-4 border-s-token ps-space-3 text-muted-foreground">{children}</blockquote>,
             hr: () => <hr className="my-space-4 border-b-token border-border" />,
             pre: ({ children }) => <pre className="max-w-full overflow-x-auto whitespace-pre-wrap break-words rounded-md border-token bg-muted p-space-3 font-mono text-sm">{children}</pre>,
