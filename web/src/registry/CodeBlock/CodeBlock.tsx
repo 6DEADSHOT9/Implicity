@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import type { z } from "zod";
 import { createHighlighter, type BundledLanguage } from "shiki";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CodeBlock as CodeBlockPrimitive } from "@/components/ai-elements/code-block";
+import { CodeBlock as CodeBlockPrimitive, CodeBlockContent, CodeBlockHeader, CodeBlockTitle } from "@/components/ai-elements/code-block";
 import { StackTrace, StackTraceContent, StackTraceError, StackTraceErrorMessage, StackTraceErrorType, StackTraceFrames, StackTraceHeader } from "@/components/ai-elements/stack-trace";
 import { Terminal, TerminalContent, TerminalHeader, TerminalTitle } from "@/components/ai-elements/terminal";
 import { token } from "../token";
@@ -49,7 +48,7 @@ export function CodeBlock({ code, language, variant, state }: Props) {
     if (state === "empty") { setTokens([]); return; }
     void highlighter.then((instance) => setTokens(instance.codeToTokens(code, { lang: languages.includes(language) ? language as BundledLanguage : "text", theme: "registry-tokens" }).tokens.map((line) => line.map((part) => ({ content: part.content, color: part.color })))));
   }, [code, language, state]);
-  if (state === "error") return <Card ref={root}><CardContent><p role="alert">Code could not be loaded</p></CardContent></Card>;
+  if (state === "error") return <CodeBlockPrimitive ref={root} code={code} language={language}><CodeBlockContent role="alert">Code could not be loaded</CodeBlockContent></CodeBlockPrimitive>;
   if (variant === "terminal") return <div ref={root}>
     <Terminal output={state === "empty" ? "" : code} role="region" aria-label="Terminal output">
       <TerminalHeader><TerminalTitle /></TerminalHeader>
@@ -70,14 +69,12 @@ export function CodeBlock({ code, language, variant, state }: Props) {
       <StackTraceContent><StackTraceFrames /></StackTraceContent>
     </StackTrace>
   </div>;
-  return <Card ref={root}>
-    <CardHeader><CardTitle className="text-heading-4">{language} · {variant}</CardTitle></CardHeader>
-    <CardContent>
-      <CodeBlockPrimitive aria-label={`${language} ${variant}`} tabIndex={0}>
-        <code>{tokens.length ? tokens.map((line, lineIndex) => <span className="block" key={lineIndex}>
+  return <CodeBlockPrimitive ref={root} code={code} language={language}>
+    <CodeBlockHeader><CodeBlockTitle>{language} · {variant}</CodeBlockTitle></CodeBlockHeader>
+    <CodeBlockContent aria-label={`${language} ${variant}`} tabIndex={0}>
+        {tokens.length ? tokens.map((line, lineIndex) => <span className="block" key={lineIndex}>
           {line.map((part, partIndex) => <span key={partIndex} className={syntaxClasses.get(part.color ?? "") ?? "text-code-foreground"}>{part.content}</span>)}
-        </span>) : state === "empty" ? "" : code}</code>
-      </CodeBlockPrimitive>
-    </CardContent>
-  </Card>;
+        </span>) : state === "empty" ? "" : code}
+    </CodeBlockContent>
+  </CodeBlockPrimitive>;
 }

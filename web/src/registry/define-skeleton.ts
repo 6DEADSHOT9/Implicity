@@ -39,12 +39,12 @@ export type SkeletonEntry = {
   schema: z.ZodObject<{ props: z.ZodObject<z.ZodRawShape>; slots: z.ZodObject<z.ZodRawShape> }>;
   events: readonly string[];
   meta: SkeletonMeta;
-  Component: ComponentType<{ props: unknown; slots: Record<string, ReactNode>; onAction?: (action: string, value?: string | number | boolean) => void }>;
+  Component: ComponentType<{ props: unknown; slots: Record<string, ReactNode>; onAction?: (action?: string, value?: string | number | boolean) => void }>;
 };
 
 type ComponentProps<P extends z.ZodObject<z.ZodRawShape>, S extends z.ZodObject<z.ZodRawShape>> = z.infer<P> & {
   slots?: Partial<Record<Extract<keyof z.infer<S>, string>, ReactNode[]>>;
-  onAction?: (action: string, value?: string | number | boolean) => void;
+  onAction?: (action?: string, value?: string | number | boolean) => void;
 };
 export type SkeletonDefinition<P extends z.ZodObject<z.ZodRawShape> = z.ZodObject<z.ZodRawShape>, S extends z.ZodObject<z.ZodRawShape> = z.ZodObject<z.ZodRawShape>> = {
   id: string;
@@ -55,8 +55,9 @@ export type SkeletonDefinition<P extends z.ZodObject<z.ZodRawShape> = z.ZodObjec
   meta: SkeletonMeta;
 };
 
-export function createSkeletonSchema<P extends z.ZodObject<z.ZodRawShape>, S extends z.ZodObject<z.ZodRawShape>>(props: P, slots: S) {
+export function createSkeletonSchema<P extends z.ZodObject<z.ZodRawShape>, S extends z.ZodObject<z.ZodRawShape>>(props: P, slots: S, namedTabSlots = false) {
   return z.object({ props: props.strict(), slots: slots._def.catchall ? slots : slots.strict() }).strict().superRefine((value, ctx) => {
+    if (!namedTabSlots) return;
     const tabs = (value.props as { tabs?: unknown }).tabs;
     if (!Array.isArray(tabs)) return;
     const ids = new Set(tabs.map((tab) => (tab as { id?: unknown }).id));
@@ -73,7 +74,7 @@ export function defineSkeletonDefinition<P extends z.ZodObject<z.ZodRawShape>, S
 }): SkeletonDefinition<P, S> {
   const propsSchema = entry.props.strict() as P;
   const slotsSchema = (entry.slots._def.catchall ? entry.slots : entry.slots.strict()) as S;
-  const schema = createSkeletonSchema(propsSchema, slotsSchema);
+  const schema = createSkeletonSchema(propsSchema, slotsSchema, entry.id === "Tabs");
   return { id: entry.id, propsSchema, slotsSchema, schema, events: entry.events, meta: entry.meta };
 }
 
@@ -81,7 +82,7 @@ export function defineSkeleton<P extends z.ZodObject<z.ZodRawShape>, S extends z
   definition: SkeletonDefinition<P, S>,
   Skeleton: ComponentType<ComponentProps<P, S>>,
 ) {
-  function Component({ props, slots, onAction }: { props: unknown; slots: Record<string, ReactNode>; onAction?: (action: string, value?: string | number | boolean) => void }) {
+  function Component({ props, slots, onAction }: { props: unknown; slots: Record<string, ReactNode>; onAction?: (action?: string, value?: string | number | boolean) => void }) {
     const propsSchema = definition.propsSchema;
     const parsed = propsSchema.safeParse(props);
     if (!parsed.success) throw new Error("Skeleton props failed runtime validation");

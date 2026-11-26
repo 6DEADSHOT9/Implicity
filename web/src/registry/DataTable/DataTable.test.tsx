@@ -82,6 +82,16 @@ describe("DataTable public registry entry", () => {
   expect(markup).toContain("Gain: 10");
   expect(markup).not.toContain('data-slot="progress"');
  });
+ it("uses sortable Data Table columns", () => {
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  act(() => root.render(<entry.Component props={{ columns: ["Name", "Value"], rows: [["Zulu", "2"], ["Alpha", "1"]] }} slots={{}} />));
+  expect(Array.from(host.querySelectorAll("tbody tr"), (row) => row.textContent)).toEqual(["Zulu2", "Alpha1"]);
+  act(() => (host.querySelector("th button") as HTMLButtonElement).click());
+  expect((host.querySelector("th") as HTMLTableCellElement).getAttribute("aria-sort")).toBe("ascending");
+  expect(Array.from(host.querySelectorAll("tbody tr"), (row) => row.textContent)).toEqual(["Alpha1", "Zulu2"]);
+  act(() => root.unmount());
+ });
  it("keeps the primary content accessible", () => {
   const markup = renderToStaticMarkup(<entry.Component props={entry.meta.galleryStates[0].props} slots={{}} />);
     expect(markup).toContain('data-slot="table"');

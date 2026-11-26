@@ -79,6 +79,7 @@ describe("Tabs public registry entry", () => {
  it("renders each tab's named slot content", () => {
   const markup = renderToStaticMarkup(<entry.Component props={{ tabs: [{ id: "summary", label: "Summary" }], selected: "summary" }} slots={{ summary: ["slot child"] }} />);
   expect(markup).toContain("slot child");
+  expect(entry.meta.galleryStates[0]?.slots).toEqual({ overview: ["overview"], details: ["additional-details"] });
  });
  it("keeps the primary content accessible", () => {
   const markup = renderToStaticMarkup(<entry.Component props={entry.meta.galleryStates[0].props} slots={{}} />);

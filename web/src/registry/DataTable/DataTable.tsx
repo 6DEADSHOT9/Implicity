@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { flexRender, getCoreRowModel, getSortedRowModel, useReactTable, type ColumnDef, type SortingState } from "@tanstack/react-table";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
@@ -18,6 +19,10 @@ export function DataTable({ columns, rows, chartValues, form, state, onAction }:
   const previousForm = useRef(displayedForm);
   const emit = useRef(capture.emit);
   emit.current = capture.emit;
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const data = useMemo(() => rows.map((row) => Object.fromEntries(columns.map((column, index) => [column, row[index] ?? ""]))), [columns, rows]);
+  const tableColumns = useMemo<ColumnDef<Record<string, string>>[]>(() => columns.map((column) => ({ id: column, accessorFn: (row) => row[column] ?? "", header: column })), [columns]);
+  const table = useReactTable({ data, columns: tableColumns, state: { sorting }, onSortingChange: setSorting, getCoreRowModel: getCoreRowModel(), getSortedRowModel: getSortedRowModel() });
 
   useEffect(() => {
     if (previousForm.current && displayedForm && previousForm.current !== displayedForm) emit.current("representation_switched", { dimension: "data_form", from: previousForm.current, to: displayedForm });
@@ -39,8 +44,8 @@ export function DataTable({ columns, rows, chartValues, form, state, onAction }:
             : <p>No chart data</p>
             : <Table>
               <TableCaption>Data</TableCaption>
-              <TableHeader><TableRow>{columns.map((column) => <TableHead scope="col" key={column}>{column}</TableHead>)}</TableRow></TableHeader>
-              <TableBody>{rows.map((row, index) => <TableRow key={index}>{row.map((cell, cellIndex) => <TableCell key={cellIndex}>{cell}</TableCell>)}</TableRow>)}</TableBody>
+              <TableHeader>{table.getHeaderGroups().map((group) => <TableRow key={group.id}>{group.headers.map((header) => <TableHead scope="col" key={header.id} aria-sort={header.column.getIsSorted() === "asc" ? "ascending" : header.column.getIsSorted() === "desc" ? "descending" : "none"}><button type="button" className="focus-ring-token rounded-sm" onClick={header.column.getToggleSortingHandler()}>{flexRender(header.column.columnDef.header, header.getContext())}</button></TableHead>)}</TableRow>)}</TableHeader>
+              <TableBody>{table.getRowModel().rows.map((row) => <TableRow key={row.id}>{row.getVisibleCells().map((cell) => <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext()) ?? cell.getValue<string>()}</TableCell>)}</TableRow>)}</TableBody>
             </Table>}
   </section>;
 }

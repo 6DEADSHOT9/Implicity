@@ -24,7 +24,6 @@ describe("Nudge", () => {
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Later" }));
     await user.keyboard("{Enter}");
     expect(onAction).toHaveBeenCalledOnce();
-    expect(onAction).toHaveBeenCalledWith("nudge_action");
     expect(onLater).toHaveBeenCalledOnce();
     expect(recorder.events).toEqual([{ name: "component_shown", component: "Nudge", default_state: "prompt" }]);
   });

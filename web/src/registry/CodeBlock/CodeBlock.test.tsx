@@ -46,6 +46,9 @@ describe("CodeBlock public registry entry", () => {
  it("keeps the primary content accessible", () => {
   const markup = renderToStaticMarkup(<entry.Component props={entry.meta.galleryStates[0].props} slots={{}} />);
   expect(markup).toContain('data-slot="code-block"');
+  expect(markup).toContain('data-slot="code-block-header"');
+  expect(markup).toContain('data-slot="code-block-content"');
+  expect(markup).toContain('data-language="javascript"');
   expect(markup).toContain('<pre');
   expect(markup).toContain('tabindex="0"');
   expect(markup).toContain('aria-label="javascript code"');

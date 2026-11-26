@@ -12,7 +12,7 @@ class PreviewBoundary extends Component<{ children: ReactNode; label: string }, 
 function PreviewExample({ entry, props, slots, label }: { entry: SkeletonEntry; props: Record<string, unknown>; slots: Record<string, ReactNode>; label: string }) {
   const [exampleProps, setExampleProps] = useState(props);
   useEffect(() => setExampleProps(props), [props]);
-  const onAction = (action: string, value?: string | number | boolean) => {
+  const onAction = (action?: string, value?: string | number | boolean) => {
     if (action === "representation" && (value === "table" || value === "chart")) setExampleProps((current) => ({ ...current, form: value }));
     if (action === "tab_select" && typeof value === "string") setExampleProps((current) => ({ ...current, selected: value }));
     if (action === "checklist_toggle" && typeof value === "number") setExampleProps((current) => ({ ...current, items: (current.items as Array<{ label: string; checked: boolean }>).map((item, index) => index === value ? { ...item, checked: !item.checked } : item) }));

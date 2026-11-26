@@ -1,6 +1,11 @@
 import { expect, test, type Locator } from "@playwright/test";
 import tokens from "../../../contracts/looks/tokens.json" with { type: "json" };
+import defaultLook from "../../../contracts/looks/default.json" with { type: "json" };
+import focusedLook from "../../../contracts/looks/focused.json" with { type: "json" };
+import notebookLook from "../../../contracts/looks/notebook.json" with { type: "json" };
 import { tokenNames } from "../../src/registry/token-values.mjs";
+
+const lookById = { default: defaultLook, focused: focusedLook, notebook: notebookLook };
 
 async function sampleHeightAcrossFrames(frame: Locator, changeHeightOnFirstFrame = false) {
   return frame.evaluate((element, changeHeight) => {
@@ -633,6 +638,7 @@ test("content skeletons render every declared gallery state across gallery setti
   const tabs = page.frameLocator('iframe[title="Tabs · default"]');
   await tabs.getByRole("tab", { name: "Details" }).click();
   await expect(tabs.getByRole("tab", { name: "Details" })).toHaveAttribute("aria-selected", "true");
+  await expect(tabs.getByRole("tabpanel").getByText("additional-details")).toBeVisible();
   for (const device of ["desktop", "tablet"] as const) {
     await page.getByLabel("Screen size").selectOption(device);
     for (const name of names) {
@@ -645,53 +651,63 @@ test("content skeletons render every declared gallery state across gallery setti
 });
 
 
-test("content skeletons survive every gallery setting combination", async ({ page }) => {
-  test.setTimeout(60000);
+async function assertContentMatrix(page: import("@playwright/test").Page, device: "desktop" | "tablet") {
   await page.goto("/");
-  await expect.poll(() => page.locator("iframe").evaluateAll((frames) => frames.some((frame) => frame.getAttribute("title")?.startsWith("DataTable ·")) && frames.filter((frame) => ["DataTable", "DataChart", "CodeBlock", "MediaPlayer", "ArtifactWorkspace", "Checklist", "List", "Metric", "Tabs", "Card"].some((name) => frame.getAttribute("title")?.startsWith(`${name} · `))).every((frame) => {
+  const skeletonNames = ["DataTable", "DataChart", "CodeBlock", "MediaPlayer", "ArtifactWorkspace", "Checklist", "List", "Metric", "Tabs", "Card"];
+  await expect.poll(() => page.locator("iframe").evaluateAll((frames, names) => frames.some((frame) => frame.getAttribute("title")?.startsWith("DataTable ·")) && names.every((name) => frames.some((frame) => frame.getAttribute("title")?.startsWith(`${name} · `))) && frames.filter((frame) => names.some((name) => frame.getAttribute("title")?.startsWith(`${name} · `))).every((frame) => {
     const root = (frame as HTMLIFrameElement).contentDocument?.querySelector("#root");
     return !!root && !/Preview unavailable|preview failed/.test(root.textContent ?? "");
-  })), { timeout: 30000 }).toBe(true);
+  }), skeletonNames), { timeout: 10000 }).toBe(true);
   const looks = ["default", "focused", "notebook"] as const;
   const densities = ["compact", "comfortable", "spacious"] as const;
   const sizes = ["1", "2", "3", "4", "5"] as const;
   const modes = ["light", "dark"] as const;
-  const devices = ["desktop", "tablet"] as const;
-  const skeletonNames = ["DataTable", "DataChart", "CodeBlock", "MediaPlayer", "ArtifactWorkspace", "Checklist", "List", "Metric", "Tabs", "Card"];
   const current = Object.fromEntries(await Promise.all(["Look", "Mode", "Density", "Text size", "Screen size"].map(async (label) => [label, await page.getByLabel(label).inputValue()]))) as Record<string, string>;
   let combinations = 0;
-  for (const device of devices) for (const look of looks) for (const mode of modes) for (const density of densities) for (const textSize of sizes) {
+  for (const look of looks) for (const mode of modes) for (const density of densities) for (const textSize of sizes) {
     for (const [label, value] of [["Look", look], ["Mode", mode], ["Density", density], ["Text size", textSize], ["Screen size", device]]) {
       if (current[label] !== value) {
         await page.getByLabel(label).selectOption(value);
         current[label] = value;
       }
     }
-    const expected = { names: skeletonNames, look, mode, density, densitySpace: tokens.derivedTokens.density[density]["--space-1"], checkTokens: textSize === "1" && device === "desktop", checkReadiness: textSize === "1" && density === "compact" && mode === "light" && device === "desktop", textSize, width: device === "tablet" ? 800 : 1440 };
-    await expect.poll(() => page.evaluate(async ({ names, density, densitySpace, checkTokens, checkReadiness, ...settings }) => {
+    const lookConfig = lookById[look as keyof typeof lookById];
+    const expected = { names: skeletonNames, look, mode, density, densitySpace: tokens.derivedTokens.density[density]["--space-1"], background: lookConfig[mode as "light" | "dark"].background, font: tokens.typefaces[lookConfig.typeface.body as keyof typeof tokens.typefaces].family, checkStyles: textSize === "1", checkHeight: textSize === "1" && density === "compact", textSize, width: device === "tablet" ? 800 : 1440 };
+    await expect.poll(() => page.evaluate(async ({ names, density, densitySpace, background, font, checkStyles, checkHeight, ...settings }) => {
       const gallery = document.querySelector("[data-gallery-root]");
       if (!gallery || Object.entries(settings).some(([key, value]) => gallery.getAttribute(`data-${key === "textSize" ? "text-size" : key === "width" ? "device-class" : key}`) !== (key === "width" ? (value === 800 ? "tablet" : "desktop") : value))) return "gallery settings";
       const frames = [...document.querySelectorAll<HTMLIFrameElement>("iframe")].filter((frame) => names.some((name) => frame.title.startsWith(`${name} · `)));
-      if (!frames.length) return "no frames";
-      for (const [index, frame] of frames.entries()) {
+      if (frames.length < names.length) return "missing frames";
+      for (const frame of frames) {
         const doc = frame.contentDocument;
         const root = doc?.querySelector<HTMLElement>("#root");
         const html = doc?.documentElement;
         if (!doc || !root?.children.length || !root.textContent?.trim() || !html) return `${frame.title}: content`;
         if (html.dataset.look !== settings.look || html.dataset.mode !== settings.mode || html.dataset.density !== density || html.dataset.textSize !== settings.textSize || frame.contentWindow?.innerWidth !== settings.width) return `${frame.title}: settings ${JSON.stringify({look:html.dataset.look,mode:html.dataset.mode,density:html.dataset.density,textSize:html.dataset.textSize,width:frame.contentWindow?.innerWidth})}`;
-        if (index === 0 && checkTokens) {
+        if (checkStyles && ["DataChart", "Tabs", "CodeBlock", "Card"].some((name) => frame.title.startsWith(`${name} · `))) {
           const style = getComputedStyle(html);
           if (style.getPropertyValue("--space-1").trim() !== densitySpace) return `${frame.title}: density token`;
-          if (checkReadiness && doc.fonts.status !== "loaded") return `${frame.title}: fonts not ready`;
-          if (checkReadiness && (!style.color || !style.backgroundColor)) return `${frame.title}: style`;
-          if (checkReadiness && Math.abs(Number(frame.height) - root.getBoundingClientRect().height) > 1) return `${frame.title}: unstable frame height`;
+          if (style.getPropertyValue("--background").trim() !== background) return `${frame.title}: mode palette`;
+          if (doc.fonts.status !== "loaded" || !getComputedStyle(root).fontFamily.includes(font)) return `${frame.title}: font not ready`;
+          if (checkHeight) {
+            await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+            if (Math.abs(Number(frame.height) - root.getBoundingClientRect().height) > 1) return `${frame.title}: unstable frame height`;
+          }
         }
       }
       return "ready";
-    }, expected), `${look}/${mode}/${density}/${textSize}/${device}`).toBe("ready");
+    }, expected), { timeout: 10000, message: `${look}/${mode}/${density}/${textSize}/${device}` }).toBe("ready");
     combinations++;
   }
-  expect(combinations).toBe(180);
+  expect(combinations).toBe(90);
+}
+
+test("content skeletons survive every desktop gallery setting", async ({ page }) => {
+  await assertContentMatrix(page, "desktop");
+});
+
+test("content skeletons survive every tablet gallery setting", async ({ page }) => {
+  await assertContentMatrix(page, "tablet");
 });
 
 test("content controls use their host, show focus rings, preserve list markers, and apply chart tokens", async ({ page }) => {
@@ -791,6 +807,12 @@ test("rendered code, diff, stack trace and terminal text stay readable in every 
       await expect(stack.locator(`#${controls}`)).toBeAttached();
 
       const lineChart = page.frameLocator('iframe[title="DataChart · long_content"]');
+      const axisWidth = await lineChart.locator("html").evaluate((html) => {
+        const style = getComputedStyle(html);
+        return Number.parseFloat(style.getPropertyValue("--chart-axis-width")) * Number.parseFloat(style.fontSize);
+      });
+      const firstDotX = Number(await lineChart.locator(".recharts-dot").first().getAttribute("cx"));
+      expect(firstDotX).toBe(axisWidth);
       const line = lineChart.locator(".recharts-line-curve");
       await expect(line).toHaveAttribute("stroke", "var(--chart-1)");
       await expect(line).toHaveAttribute("stroke-width", "1");
@@ -803,10 +825,9 @@ test("rendered code, diff, stack trace and terminal text stay readable in every 
       });
       expect(Number(await dot.getAttribute("r"))).toBe(dotRadius);
       await expect(dot).toBeVisible();
-      await dot.scrollIntoViewIfNeeded();
-      const dotBox = await dot.boundingBox();
-      expect(dotBox).not.toBeNull();
-      await page.mouse.move(dotBox!.x + dotBox!.width / 2, dotBox!.y + dotBox!.height / 2);
+      const hoverDot = lineChart.locator(".recharts-dot").nth(1);
+      await hoverDot.scrollIntoViewIfNeeded();
+      await hoverDot.hover();
       const activeDot = lineChart.locator(".recharts-active-dot circle").first();
       await expect(activeDot).toHaveAttribute("fill", "var(--chart-1)");
       await expect(activeDot).toHaveAttribute("stroke", "var(--foreground)");

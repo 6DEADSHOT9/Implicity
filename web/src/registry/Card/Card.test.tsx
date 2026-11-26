@@ -44,6 +44,33 @@ describe("Card public registry entry", () => {
   expect(recorder.events[1]).toEqual({ name: "component_seen", component: "Card", default_state: "default", seconds_visible: 3 });
   act(() => root.unmount());
  });
+ it("keeps the initially shown state when props change before the seen deadline", () => {
+  let observerCallback: IntersectionObserverCallback | undefined;
+  class ObserverMock {
+   constructor(callback: IntersectionObserverCallback) { observerCallback = callback; }
+   observe(target: Element) {
+    Object.defineProperty(target, "checkVisibility", { configurable: true, value: () => true });
+    observerCallback?.([{ target, isIntersecting: true, intersectionRatio: 1, time: performance.now() } as IntersectionObserverEntry], this as unknown as IntersectionObserver);
+   }
+   disconnect() {}
+   unobserve() {}
+   takeRecords() { return []; }
+  }
+  vi.stubGlobal("IntersectionObserver", ObserverMock);
+  vi.useFakeTimers();
+  const recorder = recordingCapture();
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  const initial = entry.meta.galleryStates.find(({ id }) => id === "default")!.props;
+  act(() => root.render(<CaptureProvider sink={recorder.sink}><entry.Component props={initial} slots={{}} /></CaptureProvider>));
+  act(() => vi.advanceTimersByTime(1000));
+  act(() => root.render(<CaptureProvider sink={recorder.sink}><entry.Component props={{ ...initial, state: "error" }} slots={{}} /></CaptureProvider>));
+  act(() => vi.advanceTimersByTime(3000));
+  expect(recorder.events.filter(({ name }) => name === "component_seen")).toEqual([
+   { name: "component_seen", component: "Card", default_state: "default", seconds_visible: 3 },
+  ]);
+  act(() => root.unmount());
+ });
  it("keeps the primary content accessible", () => {
   const markup = renderToStaticMarkup(<entry.Component props={entry.meta.galleryStates[0].props} slots={{}} />);
     expect(markup).toContain('data-slot="card"');

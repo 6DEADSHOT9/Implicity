@@ -9,7 +9,7 @@ type Props = {
   title: string;
   message: string;
   actionLabel: string;
-  onAction?: (action: string, value?: string | number | boolean) => void;
+  onAction?: () => void;
   onLater?: () => void;
 };
 
@@ -27,7 +27,7 @@ export function Nudge({ title, message, actionLabel, onAction, onLater }: Props)
     <AlertTitle><h2 style={{ fontSize: "var(--heading-4)" }} id={titleId}>{title}</h2></AlertTitle>
     <AlertDescription>{message}</AlertDescription>
     <div className="col-start-2 flex flex-wrap gap-space-2">
-      <Button type="button" onClick={() => onAction?.("nudge_action")}>{actionLabel}</Button>
+      <Button type="button" onClick={onAction}>{actionLabel}</Button>
       <Button type="button" variant="outline" onClick={onLater}>Later</Button>
     </div>
   </Alert>;

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, type ReactElement } from "react";
+import { act, type ReactElement, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import Ajv2020 from "ajv/dist/2020.js";
 import { z } from "zod";
@@ -12,6 +12,18 @@ import { ReviewPanelEntry } from "./fixtures/ReviewPanel/entry";
 import { ReviewPanel } from "./fixtures/ReviewPanel/ReviewPanel";
 import { definition as panelDefinition, propsSchema } from "./fixtures/ReviewPanel/schema";
 import { ReviewShellEntry } from "./fixtures/ReviewShell/entry";
+
+const fixedSlotPanel = defineSkeleton(defineSkeletonDefinition({
+  id: "ResultsPanel",
+  props: z.object({ tabs: z.array(z.object({ id: z.string(), label: z.string() })) }),
+  slots: z.object({ main: z.array(z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/)) }),
+  events: ["component_shown", "component_seen"],
+  meta: {
+    role: "content", slots: ["main"], defaultStates: ["default"], commands: [],
+    limits: { minWidth: 320, minHeight: 120, minContrast: 4.5 },
+    galleryStates: [{ id: "default", props: { tabs: [{ id: "results", label: "Results" }] }, slots: { main: ["results"] } }],
+  },
+}), ({ slots }: { tabs: { id: string; label: string }[]; slots?: { main?: ReactNode[] } }) => <section>{slots?.main}</section>);
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 Object.defineProperty(window, "matchMedia", { configurable: true, value: () => ({ matches: true }) });
@@ -50,6 +62,23 @@ describe("registry and renderer", () => {
     expect(panelRegistry.getSkeleton("constructor")).toBeUndefined();
     expect(getSkeleton("constructor")).toBeUndefined();
     expect(createRegistry([], 1).entries.size).toBe(0);
+  });
+
+  it("allows fixed slots on non-Tabs entries whose props happen to include tabs", () => {
+    const withFixedSlots = createRegistry([registry.getSkeleton("Tabs")!, fixedSlotPanel], registry.version);
+    expect(withFixedSlots.getSkeleton("ResultsPanel")?.meta.galleryStates[0]?.slots).toEqual({ main: ["results"] });
+  });
+
+  it("preserves Nudge's no-argument callback through the registry boundary", () => {
+    const nudge = registry.getSkeleton("Nudge")!;
+    const onAction = vi.fn();
+    const host = document.createElement("div");
+    const root = createRoot(host);
+    act(() => root.render(<nudge.Component props={{ title: "Continue", message: "Details", actionLabel: "Open" }} slots={{}} onAction={onAction} />));
+    act(() => (host.querySelector("button") as HTMLButtonElement).click());
+    expect(onAction).toHaveBeenCalledOnce();
+    expect(onAction.mock.calls[0]?.[0]).not.toBe("nudge_action");
+    act(() => root.unmount());
   });
 
   it("derives json-render components and named slots from the entry", async () => {
