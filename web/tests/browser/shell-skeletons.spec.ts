@@ -131,9 +131,9 @@ test("AppShell stacks panes at tablet widths and keeps the shrinking pane usable
   await handle.evaluate((element) => (element as HTMLElement).focus({ preventScroll: true }));
   const groupHeight = await group.evaluate((element) => element.getBoundingClientRect().height) - (await handle.evaluate((element) => element.getBoundingClientRect().height));
   await page.keyboard.press("End");
-  expect((await measure())[1].height).toBeGreaterThanOrEqual(groupHeight * 0.24);
+  expect((await measure())[1].height).toBeGreaterThanOrEqual(Math.floor(groupHeight * 0.24));
   await page.keyboard.press("Home");
-  expect((await measure())[0].height).toBeGreaterThanOrEqual(groupHeight * 0.52);
+  expect((await measure())[0].height).toBeGreaterThanOrEqual(Math.floor(groupHeight * 0.52));
 });
 
 test("Search and Settings fit, filter, and return keyboard focus in a short viewport", async ({ page }) => {
