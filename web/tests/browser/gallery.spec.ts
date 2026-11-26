@@ -4,6 +4,7 @@ import defaultLook from "../../../contracts/looks/default.json" with { type: "js
 import focusedLook from "../../../contracts/looks/focused.json" with { type: "json" };
 import notebookLook from "../../../contracts/looks/notebook.json" with { type: "json" };
 import { tokenNames } from "../../src/registry/token-values.mjs";
+import { measureContrast } from "./contrast";
 
 const lookById = { default: defaultLook, focused: focusedLook, notebook: notebookLook };
 
@@ -87,6 +88,188 @@ test("base primitives stay in the gallery across token selections", async ({ pag
     expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(await page.evaluate(() => innerWidth));
     expect(bounds!.y).toBeGreaterThanOrEqual(0);
     expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(await page.evaluate(() => innerHeight));
+  }
+});
+
+test("Button variants and Tabs triggers meet 4.5:1 contrast in every look and mode", async ({ page }) => {
+  await page.goto("/tests/browser/gallery.html");
+  for (const look of ["default", "focused", "notebook"]) {
+    await page.getByLabel("Look").selectOption(look);
+    for (const mode of ["light", "dark"]) {
+      await page.getByLabel("Mode").selectOption(mode);
+      const buttons = page.locator(".primitive-gallery-grid > :first-child [data-slot='button']");
+      await expect(buttons).toHaveCount(8);
+      expect(await buttons.evaluateAll((elements) => [...new Set(elements.map((element) => element.getAttribute("data-variant")))].sort())).toEqual(["default", "destructive", "ghost", "link", "outline", "secondary"]);
+      const triggers = page.locator("[data-slot='tabs-trigger']");
+      await expect(triggers).toHaveCount(2);
+      for (const control of await page.locator(".primitive-gallery [data-slot='button'], .primitive-gallery [data-slot='tabs-trigger']").all()) {
+        const result = await control.evaluate(measureContrast);
+        expect(result.ratio, `${look} ${mode}: ${await control.evaluate((element) => element.outerHTML)} (${result.foreground} on ${result.background})`).toBeGreaterThanOrEqual(4.5);
+      }
+      if (look === "default" && mode === "light") {
+        const ghost = page.locator("[data-slot='button'][data-variant='ghost']").first();
+        await ghost.evaluate((element) => { (element as HTMLElement).style.color = "oklab(0.276448 0 0 / 0.1)"; });
+        expect((await ghost.evaluate(measureContrast)).ratio).toBeLessThan(4.5);
+        await ghost.evaluate((element) => { (element as HTMLElement).style.color = ""; element.parentElement!.style.opacity = "0.1"; });
+        expect((await ghost.evaluate(measureContrast)).ratio).toBeLessThan(4.5);
+        await ghost.evaluate((element) => { element.parentElement!.style.opacity = ""; });
+        const outline = page.locator("[data-slot='button'][data-variant='outline']").first();
+        await outline.evaluate((element) => { Object.assign((element as HTMLElement).style, { color: "black", backgroundColor: "rgb(100 100 100)", opacity: "0.7" }); });
+        expect((await outline.evaluate(measureContrast)).ratio).toBeLessThan(4.5);
+        await outline.evaluate((element) => { (element as HTMLElement).removeAttribute("style"); });
+      }
+      for (const [opener, overlay, buttons] of [
+        ["Open dialog", "[data-slot='dialog-content']", ["Outline dialog", "Ghost dialog"]],
+        ["Open sheet", "[data-slot='sheet-content']", ["Outline sheet", "Ghost sheet"]],
+      ] as const) {
+        await page.getByRole("button", { name: opener }).click();
+        if (opener === "Open dialog") await expect(page.locator("[data-slot='dialog-content']")).toHaveCSS("opacity", "1");
+        const close = page.locator(overlay).getByRole("button", { name: "Close" });
+        for (const button of [close, ...buttons.map((name) => page.getByRole("button", { name }))]) {
+          const result = await button.evaluate(measureContrast);
+          expect(result.ratio, `${look} ${mode} overlay: ${await button.evaluate((element) => element.outerHTML)} (${result.foreground} on ${result.background})`).toBeGreaterThanOrEqual(4.5);
+        }
+        await page.keyboard.press("Escape");
+      }
+    }
+  }
+});
+
+test("Preflight leaves visible token borders on shared form controls", async ({ page }) => {
+  await page.goto("/tests/browser/gallery.html");
+  const controls = page.locator("[data-slot='input'], [data-slot='textarea'], [data-slot='checkbox'], [data-slot='select-trigger'], [data-slot='input-group'], [role='slider'], [data-slot='attachment']");
+  await expect(controls).toHaveCount(8);
+  for (const control of await controls.all()) {
+    const style = await control.evaluate((element) => ({ width: getComputedStyle(element).borderTopWidth, style: getComputedStyle(element).borderTopStyle }));
+    expect(Number.parseFloat(style.width), await control.evaluate((element) => element.outerHTML)).toBeGreaterThan(0);
+    expect(style.style).toBe("solid");
+    const borderColor: "borderColor" = "borderColor";
+    const contrast = await control.evaluate(measureContrast, borderColor);
+    expect(contrast.ratio, `${await control.evaluate((element) => element.outerHTML)} (${contrast.foreground} on ${contrast.background})`).toBeGreaterThanOrEqual(3);
+  }
+});
+
+test("gallery progress bar paints its token track and primary value", async ({ page }) => {
+  await page.goto("/tests/browser/gallery.html");
+  for (const look of ["default", "focused", "notebook"]) {
+    await page.getByLabel("Look").selectOption(look);
+    for (const mode of ["light", "dark"]) {
+      await page.getByLabel("Mode").selectOption(mode);
+      const progress = page.getByRole("progressbar", { name: "Task progress", exact: true });
+      const colors = await progress.evaluate((element) => {
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d")!;
+        const rgba = (color: string) => { context.clearRect(0, 0, 1, 1); context.fillStyle = color; context.fillRect(0, 0, 1, 1); return [...context.getImageData(0, 0, 1, 1).data]; };
+        const root = getComputedStyle(document.documentElement);
+        return { appearance: getComputedStyle(element).appearance, direction: getComputedStyle(element).direction, muted: rgba(root.getPropertyValue("--muted")), primary: rgba(root.getPropertyValue("--primary")) };
+      });
+      const pixels = await page.evaluate(async (base64) => {
+        const image = await createImageBitmap(await fetch(`data:image/png;base64,${base64}`).then((response) => response.blob()));
+        const canvas = document.createElement("canvas");
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const context = canvas.getContext("2d")!;
+        context.drawImage(image, 0, 0);
+        const read = (x: number) => [...context.getImageData(x, Math.floor(image.height / 2), 1, 1).data];
+        return { value: read(Math.floor(image.width * 0.2)), track: read(Math.floor(image.width * 0.9)) };
+      }, (await progress.screenshot()).toString("base64"));
+      expect(colors.appearance).toBe("none");
+      expect(pixels.track, JSON.stringify(pixels)).toEqual(colors.muted);
+      expect(pixels.value, JSON.stringify(pixels)).toEqual(colors.primary);
+    }
+  }
+  const indeterminate = page.getByLabel("Indeterminate task progress");
+  await expect(indeterminate).not.toHaveAttribute("value");
+  expect(await indeterminate.evaluate((element) => (element as HTMLProgressElement).position)).toBe(-1);
+  const motion = await indeterminate.evaluate((element) => {
+    const token = getComputedStyle(document.documentElement).getPropertyValue("--motion-progress-indeterminate").trim();
+    const [name, duration, easing, iterations] = token.split(/\s+/);
+    const style = getComputedStyle(element);
+    return {
+      expected: { name, duration, easing, iterations },
+      actual: { name: style.animationName, duration: style.animationDuration, easing: style.animationTimingFunction, iterations: style.animationIterationCount },
+      durationMs: duration.endsWith("ms") ? Number.parseFloat(duration) : Number.parseFloat(duration) * 1000,
+    };
+  });
+  expect(motion.actual).toEqual(motion.expected);
+  await indeterminate.evaluate((element) => (element as HTMLElement).style.setProperty("--motion-progress-indeterminate", "progress-indeterminate 3s linear infinite"));
+  await expect(indeterminate).toHaveCSS("animation-duration", "3s");
+  await indeterminate.evaluate((element) => (element as HTMLElement).style.removeProperty("--motion-progress-indeterminate"));
+  const tokenColors = await indeterminate.evaluate((element) => {
+    const root = getComputedStyle(element.ownerDocument.documentElement);
+    return { primary: root.getPropertyValue("--primary"), muted: root.getPropertyValue("--muted") };
+  });
+  const paintedPixels = async () => {
+    const image = await indeterminate.screenshot();
+    return page.evaluate(async ({ base64, primary, muted }) => {
+    const image = await createImageBitmap(await fetch(`data:image/png;base64,${base64}`).then((response) => response.blob()));
+    const canvas = document.createElement("canvas");
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const context = canvas.getContext("2d")!;
+    context.drawImage(image, 0, 0);
+    const data = context.getImageData(0, 0, image.width, image.height).data;
+    const probe = document.createElement("canvas").getContext("2d")!;
+    const matches = (color: string, x: number) => {
+      probe.clearRect(0, 0, 1, 1);
+      probe.fillStyle = color;
+      probe.fillRect(0, 0, 1, 1);
+      const expected = probe.getImageData(0, 0, 1, 1).data;
+      const offset = (Math.floor(image.height / 2) * image.width + x) * 4;
+      return data[offset] === expected[0] && data[offset + 1] === expected[1] && data[offset + 2] === expected[2];
+    };
+    const primaryPixels = Array.from({ length: image.width }, (_, x) => x).filter((x) => matches(primary, x));
+    return { width: image.width, primaryPixels, hasMuted: Array.from({ length: image.width }, (_, x) => x).some((x) => matches(muted, x)) };
+    }, { base64: image.toString("base64"), ...tokenColors });
+  };
+  const setAnimationTime = (time: number) => indeterminate.evaluate((element, currentTime) => {
+    const animation = element.getAnimations()[0];
+    animation.pause();
+    animation.currentTime = currentTime;
+  }, time);
+  await setAnimationTime(0);
+  const start = await paintedPixels();
+  expect(start.hasMuted).toBe(true);
+  expect(start.primaryPixels).toHaveLength(0);
+  await setAnimationTime(motion.durationMs * 0.25);
+  const left = await paintedPixels();
+  expect(left.primaryPixels).not.toHaveLength(0);
+  expect(left.primaryPixels.at(-1)).toBeLessThan(left.width * 0.5);
+  await setAnimationTime(motion.durationMs * 0.5);
+  const center = await paintedPixels();
+  expect(center.primaryPixels[0]).toBeLessThan(center.width * 0.5);
+  expect(center.primaryPixels.at(-1)).toBeGreaterThan(center.width * 0.5);
+  expect(center.hasMuted).toBe(true);
+  await setAnimationTime(motion.durationMs * 0.75);
+  const right = await paintedPixels();
+  expect(right.primaryPixels[0]).toBeGreaterThan(right.width * 0.5);
+  await setAnimationTime(motion.durationMs * 0.99);
+  const leaving = await paintedPixels();
+  expect(leaving.primaryPixels[0]).toBeGreaterThan(leaving.width * 0.95);
+  expect(leaving.primaryPixels.length).toBeLessThan(leaving.width * 0.05);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect(indeterminate).toHaveCSS("animation-name", "none");
+  await expect(indeterminate).toHaveCSS("background-position", "50% 0px");
+  const still = await paintedPixels();
+  expect(still.primaryPixels[0]).toBeGreaterThan(still.width * 0.15);
+  expect(still.primaryPixels.at(-1)).toBeLessThan(still.width * 0.85);
+  expect(still.hasMuted).toBe(true);
+});
+
+test("Preflight preserves gallery heading hierarchy and token-bordered controls", async ({ page }) => {
+  await page.goto("/tests/browser/gallery.html");
+  for (const heading of [page.getByRole("heading", { name: "Skeleton gallery" }), page.getByRole("heading", { name: "Base primitives" }), page.locator(".gallery-card > header h2").first()]) {
+    await expect(heading).toHaveCSS("font-weight", "700");
+  }
+  for (const select of await page.locator(".gallery-control select").all()) {
+    const style = await select.evaluate((element) => {
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d")!;
+      const rgba = (color: string) => { context.clearRect(0, 0, 1, 1); context.fillStyle = color; context.fillRect(0, 0, 1, 1); return [...context.getImageData(0, 0, 1, 1).data]; };
+      return { width: getComputedStyle(element).borderTopWidth, color: rgba(getComputedStyle(element).borderTopColor), input: rgba(getComputedStyle(document.documentElement).getPropertyValue("--input")) };
+    });
+    expect(style.width).not.toBe("0px");
+    expect(style.color).toEqual(style.input);
   }
 });
 
@@ -620,6 +803,14 @@ test("content skeletons render every declared gallery state across gallery setti
     await expect(frame.locator("#root")).not.toContainText("Preview unavailable");
     await expect(frame.locator("#root")).not.toContainText("preview failed");
   }
+  const cardEmpty = page.frameLocator('iframe[title="Card · empty"]').locator("[data-slot='empty']");
+  const emptyBorder = await cardEmpty.evaluate((element) => ({
+    width: getComputedStyle(element).borderTopWidth,
+    style: getComputedStyle(element).borderTopStyle,
+    token: getComputedStyle(element.ownerDocument.documentElement).getPropertyValue("--border-width").trim(),
+  }));
+  expect(emptyBorder.width).toBe(emptyBorder.token);
+  expect(emptyBorder.style).toBe("dashed");
 
   await page.getByLabel("Look").selectOption("notebook");
   await page.getByLabel("Mode").selectOption("dark");

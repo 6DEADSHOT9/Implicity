@@ -1,3 +1,4 @@
+@import "tailwindcss/preflight.css";
 @import "tailwindcss/theme.css";
 @import "tailwindcss/utilities.css";
 
@@ -150,15 +151,15 @@
 
 @import "tw-animate-css";
 
-@utility border-token { border-style: var(--tw-border-style); border-width: var(--border-width); }
-@utility border-x-token { border-inline-style: var(--tw-border-style); border-inline-width: var(--border-width); }
-@utility border-y-token { border-block-style: var(--tw-border-style); border-block-width: var(--border-width); }
-@utility border-t-token { border-top-style: var(--tw-border-style); border-top-width: var(--border-width); }
-@utility border-r-token { border-right-style: var(--tw-border-style); border-right-width: var(--border-width); }
-@utility border-b-token { border-bottom-style: var(--tw-border-style); border-bottom-width: var(--border-width); }
-@utility border-l-token { border-left-style: var(--tw-border-style); border-left-width: var(--border-width); }
-@utility border-s-token { border-inline-start-style: var(--tw-border-style); border-inline-start-width: var(--border-width); }
-@utility border-e-token { border-inline-end-style: var(--tw-border-style); border-inline-end-width: var(--border-width); }
+@utility token-border { border-style: var(--tw-border-style); border-width: var(--border-width); }
+@utility token-border-x { border-inline-style: var(--tw-border-style); border-inline-width: var(--border-width); }
+@utility token-border-y { border-block-style: var(--tw-border-style); border-block-width: var(--border-width); }
+@utility token-border-t { border-top-style: var(--tw-border-style); border-top-width: var(--border-width); }
+@utility token-border-r { border-right-style: var(--tw-border-style); border-right-width: var(--border-width); }
+@utility token-border-b { border-bottom-style: var(--tw-border-style); border-bottom-width: var(--border-width); }
+@utility token-border-l { border-left-style: var(--tw-border-style); border-left-width: var(--border-width); }
+@utility token-border-s { border-inline-start-style: var(--tw-border-style); border-inline-start-width: var(--border-width); }
+@utility token-border-e { border-inline-end-style: var(--tw-border-style); border-inline-end-width: var(--border-width); }
 @utility ring-token { outline: var(--focus-ring-width) solid var(--tw-ring-color, var(--ring)); outline-offset: var(--space-2); }
 @utility focus-ring-token { outline: none; box-shadow: 0 0 0 var(--space-1) var(--background), 0 0 0 calc(var(--space-1) + var(--focus-ring-width)) var(--tw-ring-color, var(--ring)); }
 @utility outline-token-hidden { outline: var(--focus-ring-width) solid transparent; outline-offset: var(--space-2); }
@@ -169,13 +170,31 @@
 
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes pulse { 50% { opacity: 0.5; } }
+@keyframes progress-indeterminate {
+  from { background-position: 100% 0; }
+  to { background-position: 0 0; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
 }
 
-html { font-family: var(--font-body); }
+html { font-family: var(--font-body); color: var(--foreground); }
 body { margin: 0; }
+progress { appearance: none; background: var(--muted); color: var(--primary); }
+progress::-webkit-progress-bar { background: var(--muted); }
+progress::-webkit-progress-value { background: var(--primary); }
+progress::-moz-progress-bar { background: var(--primary); }
+progress:not([value]) {
+  background: linear-gradient(90deg, var(--muted) 0 40%, var(--primary) 40% 60%, var(--muted) 60% 100%);
+  background-size: 250% 100%;
+  animation: var(--motion-progress-indeterminate);
+}
+progress:not([value])::-webkit-progress-bar { background: transparent; }
+progress:not([value])::-moz-progress-bar { background: transparent; }
+@media (prefers-reduced-motion: reduce) {
+  progress:not([value]) { animation: none; background-position: 50% 0; }
+}
 ul, ol { margin: 0; padding: 0; list-style: none; }
 :where(button, input, select, textarea) { font: inherit; }
 
