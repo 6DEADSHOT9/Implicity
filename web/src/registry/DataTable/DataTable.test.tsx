@@ -82,14 +82,44 @@ describe("DataTable public registry entry", () => {
   expect(markup).toContain("Gain: 10");
   expect(markup).not.toContain('data-slot="progress"');
  });
- it("uses sortable Data Table columns", () => {
+ it("renders blank and repeated headers, every cell, and leaves values in input order", () => {
   const host = document.createElement("div");
   const root = createRoot(host);
-  act(() => root.render(<entry.Component props={{ columns: ["Name", "Value"], rows: [["Zulu", "2"], ["Alpha", "1"]] }} slots={{}} />));
-  expect(Array.from(host.querySelectorAll("tbody tr"), (row) => row.textContent)).toEqual(["Zulu2", "Alpha1"]);
-  act(() => (host.querySelector("th button") as HTMLButtonElement).click());
-  expect((host.querySelector("th") as HTMLTableCellElement).getAttribute("aria-sort")).toBe("ascending");
-  expect(Array.from(host.querySelectorAll("tbody tr"), (row) => row.textContent)).toEqual(["Alpha1", "Zulu2"]);
+  act(() => root.render(<entry.Component props={{ columns: ["", "Cost", "Cost"], rows: [["Plan", "10", "99", "extra"], ["B", "9", "100", "kept"], ["Short"]] }} slots={{}} />));
+  expect(Array.from(host.querySelectorAll("thead th"), (cell) => cell.textContent)).toEqual(["", "Cost", "Cost"]);
+  expect(Array.from(host.querySelectorAll("tbody tr"), (row) => row.textContent)).toEqual(["Plan1099extra", "B9100kept", "Short"]);
+  expect(Array.from(host.querySelectorAll("tbody tr"), (row) => row.querySelectorAll("td").length)).toEqual([4, 4, 3]);
+  expect(host.querySelector("thead button")).toBeNull();
+  act(() => root.unmount());
+ });
+
+ it("does not offer misleading lexicographic numeric sorting", () => {
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  act(() => root.render(<entry.Component props={{ columns: ["Value"], rows: [["9"], ["10"], ["100"], ["$900"], ["$1,200"], ["$80"], ["-1.5"], ["-10"], ["2"]] }} slots={{}} />));
+  expect(Array.from(host.querySelectorAll("tbody tr"), (row) => row.textContent)).toEqual(["9", "10", "100", "$900", "$1,200", "$80", "-1.5", "-10", "2"]);
+  expect(host.querySelector("thead button")).toBeNull();
+  act(() => root.unmount());
+ });
+
+ it("emits only a state declared by DataTable for empty defaults and unavailable charts", () => {
+  const recorder = recordingCapture();
+  const host = document.createElement("div");
+  let root = createRoot(host);
+  const declared = new Set(entry.meta.defaultStates);
+  for (const props of [
+    { columns: ["A"], rows: [] },
+    { columns: ["A"], rows: [["1"]], form: "chart" },
+  ]) {
+    act(() => root.unmount());
+    recorder.events.length = 0;
+    root = createRoot(host);
+    act(() => root.render(<CaptureProvider sink={recorder.sink}><entry.Component props={props} slots={{}} /></CaptureProvider>));
+    const event = recorder.events.at(-1);
+    if (!event || event.name !== "component_shown") throw new Error("Expected DataTable to emit component_shown");
+    expect(declared.has(event.default_state)).toBe(true);
+    expect(event.default_state).toBe("empty");
+  }
   act(() => root.unmount());
  });
  it("keeps the primary content accessible", () => {

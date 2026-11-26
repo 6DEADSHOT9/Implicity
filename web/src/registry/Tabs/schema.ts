@@ -7,3 +7,4 @@ export const propsSchema = z.object({ tabs: z.array(z.object({ id, label: z.stri
 export const slotsSchema = z.object({}).catchall(z.array(id)).superRefine((slots, ctx) => {
   for (const key of Object.keys(slots)) if (!id.safeParse(key).success) ctx.addIssue({ code: "custom", path: [key], message: "Tab slot names must be identifiers" });
 });
+export const namedPartProp = "tabs";

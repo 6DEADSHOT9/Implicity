@@ -42,13 +42,13 @@ const syntaxClasses = new Map([
 ]);
 export function CodeBlock({ code, language, variant, state }: Props) {
   const capture = useCapture<(typeof events)[number]>();
-  const root = useSkeletonCapture(capture, "CodeBlock", state === "default" ? variant : state);
+  const root = useSkeletonCapture(capture, "CodeBlock", state === "default" ? variant ?? "code" : state);
   const [tokens, setTokens] = useState<Array<Array<{ content: string; color?: string }>>>([]);
   useEffect(() => {
     if (state === "empty") { setTokens([]); return; }
     void highlighter.then((instance) => setTokens(instance.codeToTokens(code, { lang: languages.includes(language) ? language as BundledLanguage : "text", theme: "registry-tokens" }).tokens.map((line) => line.map((part) => ({ content: part.content, color: part.color })))));
   }, [code, language, state]);
-  if (state === "error") return <CodeBlockPrimitive ref={root} code={code} language={language}><CodeBlockContent role="alert">Code could not be loaded</CodeBlockContent></CodeBlockPrimitive>;
+  if (state === "error") return <CodeBlockPrimitive ref={root} language={language}><CodeBlockContent role="alert">Code could not be loaded</CodeBlockContent></CodeBlockPrimitive>;
   if (variant === "terminal") return <div ref={root}>
     <Terminal output={state === "empty" ? "" : code} role="region" aria-label="Terminal output">
       <TerminalHeader><TerminalTitle /></TerminalHeader>
@@ -69,7 +69,7 @@ export function CodeBlock({ code, language, variant, state }: Props) {
       <StackTraceContent><StackTraceFrames /></StackTraceContent>
     </StackTrace>
   </div>;
-  return <CodeBlockPrimitive ref={root} code={code} language={language}>
+  return <CodeBlockPrimitive ref={root} language={language}>
     <CodeBlockHeader><CodeBlockTitle>{language} · {variant}</CodeBlockTitle></CodeBlockHeader>
     <CodeBlockContent aria-label={`${language} ${variant}`} tabIndex={0}>
         {tokens.length ? tokens.map((line, lineIndex) => <span className="block" key={lineIndex}>

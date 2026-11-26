@@ -77,7 +77,7 @@ describe("registry and renderer", () => {
     act(() => root.render(<nudge.Component props={{ title: "Continue", message: "Details", actionLabel: "Open" }} slots={{}} onAction={onAction} />));
     act(() => (host.querySelector("button") as HTMLButtonElement).click());
     expect(onAction).toHaveBeenCalledOnce();
-    expect(onAction.mock.calls[0]?.[0]).not.toBe("nudge_action");
+    expect(onAction.mock.calls).toEqual([[]]);
     act(() => root.unmount());
   });
 
@@ -287,6 +287,19 @@ describe("registry and renderer", () => {
     expect(tabs.schema.safeParse({ props: { tabs: [{ id: "summary", label: "Summary" }], selected: "summary" }, slots: { unrelated: ["child"] } }).success).toBe(false);
   });
 
+  it("enables named slot validation from the definition instead of a component name", () => {
+    const definition = defineSkeletonDefinition({
+      id: "NamedParts",
+      props: z.object({ parts: z.array(z.object({ id: z.string() })) }),
+      slots: z.object({}).catchall(z.array(z.string())),
+      events,
+      meta: { ...meta, slots: [] },
+      namedPartProp: "parts",
+    });
+    expect(definition.schema.safeParse({ props: { parts: [{ id: "summary" }] }, slots: { summary: ["child"] } }).success).toBe(true);
+    expect(definition.schema.safeParse({ props: { parts: [{ id: "summary" }] }, slots: { unrelated: ["child"] } }).success).toBe(false);
+  });
+
   it("rejects entries missing declarations, invalid ids, events or reviewed limits", () => {
     expect(() => createRegistry([{ ...ReviewPanelEntry, events: undefined } as never], 1)).toThrow(/events/);
     expect(() => createRegistry([{ ...ReviewPanelEntry, meta: { ...meta, slots: undefined } } as never], 1)).toThrow(/slots/);
@@ -318,5 +331,9 @@ describe("registry and renderer", () => {
       expect(() => createRegistry([{ ...ReviewPanelEntry, meta: { ...meta, galleryStates: [{ id: "busy", props: { count: 1 }, slots }] } } as never], 1)).toThrow(/ReviewPanel.*busy.*slots/);
     }
     expect(() => createRegistry([{ ...ReviewPanelEntry, id: "bad id" }], 1)).toThrow(/component id/);
+  });
+
+  it("requires a gallery example for every declared default state", () => {
+    expect(() => createRegistry([{ ...ReviewPanelEntry, meta: { ...meta, defaultStates: ["plain", "busy"], galleryStates: [{ id: "plain", props: { count: 1 }, slots: { main: [] } }] } }], 1)).toThrow(/gallery states must include every default state/);
   });
 });

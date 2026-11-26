@@ -43,6 +43,8 @@ async function waitForStableHeight(frame: Locator) {
 test("screen size changes actual Skeleton preview width and all allowed tokens are set", async ({ page }) => {
   await page.goto("/tests/browser/gallery.html");
   const preview = page.frameLocator("iframe[title='ReviewPanel · plain']").locator(".review-panel");
+  const frame = page.locator("iframe[title='ReviewPanel · plain']");
+  const desktopFrame = await frame.elementHandle();
   const desktop = await preview.boundingBox();
   expect(desktop).not.toBeNull();
   expect(desktop!.width).toBeGreaterThan(1000);
@@ -50,6 +52,7 @@ test("screen size changes actual Skeleton preview width and all allowed tokens a
   const tablet = await preview.boundingBox();
   expect(tablet).not.toBeNull();
   expect(desktop!.width).toBeGreaterThan(tablet!.width);
+  expect(await frame.evaluate((element, previous) => element !== previous, desktopFrame)).toBe(true);
 
   const customProperties = [...tokenNames].filter((name) => name.startsWith("--"));
   const missing = await page.frameLocator("iframe[title='ReviewPanel · plain']").locator("html").evaluate((element, names) => {
@@ -621,8 +624,8 @@ test("content skeletons render every declared gallery state across gallery setti
   await expect(page.locator("[data-gallery-root]")).toHaveAttribute("data-look", "notebook");
   await expect(page.locator("[data-gallery-root]")).toHaveAttribute("data-mode", "dark");
   await expect(page.locator("[data-gallery-root]")).toHaveAttribute("data-device-class", "tablet");
-  await expect(page.frameLocator('iframe[title="DataTable · default"]').locator("html")).toHaveAttribute("data-mode", "dark");
-  await expect(page.frameLocator('iframe[title="DataTable · default"]').locator("table")).toBeVisible();
+  await expect(page.frameLocator('iframe[title="DataTable · table"]').locator("html")).toHaveAttribute("data-mode", "dark");
+  await expect(page.frameLocator('iframe[title="DataTable · table"]').locator("table")).toBeVisible();
   await expect(page.frameLocator('iframe[title="Tabs · default"]').getByRole("tablist")).toBeVisible();
   const chartView = page.frameLocator('iframe[title="DataTable · chart"]');
   await expect(chartView.locator("svg")).toBeVisible();
@@ -683,6 +686,7 @@ async function assertContentMatrix(page: import("@playwright/test").Page, device
         const root = doc?.querySelector<HTMLElement>("#root");
         const html = doc?.documentElement;
         if (!doc || !root?.children.length || !root.textContent?.trim() || !html) return `${frame.title}: content`;
+        if (/Preview unavailable|preview failed/.test(root.textContent)) return `${frame.title}: preview fallback`;
         if (html.dataset.look !== settings.look || html.dataset.mode !== settings.mode || html.dataset.density !== density || html.dataset.textSize !== settings.textSize || frame.contentWindow?.innerWidth !== settings.width) return `${frame.title}: settings ${JSON.stringify({look:html.dataset.look,mode:html.dataset.mode,density:html.dataset.density,textSize:html.dataset.textSize,width:frame.contentWindow?.innerWidth})}`;
         if (checkStyles && ["DataChart", "Tabs", "CodeBlock", "Card"].some((name) => frame.title.startsWith(`${name} · `))) {
           const style = getComputedStyle(html);
@@ -712,7 +716,7 @@ test("content skeletons survive every tablet gallery setting", async ({ page }) 
 
 test("content controls use their host, show focus rings, preserve list markers, and apply chart tokens", async ({ page }) => {
   await page.goto("/");
-  const table = page.frameLocator('iframe[title="DataTable · default"]');
+  const table = page.frameLocator('iframe[title="DataTable · table"]');
   const tableButton = table.getByRole("button", { name: "Table" });
   await tableButton.focus();
   expect(await tableButton.evaluate((element) => getComputedStyle(element).boxShadow)).not.toBe("none");
@@ -740,7 +744,7 @@ test("content controls use their host, show focus rings, preserve list markers, 
   await expect(listItem).toHaveCSS("display", "list-item");
   await expect(listItem).toHaveCSS("list-style-type", "disc");
 
-  const chart = page.frameLocator('iframe[title="DataChart · default"]');
+  const chart = page.frameLocator('iframe[title="DataChart · bar"]');
   await chart.locator(".recharts-bar-rectangle").first().hover();
   const tooltip = chart.locator(".recharts-tooltip-wrapper .recharts-default-tooltip");
   await expect(tooltip).toBeVisible();
@@ -758,8 +762,29 @@ test("content controls use their host, show focus rings, preserve list markers, 
     probe.remove();
     return color;
   }, series);
-  expect(fill.attr).toBe("var(--chart-1)");
+  expect(fill.attr).toBe("var(--color-value)");
   expect(fill.computed).toBe(normalizedSeries);
+});
+
+test("DataChart reads the live chart axis token when the host updates styles", async ({ page }) => {
+  await page.goto("/");
+  const frame = page.locator('iframe[title="DataChart · line"]');
+  await expect(frame.contentFrame().locator(".recharts-dot").first()).toBeVisible();
+  await page.evaluate(() => {
+    const iframe = document.querySelector<HTMLIFrameElement>('iframe[title="DataChart · line"]')!;
+    const root = iframe.contentDocument!.documentElement;
+    root.style.setProperty("--chart-axis-width", "5rem");
+    iframe.contentWindow!.postMessage({
+      styles: root.style.cssText,
+      texture: root.dataset.texture ?? "",
+      look: root.dataset.look ?? "",
+      mode: root.dataset.mode ?? "",
+      density: root.dataset.density ?? "",
+      textSize: root.dataset.textSize ?? "",
+      deviceClass: root.dataset.deviceClass ?? "",
+    }, location.origin);
+  });
+  await expect.poll(() => frame.contentFrame().locator(".recharts-dot").first().getAttribute("cx")).toBe("80");
 });
 
 test("rendered code, diff, stack trace and terminal text stay readable in every look and mode", async ({ page }) => {
@@ -778,7 +803,7 @@ test("rendered code, diff, stack trace and terminal text stay readable in every 
     await page.getByLabel("Look").selectOption(look);
     for (const mode of ["light", "dark"]) {
       await page.getByLabel("Mode").selectOption(mode);
-      for (const state of ["default", "diff"] as const) {
+      for (const state of ["code", "diff"] as const) {
         const frame = page.frameLocator(`iframe[title="CodeBlock · ${state}"]`);
         const code = frame.locator("pre code");
         await expect(code).toBeVisible();
@@ -814,11 +839,11 @@ test("rendered code, diff, stack trace and terminal text stay readable in every 
       const firstDotX = Number(await lineChart.locator(".recharts-dot").first().getAttribute("cx"));
       expect(firstDotX).toBe(axisWidth);
       const line = lineChart.locator(".recharts-line-curve");
-      await expect(line).toHaveAttribute("stroke", "var(--chart-1)");
+      await expect(line).toHaveAttribute("stroke", "var(--color-value)");
       await expect(line).toHaveAttribute("stroke-width", "1");
       const dot = lineChart.locator(".recharts-dot").first();
-      await expect(dot).toHaveAttribute("stroke", "var(--chart-1)");
-      await expect(dot).toHaveAttribute("fill", "var(--chart-1)");
+      await expect(dot).toHaveAttribute("stroke", "var(--color-value)");
+      await expect(dot).toHaveAttribute("fill", "var(--color-value)");
       const dotRadius = await lineChart.locator("html").evaluate((html) => {
         const style = getComputedStyle(html);
         return Number.parseFloat(style.getPropertyValue("--space-2")) * Number.parseFloat(style.fontSize);
@@ -829,7 +854,7 @@ test("rendered code, diff, stack trace and terminal text stay readable in every 
       await hoverDot.scrollIntoViewIfNeeded();
       await hoverDot.hover();
       const activeDot = lineChart.locator(".recharts-active-dot circle").first();
-      await expect(activeDot).toHaveAttribute("fill", "var(--chart-1)");
+      await expect(activeDot).toHaveAttribute("fill", "var(--color-value)");
       await expect(activeDot).toHaveAttribute("stroke", "var(--foreground)");
       const activeRadius = await lineChart.locator("html").evaluate((html) => {
         const style = getComputedStyle(html);

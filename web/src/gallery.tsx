@@ -68,7 +68,7 @@ function SkeletonPreview({ entry, state, deviceClass, tokenStyles, texture, look
   const params = new URLSearchParams({ entry: entry.id, state: state.id });
   return <>
     <div className="gallery-preview-stage" ref={stage}>
-      <iframe ref={frame} className="gallery-preview-frame" title={`${entry.id} · ${state.id}`} data-device-class={deviceClass} width={viewportWidth} height={1} src={`${previewPath}?${params}`} onLoad={updatePreview} />
+      <iframe key={deviceClass} ref={frame} className="gallery-preview-frame" title={`${entry.id} · ${state.id}`} data-device-class={deviceClass} width={viewportWidth} height={1} src={`${previewPath}?${params}`} onLoad={updatePreview} />
     </div>
   </>;
 }

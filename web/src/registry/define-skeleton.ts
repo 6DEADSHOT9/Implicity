@@ -55,12 +55,12 @@ export type SkeletonDefinition<P extends z.ZodObject<z.ZodRawShape> = z.ZodObjec
   meta: SkeletonMeta;
 };
 
-export function createSkeletonSchema<P extends z.ZodObject<z.ZodRawShape>, S extends z.ZodObject<z.ZodRawShape>>(props: P, slots: S, namedTabSlots = false) {
+export function createSkeletonSchema<P extends z.ZodObject<z.ZodRawShape>, S extends z.ZodObject<z.ZodRawShape>>(props: P, slots: S, namedPartProp?: string) {
   return z.object({ props: props.strict(), slots: slots._def.catchall ? slots : slots.strict() }).strict().superRefine((value, ctx) => {
-    if (!namedTabSlots) return;
-    const tabs = (value.props as { tabs?: unknown }).tabs;
-    if (!Array.isArray(tabs)) return;
-    const ids = new Set(tabs.map((tab) => (tab as { id?: unknown }).id));
+    if (!namedPartProp) return;
+    const parts = (value.props as Record<string, unknown>)[namedPartProp];
+    if (!Array.isArray(parts)) return;
+    const ids = new Set(parts.map((part) => (part as { id?: unknown }).id));
     for (const slot of Object.keys(value.slots)) if (!ids.has(slot)) ctx.addIssue({ code: "custom", path: ["slots", slot], message: "Slot must match a named part" });
   });
 }
@@ -71,10 +71,11 @@ export function defineSkeletonDefinition<P extends z.ZodObject<z.ZodRawShape>, S
   slots: S;
   events: readonly string[];
   meta: SkeletonMeta;
+  namedPartProp?: string;
 }): SkeletonDefinition<P, S> {
   const propsSchema = entry.props.strict() as P;
   const slotsSchema = (entry.slots._def.catchall ? entry.slots : entry.slots.strict()) as S;
-  const schema = createSkeletonSchema(propsSchema, slotsSchema, entry.id === "Tabs");
+  const schema = createSkeletonSchema(propsSchema, slotsSchema, entry.namedPartProp);
   return { id: entry.id, propsSchema, slotsSchema, schema, events: entry.events, meta: entry.meta };
 }
 
@@ -87,7 +88,8 @@ export function defineSkeleton<P extends z.ZodObject<z.ZodRawShape>, S extends z
     const parsed = propsSchema.safeParse(props);
     if (!parsed.success) throw new Error("Skeleton props failed runtime validation");
     const slotArrays = Object.fromEntries(Object.entries(slots).map(([name, children]) => [name, Array.isArray(children) ? children : [children]]));
-    return createElement(Skeleton, { ...(parsed.data as ComponentProps<P, S>), slots: slotArrays as ComponentProps<P, S>["slots"], onAction });
+    const action = definition.id === "Nudge" && onAction ? () => onAction() : onAction;
+    return createElement(Skeleton, { ...(parsed.data as ComponentProps<P, S>), slots: slotArrays as ComponentProps<P, S>["slots"], onAction: action });
   }
   return {
     ...definition,

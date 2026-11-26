@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { flexRender, getCoreRowModel, getSortedRowModel, useReactTable, type ColumnDef, type SortingState } from "@tanstack/react-table";
+import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from "@tanstack/react-table";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
@@ -15,14 +15,16 @@ type Props = z.infer<typeof propsSchema>;
 export function DataTable({ columns, rows, chartValues, form, state, onAction }: Props & { onAction?: (action: string, value?: string | number | boolean) => void }) {
   const capture = useCapture<(typeof events)[number]>();
   const displayedForm = (state === "default" || state === "long_content") && rows.length > 0 && (form !== "chart" || !!chartValues?.length) ? form : undefined;
-  const root = useSkeletonCapture(capture, "DataTable", displayedForm ?? state);
+  const displayedState = state === "default"
+    ? !rows.length || form === "chart" && !chartValues?.length ? "empty" : form
+    : state;
+  const root = useSkeletonCapture(capture, "DataTable", displayedState);
   const previousForm = useRef(displayedForm);
   const emit = useRef(capture.emit);
   emit.current = capture.emit;
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const data = useMemo(() => rows.map((row) => Object.fromEntries(columns.map((column, index) => [column, row[index] ?? ""]))), [columns, rows]);
-  const tableColumns = useMemo<ColumnDef<Record<string, string>>[]>(() => columns.map((column) => ({ id: column, accessorFn: (row) => row[column] ?? "", header: column })), [columns]);
-  const table = useReactTable({ data, columns: tableColumns, state: { sorting }, onSortingChange: setSorting, getCoreRowModel: getCoreRowModel(), getSortedRowModel: getSortedRowModel() });
+  const data = useMemo(() => rows, [rows]);
+  const tableColumns = useMemo<ColumnDef<string[]>[]>(() => columns.map((column, index) => ({ id: String(index), accessorFn: (row) => row[index] ?? "", header: column })), [columns]);
+  const table = useReactTable({ data, columns: tableColumns, getCoreRowModel: getCoreRowModel() });
 
   useEffect(() => {
     if (previousForm.current && displayedForm && previousForm.current !== displayedForm) emit.current("representation_switched", { dimension: "data_form", from: previousForm.current, to: displayedForm });
@@ -44,8 +46,8 @@ export function DataTable({ columns, rows, chartValues, form, state, onAction }:
             : <p>No chart data</p>
             : <Table>
               <TableCaption>Data</TableCaption>
-              <TableHeader>{table.getHeaderGroups().map((group) => <TableRow key={group.id}>{group.headers.map((header) => <TableHead scope="col" key={header.id} aria-sort={header.column.getIsSorted() === "asc" ? "ascending" : header.column.getIsSorted() === "desc" ? "descending" : "none"}><button type="button" className="focus-ring-token rounded-sm" onClick={header.column.getToggleSortingHandler()}>{flexRender(header.column.columnDef.header, header.getContext())}</button></TableHead>)}</TableRow>)}</TableHeader>
-              <TableBody>{table.getRowModel().rows.map((row) => <TableRow key={row.id}>{row.getVisibleCells().map((cell) => <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext()) ?? cell.getValue<string>()}</TableCell>)}</TableRow>)}</TableBody>
+              <TableHeader>{table.getHeaderGroups().map((group) => <TableRow key={group.id}>{group.headers.map((header) => <TableHead scope="col" key={header.id}>{flexRender(header.column.columnDef.header, header.getContext())}</TableHead>)}</TableRow>)}</TableHeader>
+              <TableBody>{table.getRowModel().rows.map((row) => <TableRow key={row.id}>{Array.from({ length: Math.max(columns.length, row.original.length) }, (_, index) => <TableCell key={index}>{row.original[index] ?? ""}</TableCell>)}</TableRow>)}</TableBody>
             </Table>}
   </section>;
 }

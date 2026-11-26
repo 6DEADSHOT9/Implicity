@@ -21,8 +21,8 @@ export function DataChart({ title, labels, values, chartType, state }: Props) {
     <Tooltip cursor={{ fill: token("--muted"), stroke: token("--border"), strokeWidth: token("--border-width") }} contentStyle={{ backgroundColor: token("--popover"), color: token("--popover-foreground"), borderColor: token("--border"), borderRadius: token("--radius"), borderWidth: token("--border-width"), padding: token("--space-3") }} itemStyle={{ color: token("--popover-foreground"), padding: token("--space-1"), fontFamily: token("--font-body") }} />
   </>;
   const plot = chartType === "line"
-    ? <LineChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>{axes}<Line dataKey="value" stroke={token("--chart-1")} strokeWidth={tokenPixels("--border-width")} dot={{ fill: token("--chart-1"), stroke: token("--chart-1"), strokeWidth: tokenPixels("--border-width"), r: tokenPixels("--space-2") }} activeDot={{ fill: token("--chart-1"), stroke: token("--foreground"), strokeWidth: tokenPixels("--border-width"), r: tokenPixels("--space-3") }} /></LineChart>
-    : <BarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>{axes}<Bar dataKey="value" fill={token("--chart-1")} activeBar={{ fill: token("--chart-1"), stroke: token("--foreground"), strokeWidth: tokenPixels("--border-width") }} /></BarChart>;
+    ? <LineChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>{axes}<Line dataKey="value" stroke="var(--color-value)" strokeWidth={tokenPixels("--border-width")} dot={{ fill: "var(--color-value)", stroke: "var(--color-value)", strokeWidth: tokenPixels("--border-width"), r: tokenPixels("--space-2") }} activeDot={{ fill: "var(--color-value)", stroke: token("--foreground"), strokeWidth: tokenPixels("--border-width"), r: tokenPixels("--space-3") }} /></LineChart>
+    : <BarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>{axes}<Bar dataKey="value" fill="var(--color-value)" activeBar={{ fill: "var(--color-value)", stroke: token("--foreground"), strokeWidth: tokenPixels("--border-width") }} /></BarChart>;
 
   return <section ref={root} className="space-y-space-3">
     <h2 className="text-heading-4">{title}</h2>

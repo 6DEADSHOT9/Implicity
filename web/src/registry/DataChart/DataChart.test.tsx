@@ -46,7 +46,7 @@ describe("DataChart public registry entry", () => {
  });
  it("keeps the primary content accessible", () => {
   const markup = renderToStaticMarkup(<entry.Component props={entry.meta.galleryStates[0].props} slots={{}} />);
-    expect(markup).toContain('role="img"');
+  expect(markup).toContain('role="img"');
   expect(markup).toContain('data-slot="chart"');
   expect(markup).toContain("--color-value:var(--chart-1)");
   expect(markup).toContain('role="img"');

@@ -82,6 +82,7 @@ export function validateRegistryDefinitions(entries: readonly SkeletonDefinition
     }
     if (meta.data.defaultStates.some((state) => !stateIdValid(state))) throw new Error(`${entry.id} declares a default state id not in T3`);
     if (meta.data.galleryStates.some(({ id }) => !stateIdValid(id))) throw new Error(`${entry.id} declares a gallery state id not in T3`);
+    if (meta.data.defaultStates.some((state) => !meta.data.galleryStates.some(({ id }) => id === state))) throw new Error(`${entry.id} gallery states must include every default state`);
     for (const state of meta.data.galleryStates) {
       if (!entry.propsSchema.safeParse(state.props).success) {
         throw new Error(`${entry.id} gallery state ${state.id} example props do not match its props schema`);
