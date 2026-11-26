@@ -46,7 +46,7 @@ Hermes reads beliefs and memory as context for its answers, and drafts proposals
 | Concern | Choice |
 | --- | --- |
 | Frontend | React 19, TypeScript, Vite |
-| Components | shadcn/ui as the single base; 35 skeletons on design tokens; JSON spec validated with Zod and rendered by json-render |
+| Components | shadcn/ui as the single base; 39 skeletons on design tokens; JSON spec validated with Zod and rendered by json-render |
 | Chat state | Vercel AI SDK chat hook, pending a spike |
 | Backend | Python with FastAPI, one process |
 | Database | SQLite now, Postgres later |
@@ -330,7 +330,7 @@ Hermes is the agent, and it can draft and request but never apply.
 
 Four stages, each usable on its own.
 
-1. **Foundation.** Three spikes first. Then the shell, all 35 component skeletons with a gallery and three hand-written looks, chat through Hermes, onboarding, capture of every Stage 1 signal into PostHog, and the adaptive engine with its demo app.
+1. **Foundation.** Three spikes first. Then the shell, all 39 component skeletons with a gallery and three hand-written looks, chat through Hermes, onboarding, capture of every Stage 1 signal into PostHog, and the adaptive engine with its demo app.
 2. **Shape.** The eight automatic adaptations, looks, Undo, locks, Settings.
 3. **Know.** Memory, projects, answer style, kinds of chat, deleted drafts, states, traits, guest detection.
 4. **Act, first part.** Home, widgets, schedules, media.

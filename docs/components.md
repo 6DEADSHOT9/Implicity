@@ -9,12 +9,12 @@ Implicity's interface is built from a fixed set of reviewed components, each def
 - **Skeletons, not finished designs.** A component is its structure, behaviour, schema and events. Its look comes from the tokens for colour, type, spacing, radius and density, plus a few variants where shape really differs.
 - **Style follows the person.** A look such as "indigo, mono, square" or "recipe notebook" is a set of token values, so it applies to every component at once.
 - **No generated code.** Hermes and the rules can only arrange and configure components that are in the registry.
-- **Start with what we need.** The registry begins with 35 component types taken from the product's screens. The wider index is consulted only when a concrete need appears.
+- **Start with what we need.** The registry begins with 39 component types taken from the product's screens. The wider index is consulted only when a concrete need appears.
 - **One base library.** shadcn/ui is the single source for building blocks.
 
 ## The components
 
-The registry starts with 35 component types in six groups. "Direct" means a shadcn/ui component is used as it is; "composed" means a small arrangement of shadcn/ui pieces.
+The registry starts with 39 component types in six groups. "Direct" means a shadcn/ui component is used as it is; "composed" means a small arrangement of shadcn/ui pieces.
 
 ### Shell
 
@@ -36,9 +36,9 @@ These never move. Only additions, such as a new shortcut chip, are allowed.
 | MessageBody | Rich text of a message. Code fences render as CodeBlock and markdown tables as DataTable | Message, Bubble, Typography, plus a markdown renderer | Composed |
 | Details | A collapsible section, for reasoning and "why this works" | Reasoning, Collapsible | Direct |
 | RunActivity | Tool steps with their status | Tool and Task, built on Collapsible until AI Elements ships Trace | Direct |
-| MessageActions | Copy, regenerate, feedback, version switcher, "Remember this" | Button Group, Tooltip, Pagination | Composed |
-| AttachmentTray | Files and photos attached to a message | Attachment | Direct |
-| Citation | A source chip, including links to the person's own memory | Inline Citation | Direct |
+| MessageActions | Copy, regenerate, feedback, version switcher, answer-form switcher (prose, list, table), "Remember this" | Button Group, Tooltip, Pagination | Composed |
+| AttachmentTray | Files and photos attached to a message; each attachment id is a UUID minted by the app | Attachment | Direct |
+| Citation | A source chip, including links to the person's own memory. A web source is an https link; a memory source is a memory item id (a UUID minted by the app), and the chip calls its callback with that id so the app opens it | Inline Citation | Direct |
 | ContextChip | What shaped this answer, with a one-tap correction. Variants: "Remembered", "Noticed", "Set" | Marker, Button | Composed |
 | ShortcutChips | Chips for Commands, including workflow chips | Suggestion | Direct |
 | ApprovalRequest | Approve, edit or deny before anything is run or changed | Confirmation | Direct |
@@ -71,9 +71,15 @@ These never move. Only additions, such as a new shortcut chip, are allowed.
 | Component | What it is | shadcn/ui base | Build |
 | --- | --- | --- | --- |
 | HomeGrid | The arrangement of widgets | Card in a CSS grid | Composed |
-| WidgetFrame | The wrapper every widget gets: title, last update, source, dismiss | Card, Dropdown Menu | Composed |
-| WidgetPicker | "Customize" and "Add widget" | Sheet or Dialog, Card, Switch | Composed |
-| Built-in widgets | Resume, Projects, Scheduled, Quick prompts, Now playing | Card, Item, Progress, Empty | Composed |
+| WidgetFrame | The wrapper every widget gets: title, last update, source, dismiss. It owns the Card and the heading; a widget renders only its content inside it | Card, Dropdown Menu | Composed |
+| WidgetPicker | "Customize" and "Add widget". Its open and close record `panel_opened` and `panel_closed`, as a panel does | Sheet or Dialog, Card, Switch | Composed |
+| ResumeWidget | Built-in widget: Resume | Item, Progress, Empty | Composed |
+| ProjectsWidget | Built-in widget: Projects | Item, Progress, Empty | Composed |
+| ScheduledWidget | Built-in widget: Scheduled | Item, Progress, Empty | Composed |
+| QuickPromptsWidget | Built-in widget: Quick prompts | Item, Progress, Empty | Composed |
+| NowPlayingWidget | Built-in widget: Now playing | Item, Progress, Empty | Composed |
+
+The five built-in widgets are separate registry entries, each with its own schema and events. Home always places a widget inside a WidgetFrame; a built-in widget draws no Card or heading of its own.
 
 Other widgets, such as a CI tracker or supplier watch, are a DataTable, DataChart, Metric or Checklist inside a WidgetFrame. They are not new components.
 
@@ -88,7 +94,7 @@ Other widgets, such as a CI tracker or supplier watch, are a DataTable, DataChar
 ### Features that are not separate components
 
 - The table-or-chart switcher belongs to DataTable and DataChart.
-- The version switcher belongs to MessageActions.
+- The version switcher and the answer-form switcher (prose, list, table) belong to MessageActions.
 - Diffs and stack traces are variants of CodeBlock.
 - Empty states use shadcn/ui's Empty inside the navigation and widgets.
 - Locks and the change history live in Settings.
@@ -104,10 +110,10 @@ Each registry entry carries four things beyond its code, and the rest of the sys
 
    **The shadcn/ui primitives** (copied sources, ADR 0010) follow the same guarantee by a different route. Tailwind's default theme is cleared and its theme is defined only from the tokens, so every colour, spacing, radius, font, size or shadow utility that exists resolves to a token. In the primitives' folder the lint accepts a class only if Tailwind generates it from that theme, rejects arbitrary values such as `bg-[#f00]` or `p-[13px]`, allows inline `style` only as `var(--token)`, and leaves layout-only properties such as `grid-template-columns` free. Primitives whose styling is computed at runtime (charts, code highlighting) are adapted by the skeleton ticket that uses them, through the token helper, not copied into the base.
 
-   **Where a look applies.** A look's token properties and its mode (`data-mode`) are set on the document root (`<html>`), so one look applies to the whole page and overlays rendered at the end of `<body>` (dialogs, popovers, menus, tooltips) inherit it. **Breakpoints** are tokens in `contracts/looks/tokens.json` with Tailwind's standard values, `sm` 40rem, `md` 48rem, `lg` 64rem and `xl` 80rem, and the Tailwind theme's breakpoints and container sizes are generated from them; they are separate from `device_class`, which comes from the device. **Animations** use `tw-animate-css`, as shadcn/ui expects, and are turned off under `prefers-reduced-motion`.
+   **Where a look applies.** A look's token properties and its mode (`data-mode`) are set on the document root (`<html>`), so one look applies to the whole page and overlays rendered at the end of `<body>` (dialogs, popovers, menus, tooltips) inherit it. **Breakpoints** are tokens in `contracts/looks/tokens.json` with Tailwind's standard values, `sm` 40rem, `md` 48rem, `lg` 64rem and `xl` 80rem, and the Tailwind theme's breakpoints and container sizes are generated from them; they are separate from `device_class`, which comes from the device. **Animations** use `tw-animate-css`, as shadcn/ui expects, and are turned off under `prefers-reduced-motion`. **The base includes Tailwind's Preflight**, the reset the copied shadcn/ui components assume, so no control falls back to the browser's own button or form styles; a browser test checks every Button variant and Tabs trigger meets its declared contrast in every look and mode.
 4. **Its limits**: minimum sizes and contrast that no adaptation may break.
 
-Widgets declare two more: where their data comes from, and how they refresh. That is what lets each one show its last update and its source.
+Widgets declare two more: where their data comes from, and how they refresh. That is what lets each one show its last update and its source. They are declared in `meta.ts` as the `widget` block (docs/contracts.md); every built-in widget has one.
 
 **How the three layers use components.** Shape changes which components are open, where they sit, their default props, and the token values. Know changes what goes inside them, such as an answer that leads with a CodeBlock and folds the explanation into Details. Act composes them into larger things: a workbench is a saved arrangement, and Home is a list of widgets.
 
@@ -124,7 +130,7 @@ Widgets declare two more: where their data comes from, and how they refresh. Tha
 | Kokonut UI | Reference only, for interaction ideas. Not a dependency. |
 | The shadcn directory index (about 143,000 components) | A development-time reference for future needs. Not part of the running system. |
 
-Of the 35 components, 15 are direct, 19 are composed, and 1 is written from scratch. assistant-ui is no longer used.
+Of the 39 components, 15 are direct, 23 are composed, and 1 is written from scratch. assistant-ui is no longer used.
 
 ## Design tokens and looks
 
