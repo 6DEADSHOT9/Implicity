@@ -53,7 +53,7 @@ function InlineNotice({ decision_id, title, reason, onKeep, onUndo }: Omit<Props
     <Button type="button" onClick={() => { if (!shownRef.current && !seenRef.reportVisible()) return; emit("change_kept", { decision_id }); onKeep?.(); }}>Keep</Button>
     <Button type="button" variant="outline" onClick={() => { if (!shownRef.current && !seenRef.reportVisible()) return; emit("change_undone", { decision_id }); onUndo?.(); }}>Undo</Button>
   </div>;
-  return <div ref={seenRef} role="status" aria-labelledby={titleId}><Marker label="Change" actions={actions}><div className="min-w-0"><h2 id={titleId} style={{ fontSize: "var(--heading-4)" }}>{title}</h2><p>{reason}</p></div></Marker></div>;
+  return <div ref={seenRef} role="status" aria-labelledby={titleId}><Marker label="Change" actions={actions}><div className="min-w-0"><h2 id={titleId} className="font-bold" style={{ fontSize: "var(--heading-4)" }}>{title}</h2><p>{reason}</p></div></Marker></div>;
 }
 
 export function ChangeNotice({ decision_id, title, reason, presentation, onKeep, onUndo }: Props) {

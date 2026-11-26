@@ -107,10 +107,10 @@ function sourceUrls(value) {
 function parseFontStylesheet(css) {
   const stylesheet = postcss.parse(css, { from: "tokens.css" });
   expect(stylesheet.nodes.filter((node) => node.type === "atrule" && node.name.toLowerCase() === "import").map((node) => node.params))
-    .toEqual(['"tailwindcss/theme.css"', '"tailwindcss/utilities.css"', '"tw-animate-css"']);
+    .toEqual(['"tailwindcss/preflight.css"', '"tailwindcss/theme.css"', '"tailwindcss/utilities.css"', '"tw-animate-css"']);
   expect(stylesheet.nodes.every((node) => node.type === "comment" ||
     (node.type === "atrule" && ["import", "custom-variant", "theme", "utility", "font-face", "keyframes", "media"].includes(node.name.toLowerCase())) ||
-    (node.type === "rule" && ["html", "body", "ul, ol", ":where(button, input, select, textarea)"].includes(node.selector)))).toBe(true);
+    (node.type === "rule" && ["html", "body", "progress", "progress::-webkit-progress-bar", "progress::-webkit-progress-value", "progress::-moz-progress-bar", "progress:not([value])", "progress:not([value])::-webkit-progress-bar", "progress:not([value])::-moz-progress-bar", "ul, ol", ":where(button, input, select, textarea)"].includes(node.selector)))).toBe(true);
   const nodes = stylesheet.nodes.filter((node) => node.type === "atrule" && node.name.toLowerCase() === "font-face");
   expect(nodes).toHaveLength(4);
   const faces = [];
@@ -241,6 +241,8 @@ describe("look contracts", () => {
     expect(tokenSet.derivedTokens.lineHeights).toEqual({
       "--line-height-body": "1.5", "--line-height-heading": "1.2", "--line-height-code": "1.5",
     });
+    expect(tokenSet.derivedTokens.motionAnimations["--motion-progress-indeterminate"])
+      .toBe("progress-indeterminate 1.2s linear infinite");
     for (const lineHeight of Object.values(tokenSet.derivedTokens.lineHeights)) {
       expect(Number.isFinite(Number(lineHeight)) && Number(lineHeight) > 0).toBe(true);
     }
