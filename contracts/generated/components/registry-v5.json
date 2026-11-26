@@ -1,0 +1,24 @@
+{
+  "registry_version": 5,
+  "components": [
+    "AppShell",
+    "ArtifactWorkspace",
+    "Card",
+    "ChangeNotice",
+    "ChatHeader",
+    "Checklist",
+    "CodeBlock",
+    "Composer",
+    "ConversationNavigation",
+    "DataChart",
+    "DataTable",
+    "List",
+    "MediaPlayer",
+    "Metric",
+    "Nudge",
+    "ProposalCard",
+    "Search",
+    "Settings",
+    "Tabs"
+  ]
+}

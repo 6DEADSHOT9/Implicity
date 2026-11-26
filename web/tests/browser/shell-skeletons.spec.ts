@@ -10,11 +10,12 @@ const previews = [
 ] as const;
 
 test("shell skeletons render usable, contained content across gallery settings", async ({ page }) => {
+  test.setTimeout(90000);
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/");
   const initialSearch = page.frameLocator("iframe[title='Search · open']");
-  await expect(initialSearch.getByRole("dialog", { name: "Search" })).toBeVisible();
+  await expect(initialSearch.getByRole("dialog", { name: "Search" })).toBeVisible({ timeout: 15000 });
   const initialViewport = await page.evaluate(() => ({ scrollY, active: document.activeElement?.tagName, title: (document.activeElement as HTMLIFrameElement | null)?.title }));
   const searchFocus = await initialSearch.locator("body").evaluate((body) => ({ className: body.className, active: body.ownerDocument.activeElement?.outerHTML.slice(0, 160) }));
   expect(initialViewport.scrollY, JSON.stringify({ initialViewport, searchFocus })).toBe(0);

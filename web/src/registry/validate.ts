@@ -91,7 +91,7 @@ export function validateRegistryDefinitions(entries: readonly SkeletonDefinition
         throw new Error(`${entry.id} gallery state ${state.id} is missing example slots`);
       }
       for (const [slot, example] of Object.entries(state.slots ?? {})) {
-        const slotSchema = entry.slotsSchema.shape[slot];
+        const slotSchema = Object.hasOwn(entry.slotsSchema.shape, slot) ? entry.slotsSchema.shape[slot] : entry.slotsSchema._def.catchall;
         const validSlot = slotSchema && z.object({ [slot]: slotSchema }).strict().safeParse({ [slot]: example }).success;
         if (!validSlot || (example as string[]).some((child) => !slotIdValid(child))) {
           throw new Error(`${entry.id} gallery state ${state.id} slot ${slot} example does not match its slot schema`);
@@ -100,6 +100,7 @@ export function validateRegistryDefinitions(entries: readonly SkeletonDefinition
       if (!entry.slotsSchema.safeParse(state.slots ?? {}).success) {
         throw new Error(`${entry.id} gallery state ${state.id} example slots do not match its slots schema`);
       }
+      if (!entry.schema.safeParse({ props: state.props, slots: state.slots ?? {} }).success) throw new Error(`${entry.id} gallery state ${state.id} example does not match its component schema`);
     }
     if (meta.data.commands.some((command) => command.startsWith("cmd_"))) throw new Error(`${entry.id} Command uses reserved cmd_ prefix`);
     if (meta.data.commands.some((command) => !commandValid(command))) throw new Error(`${entry.id} declares a Command not in T3`);

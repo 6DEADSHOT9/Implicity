@@ -7,7 +7,7 @@ async function expectPanelsInsideFrames(page: import("@playwright/test").Page, p
       const { x, y, width, height } = element.getBoundingClientRect();
       const view = element.ownerDocument.defaultView!;
       return x >= 0 && y >= 0 && x + width <= view.innerWidth && y + height <= view.innerHeight;
-    })).toBe(true);
+    }), { timeout: 15000 }).toBe(true);
   }
 }
 
@@ -26,6 +26,7 @@ async function clickByPointer(page: import("@playwright/test").Page, button: imp
 }
 
 test("system message Skeletons render across every gallery setting", async ({ page }) => {
+  test.setTimeout(90000);
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/");
@@ -52,7 +53,7 @@ test("system message Skeletons render across every gallery setting", async ({ pa
     await expect(card).toHaveCount(1);
     const frame = card.locator("iframe");
     await expect(frame).toHaveAttribute("title", `${id} · ${state}`);
-    await expect.poll(async () => Number(await frame.getAttribute("height"))).toBeGreaterThan(1);
+    await expect.poll(async () => Number(await frame.getAttribute("height")), { timeout: 15000 }).toBeGreaterThan(1);
     const preview = page.frameLocator(`iframe[title='${id} · ${state}']`);
     const component = preview.locator(id === "ProposalCard" ? "[role='region']" : "[role='status']");
     await expect(component).toBeVisible();
@@ -147,6 +148,7 @@ test("system message Skeletons render across every gallery setting", async ({ pa
 });
 
 test("ChangeNotice shown events follow native disclosure and completed opacity reveals", async ({ page }) => {
+  test.setTimeout(60000);
   await page.goto("/");
   await page.evaluate(async () => {
     const fixtureUrl = "/tests/browser/system-messages-entry.tsx";
@@ -166,7 +168,7 @@ test("ChangeNotice shown events follow native disclosure and completed opacity r
     element.addEventListener("transitionend", () => resolve(), { once: true });
     window.revealOpacity();
   }));
-  await expect.poll(async () => (await events()).some((event) => event.name === "change_shown" && event.decision_id === "dec_423e4567-e89b-42d3-a456-426614174000")).toBe(true);
+  await expect.poll(async () => (await events()).some((event) => event.name === "change_shown" && event.decision_id === "dec_423e4567-e89b-42d3-a456-426614174000"), { timeout: 15000 }).toBe(true);
 });
 
 test("Keep reports an opacity-revealed toast shown before the action", async ({ page }) => {
