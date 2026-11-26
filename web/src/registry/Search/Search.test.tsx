@@ -33,6 +33,7 @@ describe("Search", () => {
     const input = screen.getByRole("combobox", { name: "Search conversations" });
     await user.type(input, "private query");
     await user.clear(input);
+    expect(onSearch).toHaveBeenLastCalledWith("");
     await user.type(input, "another query");
     expect(onSearch).toHaveBeenLastCalledWith("another query");
     expect(recorder.events.filter(({ name }) => name === "search_used")).toEqual([{ name: "search_used" }]);
@@ -43,6 +44,9 @@ describe("Search", () => {
     await user.click(screen.getByRole("option", { name: "Planning session" }));
     expect(onSelect).toHaveBeenCalledWith("chat-1");
     expect(JSON.stringify(recorder.events)).not.toContain("private query");
+  });
+  it("rejects duplicate result ids", () => {
+    expect(propsSchema.safeParse({ open: true, results: [{ id: "same", label: "Chat A" }, { id: "same", label: "Chat B" }] }).success).toBe(false);
   });
   it("exports strict props and slots schemas", () => {
     expect(propsSchema.safeParse(entry.meta.galleryStates[0].props).success).toBe(true);

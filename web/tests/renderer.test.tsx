@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { renderLayout, renderMessage } from "./renderer";
-import { registry } from "./registry";
+import { renderLayout, renderMessage } from "../src/renderer";
+import { registry } from "../src/registry";
 
 afterEach(cleanup);
 
@@ -10,6 +10,7 @@ describe("layout recovery", () => {
   it("renders the real registry shell without a dead panel action", () => {
     render(renderLayout(undefined, undefined));
     expect(screen.getByText("Workspace unavailable. Showing the default workspace.")).toBeTruthy();
+    expect(screen.getByRole("main").textContent).toContain("Workspace unavailable.");
     expect(screen.queryByRole("button", { name: /panel/i })).toBeNull();
   });
   it("rejects shell components anywhere in a message spec and shows plain text", () => {
@@ -24,5 +25,10 @@ describe("layout recovery", () => {
     render(renderMessage(nested, "Nested fallback"));
     expect(screen.getByText("Nested fallback")).toBeTruthy();
     expect(screen.queryByRole("dialog")).toBeNull();
+    const malformedMixed = { registry_version: registry.version, root: "card", elements: { card: nested.elements.card, shell: { type: "Search" } } };
+    const view = render(renderMessage(malformedMixed, "Malformed mixed fallback"));
+    expect(screen.getByText("Malformed mixed fallback")).toBeTruthy();
+    expect(screen.queryByText("Hello")).toBeNull();
+    view.unmount();
   });
 });

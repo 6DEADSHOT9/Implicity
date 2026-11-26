@@ -115,7 +115,7 @@ function shellBaseline(current: Registry): Spec | undefined {
 function messageSpec(value: unknown, current: Registry): Spec | undefined {
   const envelope = getEnvelope(value);
   if (!envelope || envelope.registry_version > current.version) return undefined;
-  if (Object.values(envelope.elements).some((element) => isRecord(element) && isT3SpecElement(element) && typeof element.type === "string" && current.getSkeleton(element.type)?.meta.role === "shell")) return undefined;
+  if (Object.values(envelope.elements).some((element) => isRecord(element) && typeof element.type === "string" && current.getSkeleton(element.type)?.meta.role === "shell")) return undefined;
   const elements = Object.fromEntries(Object.entries(envelope.elements).map(([id, raw]) => {
     if (!isT3SpecElement(raw)) return [id, { type: PlainTextFallback, props: {} }];
     const element = raw as Spec["elements"][string];

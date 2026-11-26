@@ -27,7 +27,7 @@ export function Composer({ attachments, shortcuts, onSubmit, onShortcut, onAttac
     <PromptInput onSubmit={(message) => onSubmit?.(message)} className="box-border min-w-0 w-full">
       <PendingAttachments onChange={onAttachmentsChange} />
       <PromptInputTextarea id={inputId} aria-label="Message" placeholder="Write a message" className="box-border min-w-0 w-full" style={{ minHeight: "var(--control-height)" }} />
-      <PromptInputFooter><PromptInputTools className="flex-wrap"><PromptInputActionMenu><PromptInputActionMenuTrigger aria-label="Add attachment" /><PromptInputActionMenuContent><PromptInputActionAddAttachments /></PromptInputActionMenuContent></PromptInputActionMenu>{shortcuts.map(({ id, label }) => <Button type="button" key={id} size="sm" variant="outline" className="max-w-full whitespace-normal break-words" onClick={() => { emit("shortcut_used", { command: id }); onShortcut?.(id); }}>{label}</Button>)}</PromptInputTools><PromptInputSubmit /></PromptInputFooter>
+      <PromptInputFooter><PromptInputTools className="flex-wrap"><PromptInputActionMenu><PromptInputActionMenuTrigger aria-label="Add attachment" /><PromptInputActionMenuContent><PromptInputActionAddAttachments /></PromptInputActionMenuContent></PromptInputActionMenu>{shortcuts.map(({ id, label }) => <Button type="button" key={id} size="sm" variant="outline" className="min-w-0 max-w-full whitespace-normal break-all" onClick={() => { emit("shortcut_used", { command: id }); onShortcut?.(id); }}>{label}</Button>)}</PromptInputTools><PromptInputSubmit /></PromptInputFooter>
     </PromptInput>
   </section>;
 }

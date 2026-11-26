@@ -14,11 +14,29 @@ export function Settings({ open, tab, onTabChange, onClose, slots = {} }: Props)
   const { emit } = useCapture<(typeof events)[number]>();
   const emitRef = useRef(emit);
   emitRef.current = emit;
+  const openerRef = useRef<HTMLElement | null>(null);
   const seenRef = useSeen({ component: "Settings", defaultState: tab });
   useEffect(() => { emitRef.current("component_shown", { component: "Settings", default_state: tab }); }, []);
-  return <div ref={seenRef} className="box-border w-full min-w-0">
+  const focusSettings = (event: Event) => {
+    if (document.body.classList.contains("gallery-preview-root")) {
+      event.preventDefault();
+      if (window.parent.document.activeElement === window.frameElement) {
+        (window.frameElement as HTMLElement | null)?.blur();
+        window.parent.scrollTo(0, 0);
+      }
+      return;
+    }
+    openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  };
+  const restoreFocus = (event: Event) => {
+    if (openerRef.current?.isConnected) {
+      event.preventDefault();
+      openerRef.current.focus();
+    }
+  };
+  return <div className="box-border w-full min-w-0">
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onClose?.(); }}>
-      <DialogContent showCloseButton={false} className="box-border min-w-0 max-w-full" onOpenAutoFocus={(event) => { if (document.body.classList.contains("gallery-preview-root")) { event.preventDefault(); if (window.parent.document.activeElement === window.frameElement) { (window.frameElement as HTMLElement | null)?.blur(); window.parent.scrollTo(0, 0); } } }}>
+      <DialogContent ref={seenRef} showCloseButton={false} className="box-border min-w-0 max-w-full" onOpenAutoFocus={focusSettings} onCloseAutoFocus={restoreFocus}>
         <DialogClose asChild><Button type="button" variant="ghost" size="icon" aria-label="Close settings" className="absolute right-space-2 top-space-2"><XIcon /></Button></DialogClose>
         <DialogHeader><DialogTitle>Settings</DialogTitle><DialogDescription>Manage workspace settings.</DialogDescription></DialogHeader>
         <Tabs value={tab} onValueChange={(value) => onTabChange?.(value as View)} className="min-w-0">

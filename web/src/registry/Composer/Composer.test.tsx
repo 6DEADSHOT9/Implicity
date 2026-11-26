@@ -59,4 +59,13 @@ describe("Composer", () => {
     expect(entry.events).toContain("component_shown");
     expect(entry.events).toContain("component_seen");
   });
+  it("accepts declared built-in and app-minted workflow Commands only, without duplicate ids", () => {
+    const builtIn = "search";
+    const workflow = "cmd_550e8400-e29b-41d4-a716-446655440010";
+    expect(propsSchema.safeParse({ attachments: [], shortcuts: [{ id: builtIn, label: "Search" }, { id: workflow, label: "Summarize" }] }).success).toBe(true);
+    for (const id of ["unknown_command", "cmd_not_a_uuid"]) {
+      expect(propsSchema.safeParse({ attachments: [], shortcuts: [{ id, label: "Unknown" }] }).success, id).toBe(false);
+    }
+    expect(propsSchema.safeParse({ attachments: [], shortcuts: [{ id: "search", label: "A" }, { id: "search", label: "B" }] }).success).toBe(false);
+  });
 });

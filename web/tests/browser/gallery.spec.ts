@@ -709,12 +709,10 @@ async function assertContentMatrix(page: import("@playwright/test").Page, device
 }
 
 test("content skeletons survive every desktop gallery setting", async ({ page }) => {
-  test.setTimeout(60000);
   await assertContentMatrix(page, "desktop");
 });
 
 test("content skeletons survive every tablet gallery setting", async ({ page }) => {
-  test.setTimeout(60000);
   await assertContentMatrix(page, "tablet");
 });
 

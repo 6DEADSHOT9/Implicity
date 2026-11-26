@@ -53,6 +53,20 @@ async function markup(element: ReactElement): Promise<string> {
 afterEach(() => vi.restoreAllMocks());
 
 describe("registry and renderer", () => {
+  it("keeps the reviewed minimum dimensions for every shell skeleton", () => {
+    expect(Object.fromEntries(["AppShell", "ChatHeader", "Composer", "ConversationNavigation", "Search", "Settings"].map((id) => {
+      const limits = getSkeleton(id)!.meta.limits;
+      return [id, [limits.minWidth, limits.minHeight]];
+    }))).toEqual({
+      AppShell: [320, 320],
+      ChatHeader: [320, 44],
+      Composer: [320, 44],
+      ConversationNavigation: [256, 256],
+      Search: [320, 280],
+      Settings: [320, 320],
+    });
+  });
+
   it("uses own registry keys and exposes fixed ids to callers", () => {
     expect(panelRegistry.getSkeleton("ReviewPanel")).toBe(ReviewPanelEntry);
     expect(panelRegistry.getSkeleton("ReviewPanel")?.meta.slots).toEqual(["main"]);

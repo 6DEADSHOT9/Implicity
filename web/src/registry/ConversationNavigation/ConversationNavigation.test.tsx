@@ -53,4 +53,10 @@ describe("ConversationNavigation", () => {
     expect(entry.events).toContain("component_shown");
     expect(entry.events).toContain("component_seen");
   });
+  it("rejects duplicate ids within each named list", () => {
+    const duplicate = [{ id: "same", label: "A" }, { id: "same", label: "B" }];
+    expect(propsSchema.safeParse({ items: duplicate, projects: [], recent: [], quota: "Available" }).success).toBe(false);
+    expect(propsSchema.safeParse({ items: [], projects: duplicate, recent: [], quota: "Available" }).success).toBe(false);
+    expect(propsSchema.safeParse({ items: [], projects: [], recent: duplicate, quota: "Available" }).success).toBe(false);
+  });
 });

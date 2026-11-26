@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { useState } from "react";
 import userEvent from "@testing-library/user-event";
 import { CaptureProvider, recordingCapture, registry } from "../index";
 import { propsSchema, slotsSchema } from "./schema";
@@ -33,6 +34,19 @@ describe("Settings", () => {
     expect(onTabChange).toHaveBeenCalledWith("quota");
     await user.click(screen.getByRole("button", { name: "Close settings" }));
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+  it("returns keyboard focus to the application opener on close", async () => {
+    const user = userEvent.setup();
+    function Harness() {
+      const [open, setOpen] = useState(false);
+      return <><button type="button" onClick={() => setOpen(true)}>Open app settings</button><SettingsComponent open={open} tab="preferences" onClose={() => setOpen(false)} /></>;
+    }
+    render(<CaptureProvider sink={recordingCapture().sink}><Harness /></CaptureProvider>);
+    const opener = screen.getByRole("button", { name: "Open app settings" });
+    await user.click(opener);
+    expect(screen.getByRole("dialog", { name: "Settings" })).toBeTruthy();
+    await user.keyboard("{Escape}");
+    expect(document.activeElement).toBe(opener);
   });
   it("declares every tab as a default state", () => {
     expect(entry.meta.defaultStates).toEqual(entry.meta.galleryStates.map(({ id }) => id));

@@ -17,8 +17,25 @@
             "type": "object",
             "properties": {
               "id": {
-                "type": "string",
-                "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "search",
+                      "go_home",
+                      "new_chat",
+                      "open_chat",
+                      "open_project",
+                      "open_recent",
+                      "toggle_panel",
+                      "open_settings"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^cmd_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                  }
+                ]
               },
               "label": {
                 "type": "string"

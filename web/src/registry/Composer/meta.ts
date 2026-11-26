@@ -5,7 +5,7 @@ export const meta = {
     "empty",
     "with-attachments"
   ],
-  "commands": [],
+  "commands": ["search", "go_home", "new_chat", "open_chat", "open_project", "open_recent", "toggle_panel", "open_settings"],
   "limits": {
     "minWidth": 320,
     "minHeight": 44,
