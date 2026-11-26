@@ -1,0 +1,14 @@
+{
+  "registry_version": 4,
+  "components": [
+    "AppShell",
+    "ChangeNotice",
+    "ChatHeader",
+    "Composer",
+    "ConversationNavigation",
+    "Nudge",
+    "ProposalCard",
+    "Search",
+    "Settings"
+  ]
+}

@@ -1,11 +1,81 @@
 {
-  "registry_version": 3,
+  "registry_version": 4,
   "components": [
+    "AppShell",
     "ChangeNotice",
+    "ChatHeader",
+    "Composer",
+    "ConversationNavigation",
     "Nudge",
-    "ProposalCard"
+    "ProposalCard",
+    "Search",
+    "Settings"
   ],
   "catalogue": [
+    {
+      "name": "AppShell",
+      "role": "shell",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "panelOpen": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "panelOpen"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [
+        "main",
+        "navigation",
+        "panel"
+      ],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "main": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            }
+          },
+          "navigation": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            }
+          },
+          "panel": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            }
+          }
+        },
+        "required": [
+          "main",
+          "navigation",
+          "panel"
+        ],
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 64,
+        "minContrast": 4.5
+      }
+    },
     {
       "name": "ChangeNotice",
       "role": "system",
@@ -38,6 +108,133 @@
           "title",
           "reason",
           "presentation"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 64,
+        "minContrast": 4.5
+      }
+    },
+    {
+      "name": "ChatHeader",
+      "role": "shell",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "settingsOpen": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "title",
+          "kind",
+          "settingsOpen"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 64,
+        "minContrast": 4.5
+      }
+    },
+    {
+      "name": "Composer",
+      "role": "shell",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "shortcuts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "attachments",
+          "shortcuts"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 64,
+        "minContrast": 4.5
+      }
+    },
+    {
+      "name": "ConversationNavigation",
+      "role": "shell",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "recent": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "projects": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "quota": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "recent",
+          "projects",
+          "quota"
         ],
         "additionalProperties": false
       },
@@ -148,6 +345,132 @@
       "limits": {
         "minWidth": 320,
         "minHeight": 160,
+        "minContrast": 4.5
+      }
+    },
+    {
+      "name": "Search",
+      "role": "shell",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "open": {
+            "type": "boolean"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "open",
+          "results"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 64,
+        "minContrast": 4.5
+      }
+    },
+    {
+      "name": "Settings",
+      "role": "shell",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "tab": {
+            "type": "string",
+            "enum": [
+              "preferences",
+              "locks",
+              "notices",
+              "history",
+              "quota"
+            ]
+          }
+        },
+        "required": [
+          "tab"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [
+        "preferences",
+        "locks",
+        "notices",
+        "history",
+        "quota"
+      ],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "preferences": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            }
+          },
+          "locks": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            }
+          },
+          "notices": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            }
+          },
+          "history": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            }
+          },
+          "quota": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            }
+          }
+        },
+        "required": [
+          "preferences",
+          "locks",
+          "notices",
+          "history",
+          "quota"
+        ],
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 64,
         "minContrast": 4.5
       }
     }
