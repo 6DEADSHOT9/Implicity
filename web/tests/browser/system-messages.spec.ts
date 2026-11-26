@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { measureContrast } from "./contrast";
 
 async function expectPanelsInsideFrames(page: import("@playwright/test").Page, previews: readonly (readonly [string, string])[]) {
   for (const [id, state] of previews) {
@@ -26,6 +27,7 @@ async function clickByPointer(page: import("@playwright/test").Page, button: imp
 }
 
 test("system message Skeletons render across every gallery setting", async ({ page }) => {
+  test.setTimeout(60_000);
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/");
@@ -56,6 +58,7 @@ test("system message Skeletons render across every gallery setting", async ({ pa
     const preview = page.frameLocator(`iframe[title='${id} · ${state}']`);
     const component = preview.locator(id === "ProposalCard" ? "[role='region']" : "[role='status']");
     await expect(component).toBeVisible();
+    if (id === "ChangeNotice" && state === "inline") await expect(component.getByRole("heading")).toHaveCSS("font-weight", "700");
     await expect.poll(() => component.evaluate((element) => element.checkVisibility({ opacityProperty: true, visibilityProperty: true }))).toBe(true);
     const bounds = () => component.evaluate((element) => {
       const { x, y, width, height } = element.getBoundingClientRect();
@@ -99,6 +102,10 @@ test("system message Skeletons render across every gallery setting", async ({ pa
         const preview = page.frameLocator(`iframe[title='${id} · ${state}']`);
         await expect(preview.locator(id === "ProposalCard" ? "[role='region']" : "[role='status']")).toHaveCount(1);
         await expect(preview.locator("button").first()).toHaveCSS("font-family", new RegExp(look === "notebook" ? "Source Serif 4" : look === "focused" ? "IBM Plex Mono" : "Inter"));
+        for (const button of await preview.locator("button").all()) {
+          const contrast = await button.evaluate(measureContrast);
+          expect(contrast.ratio, `${id} ${state} ${look} ${mode}`).toBeGreaterThanOrEqual(4.5);
+        }
         await expectHeadingToken(id, state);
       }
       const toast = page.frameLocator("iframe[title='ChangeNotice · toast']");

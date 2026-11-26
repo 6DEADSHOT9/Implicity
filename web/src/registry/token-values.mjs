@@ -93,6 +93,7 @@ for (const name of ["sidebar", "sidebar-icon", "sidebar-mobile", "panel", "panel
 }
 for (const name of ["m", "mx", "my", "mt", "mr", "mb", "ml", "ms", "me", "p", "px", "py", "pt", "pr", "pb", "pl", "ps", "pe", "gap", "gap-x", "gap-y", "space-x", "space-y", "w", "h", "size", "min-w", "min-h", "max-w", "max-h", "inset", "inset-x", "inset-y", "top", "right", "bottom", "left", "start", "end"]) utilityNames.add(`${name}-0`);
 for (const name of ["leading-none", "tracking-tight", "tracking-wide", "wrap-break-word", "border", "border-0", "ring-0", "ring-2", "ring-4", "translate-x-1/2", "-translate-x-1/2", "translate-y-1/2", "-translate-y-1/2", "-translate-y-3/4"]) utilityNames.add(name);
+for (const side of ["", "x", "y", "t", "r", "b", "l", "s", "e"]) utilityNames.add(`token-border${side ? `-${side}` : ""}`);
 for (const name of utilityNames) if (/^(?:m|mx|my|mt|mr|mb|ml|ms|me|scroll-m|scroll-p|inset|inset-x|inset-y|top|right|bottom|left|start|end|space-x|space-y|translate-x|translate-y)-space-/.test(name)) utilityNames.add(`-${name}`);
 
 export const tokenNames = new Set([...cssNames, ...utilityNames]);

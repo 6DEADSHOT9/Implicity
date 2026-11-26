@@ -4,6 +4,7 @@ import defaultLook from "../../../contracts/looks/default.json" with { type: "js
 import focusedLook from "../../../contracts/looks/focused.json" with { type: "json" };
 import notebookLook from "../../../contracts/looks/notebook.json" with { type: "json" };
 import { tokenNames } from "../../src/registry/token-values.mjs";
+import { measureContrast } from "./contrast";
 
 const lookById = { default: defaultLook, focused: focusedLook, notebook: notebookLook };
 
@@ -101,26 +102,93 @@ test("Button variants and Tabs triggers meet 4.5:1 contrast in every look and mo
       expect(await buttons.evaluateAll((elements) => [...new Set(elements.map((element) => element.getAttribute("data-variant")))].sort())).toEqual(["default", "destructive", "ghost", "link", "outline", "secondary"]);
       const triggers = page.locator("[data-slot='tabs-trigger']");
       await expect(triggers).toHaveCount(2);
-      for (const control of await page.locator("[data-slot='button'], [data-slot='tabs-trigger']").all()) {
-        const result = await control.evaluate((element) => {
-          const rgb = (color: string) => {
-            const values = color.match(/[\d.]+/g)!.map(Number);
-            return [...values.slice(0, 3), values[3] ?? 1];
-          };
-          const luminance = (color: string) => rgb(color).slice(0, 3).map((value) => {
-            const channel = value / 255;
-            return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
-          }).reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index], 0);
-          let surface: Element | null = element;
-          while (surface && rgb(getComputedStyle(surface).backgroundColor)[3] !== 1) surface = surface.parentElement;
-          const foreground = getComputedStyle(element).color;
-          const background = surface ? getComputedStyle(surface).backgroundColor : getComputedStyle(document.documentElement).backgroundColor;
-          const values = [luminance(foreground), luminance(background)];
-          return { ratio: (Math.max(...values) + 0.05) / (Math.min(...values) + 0.05), control: element.outerHTML, foreground, background };
-        });
-        expect(result.ratio, `${look} ${mode}: ${result.control} (${result.foreground} on ${result.background})`).toBeGreaterThanOrEqual(4.5);
+      for (const control of await page.locator(".primitive-gallery [data-slot='button'], .primitive-gallery [data-slot='tabs-trigger']").all()) {
+        const result = await control.evaluate(measureContrast);
+        expect(result.ratio, `${look} ${mode}: ${await control.evaluate((element) => element.outerHTML)} (${result.foreground} on ${result.background})`).toBeGreaterThanOrEqual(4.5);
+      }
+      if (look === "default" && mode === "light") {
+        const ghost = page.locator("[data-slot='button'][data-variant='ghost']").first();
+        await ghost.evaluate((element) => { (element as HTMLElement).style.color = "oklab(0.276448 0 0 / 0.1)"; });
+        expect((await ghost.evaluate(measureContrast)).ratio).toBeLessThan(4.5);
+        await ghost.evaluate((element) => { (element as HTMLElement).style.color = ""; element.parentElement!.style.opacity = "0.1"; });
+        expect((await ghost.evaluate(measureContrast)).ratio).toBeLessThan(4.5);
+        await ghost.evaluate((element) => { element.parentElement!.style.opacity = ""; });
+      }
+      for (const [opener, close, buttons] of [
+        ["Open dialog", "[data-slot='dialog-close']", ["Outline dialog", "Ghost dialog"]],
+        ["Open sheet", "[data-slot='sheet-content'] button", ["Outline sheet", "Ghost sheet"]],
+      ] as const) {
+        await page.getByRole("button", { name: opener }).click();
+        if (opener === "Open dialog") await expect(page.locator("[data-slot='dialog-content']")).toHaveCSS("opacity", "1");
+        for (const button of [page.locator(close).first(), ...buttons.map((name) => page.getByRole("button", { name }))]) {
+          const result = await button.evaluate(measureContrast);
+          expect(result.ratio, `${look} ${mode} overlay: ${await button.evaluate((element) => element.outerHTML)} (${result.foreground} on ${result.background})`).toBeGreaterThanOrEqual(4.5);
+        }
+        await page.keyboard.press("Escape");
       }
     }
+  }
+});
+
+test("Preflight leaves visible token borders on shared form controls", async ({ page }) => {
+  await page.goto("/tests/browser/gallery.html");
+  const controls = page.locator("[data-slot='input'], [data-slot='textarea'], [data-slot='checkbox'], [data-slot='select-trigger'], [data-slot='input-group'], [role='slider'], [data-slot='attachment']");
+  await expect(controls).toHaveCount(8);
+  for (const control of await controls.all()) {
+    const style = await control.evaluate((element) => ({ width: getComputedStyle(element).borderTopWidth, style: getComputedStyle(element).borderTopStyle }));
+    expect(Number.parseFloat(style.width), await control.evaluate((element) => element.outerHTML)).toBeGreaterThan(0);
+    expect(style.style).toBe("solid");
+    const borderColor: "borderColor" = "borderColor";
+    const contrast = await control.evaluate(measureContrast, borderColor);
+    expect(contrast.ratio, `${await control.evaluate((element) => element.outerHTML)} (${contrast.foreground} on ${contrast.background})`).toBeGreaterThanOrEqual(3);
+  }
+});
+
+test("gallery progress bar paints its token track and primary value", async ({ page }) => {
+  await page.goto("/tests/browser/gallery.html");
+  for (const look of ["default", "focused", "notebook"]) {
+    await page.getByLabel("Look").selectOption(look);
+    for (const mode of ["light", "dark"]) {
+      await page.getByLabel("Mode").selectOption(mode);
+      const progress = page.locator("[data-slot='progress']");
+      const colors = await progress.evaluate((element) => {
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d")!;
+        const rgba = (color: string) => { context.clearRect(0, 0, 1, 1); context.fillStyle = color; context.fillRect(0, 0, 1, 1); return [...context.getImageData(0, 0, 1, 1).data]; };
+        const root = getComputedStyle(document.documentElement);
+        return { appearance: getComputedStyle(element).appearance, direction: getComputedStyle(element).direction, muted: rgba(root.getPropertyValue("--muted")), primary: rgba(root.getPropertyValue("--primary")) };
+      });
+      const pixels = await page.evaluate(async (base64) => {
+        const image = await createImageBitmap(await fetch(`data:image/png;base64,${base64}`).then((response) => response.blob()));
+        const canvas = document.createElement("canvas");
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const context = canvas.getContext("2d")!;
+        context.drawImage(image, 0, 0);
+        const read = (x: number) => [...context.getImageData(x, Math.floor(image.height / 2), 1, 1).data];
+        return { value: read(Math.floor(image.width * 0.2)), track: read(Math.floor(image.width * 0.9)) };
+      }, (await progress.screenshot()).toString("base64"));
+      expect(colors.appearance).toBe("none");
+      expect(pixels.track, JSON.stringify(pixels)).toEqual(colors.muted);
+      expect(pixels.value, JSON.stringify(pixels)).toEqual(colors.primary);
+    }
+  }
+});
+
+test("Preflight preserves gallery heading hierarchy and token-bordered controls", async ({ page }) => {
+  await page.goto("/tests/browser/gallery.html");
+  for (const heading of [page.getByRole("heading", { name: "Skeleton gallery" }), page.getByRole("heading", { name: "Base primitives" }), page.locator(".gallery-card > header h2").first()]) {
+    await expect(heading).toHaveCSS("font-weight", "700");
+  }
+  for (const select of await page.locator(".gallery-control select").all()) {
+    const style = await select.evaluate((element) => {
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d")!;
+      const rgba = (color: string) => { context.clearRect(0, 0, 1, 1); context.fillStyle = color; context.fillRect(0, 0, 1, 1); return [...context.getImageData(0, 0, 1, 1).data]; };
+      return { width: getComputedStyle(element).borderTopWidth, color: rgba(getComputedStyle(element).borderTopColor), input: rgba(getComputedStyle(document.documentElement).getPropertyValue("--input")) };
+    });
+    expect(style.width).not.toBe("0px");
+    expect(style.color).toEqual(style.input);
   }
 });
 
