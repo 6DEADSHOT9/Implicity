@@ -2,7 +2,6 @@ import { useEffect, useRef } from "react";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
-import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useCapture } from "../capture";
 import { useSkeletonCapture } from "../capture-lifecycle";
@@ -32,7 +31,7 @@ export function DataTable({ columns, rows, chartValues, form, state, onAction }:
       <Button variant={form === "table" ? "default" : "outline"} aria-pressed={form === "table"} onClick={() => switchView("table")}>Table</Button>
       <Button variant={form === "chart" ? "default" : "outline"} aria-pressed={form === "chart"} disabled={!chartValues?.length} onClick={() => switchView("chart")}>Chart</Button>
     </ButtonGroup>
-    <Card><CardContent>{state === "loading" ? <p aria-busy="true">Loading data</p>
+    {state === "loading" ? <p aria-busy="true">Loading data</p>
       : state === "error" ? <p role="alert">Data could not be loaded</p>
         : state === "empty" || !rows.length ? <p>No data</p>
           : form === "chart" ? chartValues?.length
@@ -42,6 +41,6 @@ export function DataTable({ columns, rows, chartValues, form, state, onAction }:
               <TableCaption>Data</TableCaption>
               <TableHeader><TableRow>{columns.map((column) => <TableHead scope="col" key={column}>{column}</TableHead>)}</TableRow></TableHeader>
               <TableBody>{rows.map((row, index) => <TableRow key={index}>{row.map((cell, cellIndex) => <TableCell key={cellIndex}>{cell}</TableCell>)}</TableRow>)}</TableBody>
-            </Table>}</CardContent></Card>
+            </Table>}
   </section>;
 }

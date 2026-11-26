@@ -8,7 +8,7 @@ export function useSkeletonCapture(capture: LifecycleCapture, component: string,
   const emit = useRef(capture.emit);
   emit.current = capture.emit;
   const initial = useRef({ component, defaultState });
-  const seenRef = useSeen({ component, defaultState });
+  const seenRef = useSeen(initial.current);
 
   useEffect(() => {
     emit.current("component_shown", { component: initial.current.component, default_state: initial.current.defaultState });

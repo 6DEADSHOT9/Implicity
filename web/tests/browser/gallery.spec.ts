@@ -654,20 +654,25 @@ test("content skeletons survive every gallery setting combination", async ({ pag
       const select = page.getByLabel(label);
       if (await select.inputValue() !== value) await select.selectOption(value);
     }
-    const expected = { names: skeletonNames, look, mode, density, textSize, width: device === "tablet" ? 800 : 1440 };
-    await expect.poll(() => page.evaluate(async ({ names, ...settings }) => {
+    const expected = { names: skeletonNames, look, mode, density, densitySpace: tokens.derivedTokens.density[density]["--space-1"], checkTokens: textSize === "1" && device === "desktop", checkReadiness: textSize === "1" && density === "compact" && mode === "light" && device === "desktop", textSize, width: device === "tablet" ? 800 : 1440 };
+    await expect.poll(() => page.evaluate(async ({ names, density, densitySpace, checkTokens, checkReadiness, ...settings }) => {
       const gallery = document.querySelector("[data-gallery-root]");
       if (!gallery || Object.entries(settings).some(([key, value]) => gallery.getAttribute(`data-${key === "textSize" ? "text-size" : key === "width" ? "device-class" : key}`) !== (key === "width" ? (value === 800 ? "tablet" : "desktop") : value))) return "gallery settings";
       const frames = [...document.querySelectorAll<HTMLIFrameElement>("iframe")].filter((frame) => names.some((name) => frame.title.startsWith(`${name} · `)));
       if (!frames.length) return "no frames";
-      for (const frame of frames) {
+      for (const [index, frame] of frames.entries()) {
         const doc = frame.contentDocument;
         const root = doc?.querySelector<HTMLElement>("#root");
         const html = doc?.documentElement;
         if (!doc || !root?.children.length || !root.textContent?.trim() || !html) return `${frame.title}: content`;
-        if (html.dataset.look !== settings.look || html.dataset.mode !== settings.mode || html.dataset.density !== settings.density || html.dataset.textSize !== settings.textSize || frame.contentWindow?.innerWidth !== settings.width) return `${frame.title}: settings ${JSON.stringify({look:html.dataset.look,mode:html.dataset.mode,density:html.dataset.density,textSize:html.dataset.textSize,width:frame.contentWindow?.innerWidth})}`;
-        const style = getComputedStyle(html);
-        if (!style.color || !style.backgroundColor) return `${frame.title}: style`;
+        if (html.dataset.look !== settings.look || html.dataset.mode !== settings.mode || html.dataset.density !== density || html.dataset.textSize !== settings.textSize || frame.contentWindow?.innerWidth !== settings.width) return `${frame.title}: settings ${JSON.stringify({look:html.dataset.look,mode:html.dataset.mode,density:html.dataset.density,textSize:html.dataset.textSize,width:frame.contentWindow?.innerWidth})}`;
+        if (index === 0 && checkTokens) {
+          const style = getComputedStyle(html);
+          if (style.getPropertyValue("--space-1").trim() !== densitySpace) return `${frame.title}: density token`;
+          if (checkReadiness && doc.fonts.status !== "loaded") return `${frame.title}: fonts not ready`;
+          if (checkReadiness && (!style.color || !style.backgroundColor)) return `${frame.title}: style`;
+          if (checkReadiness && Math.abs(Number(frame.height) - root.getBoundingClientRect().height) > 1) return `${frame.title}: unstable frame height`;
+        }
       }
       return "ready";
     }, expected), `${look}/${mode}/${density}/${textSize}/${device}`).toBe("ready");
@@ -681,6 +686,7 @@ test("content controls use their host, show focus rings, preserve list markers, 
   const table = page.frameLocator('iframe[title="DataTable · default"]');
   const tableButton = table.getByRole("button", { name: "Table" });
   await tableButton.focus();
+  expect(await tableButton.evaluate((element) => getComputedStyle(element).boxShadow)).not.toBe("none");
   await page.keyboard.press("Tab");
   const chartButton = table.getByRole("button", { name: "Chart" });
   await expect(chartButton).toBeFocused();
@@ -774,12 +780,41 @@ test("rendered code, diff, stack trace and terminal text stay readable in every 
       const lineChart = page.frameLocator('iframe[title="DataChart · long_content"]');
       const line = lineChart.locator(".recharts-line-curve");
       await expect(line).toHaveAttribute("stroke", "var(--chart-1)");
+      await expect(line).toHaveAttribute("stroke-width", "1");
       const dot = lineChart.locator(".recharts-dot").first();
       await expect(dot).toHaveAttribute("stroke", "var(--chart-1)");
       await expect(dot).toHaveAttribute("fill", "var(--chart-1)");
+      const dotRadius = await lineChart.locator("html").evaluate((html) => {
+        const style = getComputedStyle(html);
+        return Number.parseFloat(style.getPropertyValue("--space-2")) * Number.parseFloat(style.fontSize);
+      });
+      expect(Number(await dot.getAttribute("r"))).toBe(dotRadius);
+      await expect(dot).toBeVisible();
+      await dot.scrollIntoViewIfNeeded();
+      const dotBox = await dot.boundingBox();
+      expect(dotBox).not.toBeNull();
+      await page.mouse.move(dotBox!.x + dotBox!.width / 2, dotBox!.y + dotBox!.height / 2);
+      const activeDot = lineChart.locator(".recharts-active-dot circle").first();
+      await expect(activeDot).toHaveAttribute("fill", "var(--chart-1)");
+      await expect(activeDot).toHaveAttribute("stroke", "var(--foreground)");
+      const activeRadius = await lineChart.locator("html").evaluate((html) => {
+        const style = getComputedStyle(html);
+        return Number.parseFloat(style.getPropertyValue("--space-3")) * Number.parseFloat(style.fontSize);
+      });
+      expect(Number(await activeDot.getAttribute("r"))).toBe(activeRadius);
+      await expect(lineChart.locator(".recharts-tooltip-cursor")).toHaveAttribute("stroke", "var(--border)");
     }
   }
   const stackHeader = page.frameLocator('iframe[title="CodeBlock · stack_trace"]').locator("button");
   await stackHeader.press("Enter");
   expect(await stackHeader.evaluate((element) => getComputedStyle(element).outlineStyle)).not.toBe("none");
+});
+
+test("long terminal logs stay inside the token-bounded scroll region", async ({ page }) => {
+  await page.goto("/");
+  const frame = page.frameLocator('iframe[title="CodeBlock · terminal_long"]');
+  const content = frame.getByRole("region", { name: "Terminal output" }).locator('[tabindex="0"]');
+  await expect(content).toContainText("Info: log line 200");
+  await expect.poll(() => content.evaluate((element) => ({ maxHeight: getComputedStyle(element).maxHeight, overflowY: getComputedStyle(element).overflowY, scrollHeight: element.scrollHeight, clientHeight: element.clientHeight }))).toMatchObject({ maxHeight: "640px", overflowY: "auto" });
+  expect(await content.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
 });

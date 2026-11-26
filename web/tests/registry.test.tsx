@@ -128,6 +128,8 @@ describe("registry and renderer", () => {
     expect(await markup(renderMessage(tabs, "fallback"))).toContain("Named slot content");
     const invalid = { ...tabs, elements: { ...tabs.elements, tabs: { ...tabs.elements.tabs, props: { ...tabs.elements.tabs.props, selected: "missing" } } } };
     expect(await markup(renderMessage(invalid, "plain fallback"))).toContain("plain fallback");
+    const invalidSlot = { ...tabs, elements: { ...tabs.elements, tabs: { ...tabs.elements.tabs, slots: { unrelated: ["card"] } } } };
+    expect(await markup(renderMessage(invalidSlot, "plain fallback"))).toContain("plain fallback");
   });
 
   it("rejects Metric progress bounds through renderer validation", async () => {
@@ -237,6 +239,23 @@ describe("registry and renderer", () => {
       const MixedSlots = defineSkeleton(mixedSlotDefinition(side), ({ count }: { count: number }) => <b>{count}</b>);
       expect(() => createRegistry([MixedSlots], 1)).toThrow(/MixedSlots.*busy.*side/);
     }
+  });
+
+  it("accepts a public registry example with multiple required slots", () => {
+    const definition = defineSkeletonDefinition({
+      id: "TwoSlotPanel",
+      props: z.object({ count: z.number() }).strict(),
+      slots: z.object({ main: z.array(z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/)), side: z.array(z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/)) }).strict(),
+      events,
+      meta: { ...meta, slots: ["main", "side"], galleryStates: [{ id: "plain", props: { count: 1 }, slots: { main: [], side: [] } }] },
+    });
+    const entry = defineSkeleton(definition, ({ count }: { count: number }) => <b>{count}</b>);
+    expect(createRegistry([entry], 1).getSkeleton("TwoSlotPanel")).toBe(entry);
+  });
+
+  it("rejects named-part slots that have no matching tab", () => {
+    const tabs = registry.getSkeleton("Tabs")!;
+    expect(tabs.schema.safeParse({ props: { tabs: [{ id: "summary", label: "Summary" }], selected: "summary" }, slots: { unrelated: ["child"] } }).success).toBe(false);
   });
 
   it("rejects entries missing declarations, invalid ids, events or reviewed limits", () => {

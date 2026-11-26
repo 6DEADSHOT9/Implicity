@@ -85,6 +85,7 @@ describe("DataTable public registry entry", () => {
  it("keeps the primary content accessible", () => {
   const markup = renderToStaticMarkup(<entry.Component props={entry.meta.galleryStates[0].props} slots={{}} />);
     expect(markup).toContain('data-slot="table"');
+    expect(markup).not.toContain('data-slot="card"');
   expect(markup).toContain('scope="col"');
   expect(markup).toContain('aria-label="Data representation"');
  });

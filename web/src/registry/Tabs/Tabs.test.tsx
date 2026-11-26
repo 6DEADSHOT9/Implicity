@@ -45,9 +45,11 @@ describe("Tabs public registry entry", () => {
   const host = document.createElement("div");
   const root = createRoot(host);
   act(() => root.render(<CaptureProvider sink={recorder.sink}><entry.Component props={entry.meta.galleryStates[0].props} slots={{}} /></CaptureProvider>));
-  expect(recorder.events[0]).toEqual({ name: "component_shown", component: "Tabs", default_state: "overview" });
+  expect(recorder.events[0]).toEqual({ name: "component_shown", component: "Tabs", default_state: "default" });
+  act(() => vi.advanceTimersByTime(1000));
+  act(() => root.render(<CaptureProvider sink={recorder.sink}><entry.Component props={{ ...entry.meta.galleryStates[0].props, selected: "details" }} slots={{}} /></CaptureProvider>));
   act(() => vi.advanceTimersByTime(3000));
-  expect(recorder.events[1]).toEqual({ name: "component_seen", component: "Tabs", default_state: "overview", seconds_visible: 3 });
+  expect(recorder.events[1]).toEqual({ name: "component_seen", component: "Tabs", default_state: "default", seconds_visible: 3 });
   act(() => root.unmount());
  });
 

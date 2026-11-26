@@ -56,7 +56,12 @@ export type SkeletonDefinition<P extends z.ZodObject<z.ZodRawShape> = z.ZodObjec
 };
 
 export function createSkeletonSchema<P extends z.ZodObject<z.ZodRawShape>, S extends z.ZodObject<z.ZodRawShape>>(props: P, slots: S) {
-  return z.object({ props: props.strict(), slots: slots._def.catchall ? slots : slots.strict() }).strict();
+  return z.object({ props: props.strict(), slots: slots._def.catchall ? slots : slots.strict() }).strict().superRefine((value, ctx) => {
+    const tabs = (value.props as { tabs?: unknown }).tabs;
+    if (!Array.isArray(tabs)) return;
+    const ids = new Set(tabs.map((tab) => (tab as { id?: unknown }).id));
+    for (const slot of Object.keys(value.slots)) if (!ids.has(slot)) ctx.addIssue({ code: "custom", path: ["slots", slot], message: "Slot must match a named part" });
+  });
 }
 
 export function defineSkeletonDefinition<P extends z.ZodObject<z.ZodRawShape>, S extends z.ZodObject<z.ZodRawShape>>(entry: {

@@ -53,7 +53,15 @@ export function CodeBlock({ code, language, variant, state }: Props) {
   if (variant === "terminal") return <div ref={root}>
     <Terminal output={state === "empty" ? "" : code} role="region" aria-label="Terminal output">
       <TerminalHeader><TerminalTitle /></TerminalHeader>
-      {state === "empty" ? <TerminalContent /> : <div className="bg-terminal-background p-space-3 font-mono text-terminal-foreground"><pre>{code.split("\n").map((line, index) => <span className="block" key={index}>{line.startsWith("$ ") ? <><span className="text-terminal-prompt">$ </span><span>{line.slice(2)}</span></> : <span className={line.startsWith("Error") ? "text-terminal-error" : line.startsWith("Warning") ? "text-terminal-warning" : line.startsWith("Info") ? "text-terminal-info" : "text-terminal-success"}>{line}</span>}</span>)}</pre></div>}
+      <TerminalContent tabIndex={0}>
+        {state !== "empty" && <pre className="whitespace-pre-wrap break-words">{code.split("\n").map((line, index) => (
+          <span className="block" key={index}>
+            {line.startsWith("$ ")
+              ? <><span className="text-terminal-prompt">$ </span><span>{line.slice(2)}</span></>
+              : <span className={line.startsWith("Error") ? "text-terminal-error" : line.startsWith("Warning") ? "text-terminal-warning" : line.startsWith("Info") ? "text-terminal-info" : "text-terminal-success"}>{line}</span>}
+          </span>
+        ))}</pre>}
+      </TerminalContent>
     </Terminal>
   </div>;
   if (variant === "stack_trace") return <div ref={root}>

@@ -66,4 +66,10 @@ describe("CodeBlock public registry entry", () => {
    expect(markup).not.toContain("failure");
   }
  });
+ it("keeps long terminal output in the primitive's scroll region", () => {
+  const markup = renderToStaticMarkup(<entry.Component props={{ code: Array.from({ length: 200 }, (_, index) => `line ${index + 1}`).join("\n"), language: "text", variant: "terminal" }} slots={{}} />);
+  expect(markup).toContain("max-h-content-height overflow-auto");
+  expect(markup).toContain('tabindex="0"');
+  expect(markup).toContain("line 200");
+ });
 });
