@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
-import { cleanup, render } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import userEvent from "@testing-library/user-event";
 import { CaptureProvider, recordingCapture, registry } from "../index";
 import { propsSchema, slotsSchema } from "./schema";
+import { Settings as SettingsComponent } from "./Settings";
 
 afterEach(cleanup);
 
@@ -10,15 +12,33 @@ describe("Settings", () => {
   const entry = registry.getSkeleton("Settings")!;
   it("validates and renders every declared gallery state through the registry interface", () => {
     for (const state of entry.meta.galleryStates) {
-      const slots = Object.fromEntries(Object.entries(state.slots ?? {}).map(([slot, content]) => [slot, content]));
+      const slots = state.slots ?? {};
       expect(entry.schema.safeParse({ props: state.props, slots }).success, state.id).toBe(true);
       const recorder = recordingCapture();
       const view = render(<CaptureProvider sink={recorder.sink}><entry.Component props={state.props} slots={slots} /></CaptureProvider>);
-      expect(view.getByRole("tablist")).toBeTruthy(); expect(view.getByRole("heading", { name: "Settings" })).toBeTruthy();
+      expect(view.getByRole("dialog", { name: "Settings" })).toBeTruthy(); expect(view.getByRole("tablist")).toBeTruthy();
       expect(view.getByRole("tab", { selected: true }).getAttribute("data-state")).toBe("active");
       expect(view.getByText(`${state.id}_content`)).toBeTruthy();
       expect(recorder.events).toContainEqual({ name: "component_shown", component: "Settings", default_state: state.id });
       view.unmount();
+    }
+  });
+  it("uses a modal dialog and reports tab changes and close requests", async () => {
+    const user = userEvent.setup();
+    const onTabChange = vi.fn();
+    const onClose = vi.fn();
+    render(<CaptureProvider sink={recordingCapture().sink}><SettingsComponent open tab="preferences" onTabChange={onTabChange} onClose={onClose} /></CaptureProvider>);
+    expect(screen.getByRole("dialog", { name: "Settings" })).toBeTruthy();
+    await user.click(screen.getByRole("tab", { name: "Quota" }));
+    expect(onTabChange).toHaveBeenCalledWith("quota");
+    await user.click(screen.getByRole("button", { name: "Close settings" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+  it("declares every tab as a default state", () => {
+    expect(entry.meta.defaultStates).toEqual(entry.meta.galleryStates.map(({ id }) => id));
+    for (const tab of ["preferences", "locks", "notices", "history", "quota"]) {
+      expect(entry.meta.defaultStates).toContain(tab);
+      expect(entry.schema.safeParse({ props: { open: true, tab }, slots: {} }).success).toBe(true);
     }
   });
   it("exports strict props and slots schemas", () => {

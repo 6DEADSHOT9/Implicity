@@ -8,7 +8,7 @@ export const meta = {
   "commands": [],
   "limits": {
     "minWidth": 320,
-    "minHeight": 64,
+    "minHeight": 44,
     "minContrast": 4.5
   },
   "galleryStates": [
@@ -17,8 +17,8 @@ export const meta = {
       "props": {
         "attachments": [],
         "shortcuts": [
-          "Summarize",
-          "Explain"
+          { "id": "cmd_550e8400-e29b-41d4-a716-446655440010", "label": "Summarize" },
+          { "id": "cmd_550e8400-e29b-41d4-a716-446655440011", "label": "Explain" }
         ]
       }
     },
@@ -29,8 +29,8 @@ export const meta = {
           "report.pdf"
         ],
         "shortcuts": [
-          "Summarize",
-          "Explain"
+          { "id": "cmd_550e8400-e29b-41d4-a716-446655440010", "label": "Summarize" },
+          { "id": "cmd_550e8400-e29b-41d4-a716-446655440011", "label": "Explain" }
         ]
       }
     }

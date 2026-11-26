@@ -5,10 +5,10 @@ export const meta = {
     "closed",
     "open"
   ],
-  "commands": [],
+  "commands": ["search"],
   "limits": {
     "minWidth": 320,
-    "minHeight": 64,
+    "minHeight": 280,
     "minContrast": 4.5
   },
   "galleryStates": [
@@ -24,8 +24,8 @@ export const meta = {
       "props": {
         "open": true,
         "results": [
-          "https://example.invalid/search/results/this-is-a-long-unbroken-result-label-for-narrow-frames",
-          "Planning session"
+          { "id": "long-result", "label": "https://example.invalid/search/results/this-is-a-long-unbroken-result-label-for-narrow-frames" },
+          { "id": "planning-session", "label": "Planning session" }
         ]
       }
     }

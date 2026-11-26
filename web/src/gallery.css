@@ -8,6 +8,7 @@
 
 .gallery-preview-root { margin: 0; color: var(--foreground); background-color: var(--background); font-size: var(--text-base); font-family: var(--font-body); }
 body[data-preview-state="toast"] #root { min-height: var(--panel-min-width); }
+body.gallery-preview-root:has([role="dialog"]) #root { min-height: var(--content-max-height); }
 .gallery-preview-root h1, .gallery-preview-root h2, .gallery-preview-root h3, .gallery-preview-root h4, .gallery-preview-root h5, .gallery-preview-root h6 { font-family: var(--font-heading); }
 .gallery-preview-root h1 { font-size: var(--text-preview-heading-1); }
 .gallery-preview-root h2 { font-size: var(--text-preview-heading-2); }

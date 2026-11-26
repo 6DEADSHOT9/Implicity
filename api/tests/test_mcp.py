@@ -233,6 +233,20 @@ def test_render_rejects_invalid_specs_without_storing(registry_file, tmp_path):
             "Unknown component",
         ),
         (
+            {**valid, "elements": {"card": {"type": "AppShell", "props": {}}}},
+            "Shell component cannot be used",
+        ),
+        (
+            {
+                **valid,
+                "elements": {
+                    "card": {"type": "Card", "props": {"title": "Hello"}},
+                    "shell": {"type": "AppShell", "props": {}},
+                },
+            },
+            "Shell component cannot be used",
+        ),
+        (
             {**valid, "elements": {"card": {"type": "Card", "props": {"title": 3}}}},
             "Invalid Card props",
         ),

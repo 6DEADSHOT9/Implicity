@@ -5,6 +5,10 @@
     "props": {
       "type": "object",
       "properties": {
+        "open": {
+          "default": true,
+          "type": "boolean"
+        },
         "tab": {
           "type": "string",
           "enum": [
@@ -17,6 +21,7 @@
         }
       },
       "required": [
+        "open",
         "tab"
       ],
       "additionalProperties": false

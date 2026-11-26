@@ -12,7 +12,7 @@ export const meta = {
   "commands": [],
   "limits": {
     "minWidth": 320,
-    "minHeight": 64,
+    "minHeight": 320,
     "minContrast": 4.5
   },
   "galleryStates": [

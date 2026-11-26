@@ -5,10 +5,10 @@ export const meta = {
     "standard",
     "with-settings"
   ],
-  "commands": [],
+  "commands": ["open_settings"],
   "limits": {
     "minWidth": 320,
-    "minHeight": 64,
+    "minHeight": 44,
     "minContrast": 4.5
   },
   "galleryStates": [
@@ -16,14 +16,14 @@ export const meta = {
       "id": "standard",
       "props": {
         "title": "https://example.invalid/conversations/a-deliberately-long-unbroken-title-that-must-wrap-on-tablet",
-        "kind": "project"
+        "kind": "coding"
       }
     },
     {
       "id": "with-settings",
       "props": {
         "title": "https://example.invalid/conversations/a-deliberately-long-unbroken-title-that-must-wrap-on-tablet",
-        "kind": "project",
+        "kind": "coding",
         "settingsOpen": true
       }
     }
