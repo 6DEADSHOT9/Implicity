@@ -32,6 +32,20 @@ def test_compose_export_and_spaced_assignment_are_preserved(tmp_path):
     assert env.read_text() == 'export VITE_POSTHOG_API_KEY = "keep-me"\n'
 
 
+def test_setup_fills_empty_timezone_and_preserves_an_existing_timezone(
+    tmp_path, monkeypatch
+):
+    monkeypatch.delenv("TZ", raising=False)
+    env = tmp_path / ".env"
+    example = tmp_path / ".env.example"
+    example.write_text("TZ=\n")
+    values = setup.ensure_env(env, example)
+    assert values["TZ"]
+    assert "/" in values["TZ"]
+    env.write_text("TZ=America/Chicago\n")
+    assert setup.ensure_env(env, example)["TZ"] == "America/Chicago"
+
+
 def test_compose_colon_assignments_are_resolved_and_filled_in_place(tmp_path):
     env = tmp_path / ".env"
     example = tmp_path / ".env.example"
@@ -140,7 +154,7 @@ def test_event_source_registers_s3_hogql_shape_and_reconciles_idempotently(tmp_p
     )
 
     class Client:
-        saved = None
+        saved = {}
         writes = []
         created = 0
         definitions = []
@@ -161,19 +175,23 @@ def test_event_source_registers_s3_hogql_shape_and_reconciles_idempotently(tmp_p
             return item
 
         def get_endpoint(self, project_id, name):
-            return {"name": name, "query": self.saved} if self.saved else None
+            return (
+                {"name": name, "query": self.saved[name]}
+                if name in self.saved
+                else None
+            )
 
         def create_endpoint(self, project_id, name, body):
             self.writes.append(("POST", project_id, name, body))
-            self.saved = body
+            self.saved[name] = body
 
         def update_endpoint(self, project_id, name, body):
             self.writes.append(("PATCH", project_id, name, body))
-            self.saved = body
+            self.saved[name] = body
 
     client = Client()
     assert s3["create"]["status"] == 201
-    assert register_features(client, 17, feature_dir) == (1, 0)
+    assert register_features(client, 17, feature_dir, "Asia/Kolkata") == (2, 0)
     query = client.writes[0][3]
     assert query["kind"] == s3["api_calls"][0]["payload"]["query"]["kind"]
     assert all(
@@ -181,14 +199,16 @@ def test_event_source_registers_s3_hogql_shape_and_reconciles_idempotently(tmp_p
         for name in ("daily_start", "daily_end", "daily_excluded_sessions")
     )
     assert len(query["variables"]) == 3
-    assert register_features(client, 17, feature_dir) == (0, 1)
-    assert len(client.writes) == 1
-    binding = next(iter(client.saved["variables"].values()))
-    binding["value"] = "drifted"
-    assert register_features(client, 17, feature_dir) == (1, 0)
-    assert client.writes[-1][0] == "PATCH"
-    assert register_features(client, 17, feature_dir) == (0, 1)
+    assert register_features(client, 17, feature_dir, "Asia/Kolkata") == (0, 2)
     assert len(client.writes) == 2
+    binding = next(iter(client.saved["daily"]["variables"].values()))
+    binding["value"] = "drifted"
+    assert register_features(client, 17, feature_dir, "Asia/Kolkata") == (1, 1)
+    assert client.writes[-1][0] == "PATCH"
+    assert register_features(client, 17, feature_dir, "Asia/Kolkata") == (0, 2)
+    assert len(client.writes) == 3
+    assert "toDate(timestamp, 'Asia/Kolkata')" in query["query"]
+    assert any(write[2] == "session_summaries" for write in client.writes)
 
 
 def test_named_missing_project_reports_available_projects():
@@ -609,14 +629,14 @@ def test_setup_entry_drives_http_and_docker_boundaries_and_is_idempotent(
                 method == "POST" and path.endswith("/endpoints/")
                 for method, path, _ in state["requests"]
             )
-            == 1
+            == 2
         )
         assert (
             sum(
                 method == "POST" and path.endswith("/insight_variables/")
                 for method, path, _ in state["requests"]
             )
-            == 3
+            == 6
         )
         assert setup.main() == 0
         unchanged_output = capsys.readouterr().out

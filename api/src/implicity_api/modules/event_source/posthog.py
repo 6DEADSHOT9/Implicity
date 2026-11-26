@@ -1,7 +1,12 @@
 import json
 import urllib.error
 import urllib.request
+from datetime import date
 from pathlib import Path
+from zoneinfo import ZoneInfo
+
+from implicity_engine import EventSourceUnavailable
+from implicity_engine.evidence import DailyCount, load_feature
 
 
 class PostHog:
@@ -30,9 +35,22 @@ class PostHog:
                 detail = error.read().decode(errors="replace")[:500]
             except OSError:
                 detail = ""
+            if error.code >= 500:
+                raise EventSourceUnavailable(
+                    f"PostHog API {method} {path} returned HTTP {error.code}: {detail}"
+                ) from error
             raise RuntimeError(
                 f"PostHog API {method} {path} returned HTTP {error.code}: {detail}"
             ) from error
+        except (urllib.error.URLError, TimeoutError, OSError) as error:
+            raise EventSourceUnavailable(str(error)) from error
+
+    def run_endpoint(self, project_id: int, name: str, variables: dict):
+        return self.request(
+            "POST",
+            f"/api/environments/{project_id}/endpoints/{name}/run/",
+            {"variables": variables},
+        )
 
     def list_projects(self):
         page, results = "/api/projects/", []
@@ -98,7 +116,7 @@ def ensure_project(client, name: str, allow_sole: bool = True) -> tuple[dict, bo
     )
 
 
-def feature_query(feature, variables) -> dict:
+def feature_query(feature, variables, local_timezone="UTC") -> dict:
     def literal(value):
         if isinstance(value, bool):
             return "true" if value else "false"
@@ -118,21 +136,28 @@ def feature_query(feature, variables) -> dict:
     chance = feature.could_have
     happened = feature.happened
     events = [selector["event"] for selector in (happened, chance) if selector]
+
+    def variable(name):
+        return "{variables." + variables[name]["code_name"] + "}"
+
     happened_count = (
         f"countIf(event = {literal(happened['event'])} AND ({where(happened)}))"
         if happened
         else "0"
     )
     sql = (
-        "SELECT toDate(timestamp) AS day, properties['kind'] AS kind, "
+        f"SELECT toDate(timestamp, {literal(local_timezone)}) AS day, "
+        "properties['kind'] AS kind, "
         f"groupUniqArrayIf(properties['conversation_id'], event = "
         f"{literal(chance['event'])} AND ({where(chance)})) AS conversation_ids, "
         f"{happened_count} AS happened, countIf(event = "
         f"{literal(chance['event'])} AND ({where(chance)})) AS could_have "
         f"FROM events WHERE event IN ({', '.join(literal(event) for event in events)}) "
-        f"AND timestamp >= toDateTime({{variables.{variables['start']['code_name']}}}) "
-        f"AND timestamp < toDateTime({{variables.{variables['end']['code_name']}}}) "
-        f"AND (empty({{variables.{variables['excluded_sessions']['code_name']}}}) OR "
+        f"AND toDate(timestamp, {literal(local_timezone)}) >= "
+        f"toDate({variable('start')}) "
+        f"AND toDate(timestamp, {literal(local_timezone)}) <= "
+        f"toDate({variable('end')}) "
+        f"AND (empty({variable('excluded_sessions')}) OR "
         f"NOT has(splitByChar(',', "
         f"{{variables.{variables['excluded_sessions']['code_name']}}}), "
         "properties['session_id'])) "
@@ -145,8 +170,10 @@ def feature_query(feature, variables) -> dict:
     }
 
 
-def ensure_feature(client, project_id: int, feature, variables) -> bool:
-    query = feature_query(feature, variables)
+def ensure_feature(
+    client, project_id: int, feature, variables, local_timezone="UTC"
+) -> bool:
+    query = feature_query(feature, variables, local_timezone)
     existing = client.get_endpoint(project_id, feature.id)
     if existing is None:
         client.create_endpoint(project_id, feature.id, query)
@@ -174,36 +201,168 @@ def ensure_feature(client, project_id: int, feature, variables) -> bool:
     return True
 
 
-def register_features(client, project_id: int, directory: Path) -> tuple[int, int]:
-    from implicity_engine.evidence import load_feature
+def _bindings(client, project_id, definitions, name):
+    bindings = {}
+    for variable, default in (
+        ("start", "2000-01-01"),
+        ("end", "2100-01-01"),
+        ("excluded_sessions", ""),
+    ):
+        variable_name = f"{name} {variable}"
+        definition = definitions.get(variable_name)
+        if definition is None:
+            definition = client.create_insight_variable(
+                project_id, variable_name, default
+            )
+            definitions[variable_name] = definition
+        if definition.get("type") != "String":
+            raise RuntimeError(
+                f"PostHog variable {variable_name} must have type String"
+            )
+        bindings[variable] = {
+            "variableId": definition["id"],
+            "code_name": definition["code_name"],
+            "value": default,
+        }
+    return bindings
 
+
+def register_features(
+    client, project_id: int, directory: Path, local_timezone="UTC"
+) -> tuple[int, int]:
     features = [load_feature(path) for path in sorted(directory.glob("*.yaml"))]
     definitions = {
         item["name"]: item for item in client.list_insight_variables(project_id)
     }
     changed = 0
     for feature in features:
-        bindings = {}
-        for name, default in (
-            ("start", "2000-01-01"),
-            ("end", "2100-01-01"),
-            ("excluded_sessions", ""),
-        ):
-            variable_name = f"{feature.id} {name}"
-            definition = definitions.get(variable_name)
-            if definition is None:
-                definition = client.create_insight_variable(
-                    project_id, variable_name, default
-                )
-                definitions[variable_name] = definition
-            if definition.get("type") != "String":
-                raise RuntimeError(
-                    f"PostHog variable {variable_name} must have type String"
-                )
-            bindings[name] = {
-                "variableId": definition["id"],
-                "code_name": definition["code_name"],
-                "value": default,
+        bindings = _bindings(client, project_id, definitions, feature.id)
+        changed += ensure_feature(client, project_id, feature, bindings, local_timezone)
+    session_bindings = _bindings(client, project_id, definitions, "session_summaries")
+    changed += ensure_endpoint(
+        client,
+        project_id,
+        "session_summaries",
+        session_summary_query(session_bindings, local_timezone),
+    )
+    total = len(features) + 1
+    return changed, total - changed
+
+
+def session_summary_query(variables, local_timezone="UTC"):
+    def literal(value):
+        return "'" + str(value).replace("\\", "\\\\").replace("'", "\\'") + "'"
+
+    zone = literal(local_timezone)
+
+    def variable(name):
+        return "{variables." + variables[name]["code_name"] + "}"
+
+    sql = (
+        "SELECT uuid AS event_id, timestamp, properties FROM events "
+        "WHERE event = 'session_summary' "
+        f"AND toDate(timestamp, {zone}) >= toDate({variable('start')}) "
+        f"AND toDate(timestamp, {zone}) <= toDate({variable('end')}) "
+        f"AND (empty({variable('excluded_sessions')}) OR "
+        "NOT has(splitByChar(',', "
+        f"{variable('excluded_sessions')}), properties['session_id']))"
+    )
+    return {
+        "kind": "HogQLQuery",
+        "query": sql,
+        "variables": {binding["variableId"]: binding for binding in variables.values()},
+    }
+
+
+def ensure_endpoint(client, project_id, name, query):
+    existing = client.get_endpoint(project_id, name)
+    if existing is None:
+        client.create_endpoint(project_id, name, query)
+        return True
+    current = existing.get("query") or {}
+    if isinstance(current, str):
+        current = {"kind": "HogQLQuery", "query": current}
+    if current == query:
+        return False
+    client.update_endpoint(project_id, name, query)
+    return True
+
+
+class PostHogEventSource:
+    def __init__(
+        self, client: PostHog, project_id: int, directory: Path, local_timezone="UTC"
+    ):
+        self.client = client
+        self.project_id = project_id
+        self.local_timezone = ZoneInfo(local_timezone)
+        self.zone_name = local_timezone
+        self.features = {
+            feature.id: feature
+            for feature in (
+                load_feature(path) for path in sorted(directory.glob("*.yaml"))
+            )
+        }
+        definitions = {
+            item["name"]: item for item in client.list_insight_variables(project_id)
+        }
+        self.variables = {}
+        for name in [*self.features, "session_summaries"]:
+            self.variables[name] = {
+                key: definitions[f"{name} {key}"]["code_name"]
+                for key in ("start", "end", "excluded_sessions")
             }
-        changed += ensure_feature(client, project_id, feature, bindings)
-    return changed, len(features) - changed
+
+    def _run(self, name, start, end, exclude_sessions):
+        variables = self.variables[name]
+        values = {
+            variables["start"]: start.isoformat(),
+            variables["end"]: end.isoformat(),
+            variables["excluded_sessions"]: ",".join(map(str, exclude_sessions)),
+        }
+        return self.client.run_endpoint(self.project_id, name, values)
+
+    @staticmethod
+    def _rows(response):
+        if isinstance(response, list):
+            return response
+        results = response.get("results", [])
+        columns = response.get("columns", [])
+        if results and isinstance(results[0], dict):
+            return results
+        return [dict(zip(columns, row)) for row in results]
+
+    def daily_counts(self, feature, start: date, end: date, exclude_sessions=()):
+        result = self._run(feature, start, end, exclude_sessions)
+        return [
+            DailyCount(
+                date.fromisoformat(str(row["day"])[:10]),
+                str(row["kind"]),
+                int(row["happened"]),
+                int(row["could_have"]),
+                frozenset(row["conversation_ids"] or ()),
+            )
+            for row in self._rows(result)
+        ]
+
+    def session_summaries(self, start: date, end: date, exclude_sessions=()):
+        from implicity_contracts.generated import SessionSummary
+
+        rows = self._rows(self._run("session_summaries", start, end, exclude_sessions))
+        return [
+            SessionSummary.model_validate(
+                {
+                    **row.get("properties", {}),
+                    "event_id": row["event_id"],
+                    "timestamp": row["timestamp"],
+                }
+            )
+            for row in rows
+        ]
+
+
+def create_event_source(client, project_id: int, directory: Path, local_timezone=None):
+    import os
+
+    return PostHogEventSource(
+        client, project_id, directory, local_timezone or os.environ.get("TZ", "UTC")
+    )

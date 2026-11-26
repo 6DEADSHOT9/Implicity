@@ -6,8 +6,10 @@ import secrets
 import subprocess
 import sys
 import tempfile
+import time
 import webbrowser
 from pathlib import Path
+from zoneinfo import TZPATH
 
 from implicity_api.modules.event_source.posthog import (
     PostHog,
@@ -175,14 +177,39 @@ def ensure_env(
     existed = path.exists()
     lines, values = _env_lines(path)
     template = example.read_text().splitlines()
+    machine_timezone = os.environ.get("TZ", "")
+    if not machine_timezone:
+        localtime = Path("/etc/localtime").resolve()
+        for root in TZPATH:
+            try:
+                machine_timezone = str(localtime.relative_to(Path(root)))
+                break
+            except ValueError:
+                continue
+        if not machine_timezone:
+            marker = "/zoneinfo/"
+            resolved = str(localtime)
+            if marker in resolved:
+                machine_timezone = resolved.rsplit(marker, 1)[1]
+        if not machine_timezone:
+            timezone_file = Path("/etc/timezone")
+            machine_timezone = (
+                timezone_file.read_text().strip()
+                if timezone_file.exists()
+                else time.tzname[0]
+            )
     for line in template:
         key, separator, value = line.partition("=")
         if not separator or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key):
             if not path.exists():
                 lines.append(line)
             continue
-        if not values.get(key) and key not in os.environ:
+        if not values.get(key) and (
+            key not in os.environ or key == "TZ" and not os.environ.get("TZ")
+        ):
             generated = value
+            if key == "TZ":
+                generated = machine_timezone
             if key in SECRET_BYTES:
                 generated = token_hex(SECRET_BYTES[key])
             elif value.startswith("replace-with-"):
@@ -213,6 +240,7 @@ def ensure_env(
             key: os.environ[key]
             for line in template
             if (key := line.partition("=")[0]) in os.environ
+            and (key != "TZ" or os.environ[key])
         }
     )
     return values
@@ -429,7 +457,7 @@ def _setup() -> int:
     )
 
     changed, unchanged = register_features(
-        client, project_id, ROOT / "contracts" / "features"
+        client, project_id, ROOT / "contracts" / "features", values.get("TZ") or "UTC"
     )
     print(
         f"Feature queries: {changed} created or updated, {unchanged} unchanged"
