@@ -13,6 +13,8 @@ import { ReviewPanelEntry } from "./fixtures/ReviewPanel/entry";
 import { ReviewPanel } from "./fixtures/ReviewPanel/ReviewPanel";
 import { definition as panelDefinition, propsSchema } from "./fixtures/ReviewPanel/schema";
 import { ReviewShellEntry } from "./fixtures/ReviewShell/entry";
+import { Details as DetailsForTest } from "../src/registry/Details/Details";
+import { RunActivity as RunActivityForTest } from "../src/registry/RunActivity/RunActivity";
 
 const fixedSlotPanel = defineSkeleton(defineSkeletonDefinition({
   id: "ResultsPanel",
@@ -143,6 +145,19 @@ describe("conversation registry entries", () => {
     }
   });
 
+  it.each(["Details", "RunActivity"] as const)("keeps %s seen data from its mount-time choice after it opens", async (id) => {
+    const recorder = recordingCapture();
+    const renderSection = (open: boolean) => id === "Details"
+      ? <DetailsForTest title="Why" content="Details" open={open} />
+      : <RunActivityForTest title="Run" steps={[{ label: "Search", status: "complete" }]} open={open} />;
+    const view = renderView(<CaptureProvider sink={recorder.sink}>{renderSection(false)}</CaptureProvider>);
+    act(() => RegistryIntersectionObserver.instances.at(-1)!.setRatio(1));
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    view.rerender(<CaptureProvider sink={recorder.sink}>{renderSection(true)}</CaptureProvider>);
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+    expect(recorder.events.at(-1)).toMatchObject({ name: "component_seen", component: id, default_state: "folded", slot: id === "Details" ? "details" : "steps", seconds_visible: 3 });
+  });
+
   it("renders Details content from a valid public message spec without a slot", async () => {
     const spec = {
       registry_version: registry.version,
@@ -169,6 +184,36 @@ describe("conversation registry entries", () => {
       };
       expect(await markup(renderMessage(spec, "fallback"))).toContain("Search");
     }
+  });
+
+  it("rejects ShortcutChips Commands that are not built in or app minted", async () => {
+    const spec = {
+      registry_version: registry.version,
+      root: "shortcuts",
+      elements: {
+        shortcuts: {
+          type: "ShortcutChips",
+          props: { commands: [{ id: "command_without_implementation", label: "Run" }] },
+          slots: {},
+        },
+      },
+    };
+    const html = await markup(renderMessage(spec, "Safe fallback"));
+    expect(html).toContain("Safe fallback");
+    expect(html).not.toContain("command_without_implementation");
+
+    const acceptedSpec = {
+      ...spec,
+      elements: {
+        shortcuts: {
+          ...spec.elements.shortcuts,
+          props: { commands: [{ id: "copy_answer", label: "Copy" }, { id: "cmd_123e4567-e89b-42d3-a456-426614174000", label: "Workflow" }] },
+        },
+      },
+    };
+    const acceptedHtml = await markup(renderMessage(acceptedSpec, "Safe fallback"));
+    expect(acceptedHtml).toContain("Copy");
+    expect(acceptedHtml).toContain("Workflow");
   });
 });
 

@@ -12,6 +12,7 @@ describe("AttachmentTray", () => {
     expect(propsSchema.safeParse({ attachments: [{ id: "3f2504e0-4f89-41d3-9a0c-0305e82c3301", name: "x", type: "script" }] }).success).toBe(false);
     expect(propsSchema.safeParse({ attachments: [{ id: "3f2504e0-4f89-41d3-9a0c-0305e82c3301", name: "x", type: "document" }] }).success).toBe(true);
     expect(propsSchema.safeParse({ attachments: [{ id: "abc", name: "x", type: "document" }] }).success).toBe(false);
-    expect(propsSchema.safeParse({ attachments: [{ id: "same", name: "First", type: "other" }, { id: "same", name: "Second", type: "other" }] }).success).toBe(false);
+    const duplicateId = "3f2504e0-4f89-41d3-9a0c-0305e82c3301";
+    expect(propsSchema.safeParse({ attachments: [{ id: duplicateId, name: "First", type: "other" }, { id: duplicateId, name: "Second", type: "other" }] }).success).toBe(false);
   });
 });

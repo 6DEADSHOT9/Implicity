@@ -671,10 +671,18 @@ test("conversation gallery renders every declared state", async ({ page }) => {
   }, states), { timeout: 10000 }).toBe("ready");
 });
 
+test("combined gallery mounts T10 content and T9 conversation previews", async ({ page }) => {
+  await page.goto("/");
+  for (const title of ["DataTable · table", "MessageBody · message"]) {
+    const frame = page.locator(`iframe[title="${title}"]`);
+    await expect(frame).toBeVisible();
+    await expect.poll(() => frame.evaluate((element) => !!(element as HTMLIFrameElement).contentDocument?.querySelector("#root")?.children.length), { timeout: 10000 }).toBe(true);
+  }
+});
 
-async function assertContentMatrix(page: import("@playwright/test").Page, device: "desktop" | "tablet") {
-  await page.goto("/tests/browser/conversation-gallery.html");
-  const skeletonNames = ["MessageBody", "Details", "RunActivity", "MessageActions", "AttachmentTray", "Citation", "ContextChip", "ShortcutChips", "ApprovalRequest"];
+
+async function assertGalleryMatrix(page: import("@playwright/test").Page, device: "desktop" | "tablet", fixture: string, skeletonNames: string[], styleNames: string[]) {
+  await page.goto(fixture);
   await expect.poll(() => page.locator("iframe").evaluateAll((frames, names) => frames.some((frame) => frame.getAttribute("title")?.startsWith(`${names[0]} · `)) && names.every((name) => frames.some((frame) => frame.getAttribute("title")?.startsWith(`${name} · `))) && frames.filter((frame) => names.some((name) => frame.getAttribute("title")?.startsWith(`${name} · `))).every((frame) => {
     const root = (frame as HTMLIFrameElement).contentDocument?.querySelector("#root");
     return !!root && !/Preview unavailable|preview failed/.test(root.textContent ?? "");
@@ -684,11 +692,8 @@ async function assertContentMatrix(page: import("@playwright/test").Page, device
   const sizes = ["1", "2", "3", "4", "5"] as const;
   const modes = ["light", "dark"] as const;
   const current = Object.fromEntries(await Promise.all(["Look", "Mode", "Density", "Text size", "Screen size"].map(async (label) => [label, await page.getByLabel(label).inputValue()]))) as Record<string, string>;
-  for (let index = 0; index < 5; index++) {
-    const look = looks[index % looks.length]!;
-    const mode = modes[index % modes.length]!;
-    const density = densities[index % densities.length]!;
-    const textSize = sizes[index]!;
+  let combinations = 0;
+  for (const look of looks) for (const mode of modes) for (const density of densities) for (const textSize of sizes) {
     for (const [label, value] of [["Look", look], ["Mode", mode], ["Density", density], ["Text size", textSize], ["Screen size", device]]) {
       if (current[label] !== value) {
         await page.getByLabel(label).selectOption(value);
@@ -696,8 +701,8 @@ async function assertContentMatrix(page: import("@playwright/test").Page, device
       }
     }
     const lookConfig = lookById[look as keyof typeof lookById];
-    const expected = { names: skeletonNames, look, mode, density, densitySpace: tokens.derivedTokens.density[density]["--space-1"], background: lookConfig[mode as "light" | "dark"].background, font: tokens.typefaces[lookConfig.typeface.body as keyof typeof tokens.typefaces].family, checkStyles: true, checkHeight: textSize === "1" && density === "compact", textSize, width: device === "tablet" ? 800 : 1440 };
-    await expect.poll(() => page.evaluate(async ({ names, density, densitySpace, background, font, checkStyles, checkHeight, ...settings }) => {
+    const expected = { names: skeletonNames, styleNames, look, mode, density, densitySpace: tokens.derivedTokens.density[density]["--space-1"], background: lookConfig[mode as "light" | "dark"].background, font: tokens.typefaces[lookConfig.typeface.body as keyof typeof tokens.typefaces].family, checkStyles: textSize === "1", checkHeight: textSize === "1" && density === "compact", textSize, width: device === "tablet" ? 800 : 1440 };
+    await expect.poll(() => page.evaluate(async ({ names, styleNames, density, densitySpace, background, font, checkStyles, checkHeight, ...settings }) => {
       const gallery = document.querySelector("[data-gallery-root]");
       if (!gallery || Object.entries(settings).some(([key, value]) => gallery.getAttribute(`data-${key === "textSize" ? "text-size" : key === "width" ? "device-class" : key}`) !== (key === "width" ? (value === 800 ? "tablet" : "desktop") : value))) return "gallery settings";
       const frames = [...document.querySelectorAll<HTMLIFrameElement>("iframe")].filter((frame) => names.some((name) => frame.title.startsWith(`${name} · `)));
@@ -709,7 +714,7 @@ async function assertContentMatrix(page: import("@playwright/test").Page, device
         if (!doc || !root?.children.length || !root.textContent?.trim() || !html) return `${frame.title}: content`;
         if (/Preview unavailable|preview failed/.test(root.textContent)) return `${frame.title}: preview fallback`;
         if (html.dataset.look !== settings.look || html.dataset.mode !== settings.mode || html.dataset.density !== density || html.dataset.textSize !== settings.textSize || frame.contentWindow?.innerWidth !== settings.width) return `${frame.title}: settings ${JSON.stringify({look:html.dataset.look,mode:html.dataset.mode,density:html.dataset.density,textSize:html.dataset.textSize,width:frame.contentWindow?.innerWidth})}`;
-        if (checkStyles && ["DataChart", "Tabs", "CodeBlock", "Card"].some((name) => frame.title.startsWith(`${name} · `))) {
+        if (checkStyles && styleNames.some((name) => frame.title.startsWith(`${name} · `))) {
           const style = getComputedStyle(html);
           if (style.getPropertyValue("--space-1").trim() !== densitySpace) return `${frame.title}: density token`;
           if (style.getPropertyValue("--background").trim() !== background) return `${frame.title}: mode palette`;
@@ -722,19 +727,33 @@ async function assertContentMatrix(page: import("@playwright/test").Page, device
       }
       return "ready";
     }, expected), { timeout: 10000, message: `${look}/${mode}/${density}/${textSize}/${device}` }).toBe("ready");
+    combinations++;
   }
+  expect(combinations).toBe(90);
 }
 
+const contentMatrixNames = ["DataTable", "DataChart", "CodeBlock", "MediaPlayer", "ArtifactWorkspace", "Checklist", "List", "Metric", "Tabs", "Card"];
+const contentMatrixStyles = ["DataChart", "Tabs", "CodeBlock", "Card"];
+const conversationMatrixNames = ["MessageBody", "Details", "RunActivity", "MessageActions", "AttachmentTray", "Citation", "ContextChip", "ShortcutChips", "ApprovalRequest"];
+
+test("content skeletons survive every desktop gallery setting", async ({ page }) => {
+  await assertGalleryMatrix(page, "desktop", "/tests/browser/content-gallery.html", contentMatrixNames, contentMatrixStyles);
+});
+
+test("content skeletons survive every tablet gallery setting", async ({ page }) => {
+  await assertGalleryMatrix(page, "tablet", "/tests/browser/content-gallery.html", contentMatrixNames, contentMatrixStyles);
+});
+
 test("conversation skeletons survive every desktop gallery setting", async ({ page }) => {
-  await assertContentMatrix(page, "desktop");
+  await assertGalleryMatrix(page, "desktop", "/tests/browser/conversation-gallery.html", conversationMatrixNames, conversationMatrixNames);
 });
 
 test("conversation skeletons survive every tablet gallery setting", async ({ page }) => {
-  await assertContentMatrix(page, "tablet");
+  await assertGalleryMatrix(page, "tablet", "/tests/browser/conversation-gallery.html", conversationMatrixNames, conversationMatrixNames);
 });
 
 test("content controls use their host, show focus rings, preserve list markers, and apply chart tokens", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/tests/browser/content-gallery.html");
   const table = page.frameLocator('iframe[title="DataTable · table"]');
   const tableButton = table.getByRole("button", { name: "Table" });
   await tableButton.focus();
@@ -807,7 +826,7 @@ test("DataChart reads the live chart axis token when the host updates styles", a
 });
 
 test("rendered code, diff, stack trace and terminal text stay readable in every look and mode", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/tests/browser/content-gallery.html");
   const ratio = (foreground: string, background: string) => {
     const luminance = (input: string) => {
       const rgb = input.match(/[\d.]+/g)?.slice(0, 3).map(Number);
@@ -889,7 +908,7 @@ test("rendered code, diff, stack trace and terminal text stay readable in every 
 });
 
 test("long terminal logs stay inside the token-bounded scroll region", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/tests/browser/content-gallery.html");
   const frame = page.frameLocator('iframe[title="CodeBlock · terminal_long"]');
   const content = frame.getByRole("region", { name: "Terminal output" }).locator('[tabindex="0"]');
   await expect(content).toContainText("Info: log line 200");

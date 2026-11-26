@@ -17,6 +17,7 @@ import "../../src/tokens.css";
 const long = "https://tracker.invalid/" + "segment/".repeat(50);
 const path = "unbrokenfilename".repeat(30);
 const plainText = "unbrokenmessage".repeat(30);
+const longAlt = "unbrokenalt".repeat(40);
 const markdown = [
   `[Long link](${long})`,
   plainText,
@@ -24,8 +25,10 @@ const markdown = [
   "> A block quote",
   "---",
   "```text\ncode\n```",
+  "```\nunlabeled code block\n```",
   "| Column | Value |\n| --- | --- |\n| Name | A |",
   "![blocked](http://tracker.invalid/pixel.png)",
+  `![${longAlt}](http://tracker.invalid/long-alt.png)`,
   "![failed preview](https://tracker.invalid/fail.png)",
   "![Cross-origin preview](https://tracker.invalid/success.png)",
   '<picture><source srcset="http://tracker.invalid/picture.png 1x, data:image/png;base64,AAAA 2x"><img src="http://tracker.invalid/picture.png" alt="raw html"></picture>',
