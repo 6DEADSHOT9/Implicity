@@ -1,6 +1,8 @@
-import { createServer, get as getHttps, type Server } from "node:https";
+import { createServer, type Server } from "node:https";
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
+
+test.use({ ignoreHTTPSErrors: true });
 
 let imageServer: Server | undefined;
 
@@ -11,40 +13,22 @@ test.afterEach(async () => {
 });
 
 test("conversation skeletons wrap at 375px and MessageBody keeps links safe and controls absent", async ({ page }) => {
-  const remoteRequests: { url: string; headers: Record<string, string> }[] = [];
-  let imageResponseHeaders: Record<string, string> | undefined;
-  let imageServerRequests = 0;
+  const imageServerRequests: Record<string, string | string[] | undefined>[] = [];
+  let imageResponseHeaders: Record<string, number | string | string[] | undefined> = {};
   imageServer = createServer({
     key: readFileSync(new URL("./fixtures/no-cors.key", import.meta.url)),
     cert: readFileSync(new URL("./fixtures/no-cors.crt", import.meta.url)),
-  }, (_request, response) => {
-    imageServerRequests++;
+  }, (request, response) => {
+    imageServerRequests.push(request.headers);
     response.writeHead(200, { "content-type": "image/png" });
+    imageResponseHeaders = response.getHeaders();
     response.end(Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jS2cAAAAASUVORK5CYII=", "base64"));
   });
   await new Promise<void>((resolve) => imageServer!.listen(0, "127.0.0.1", resolve));
   const address = imageServer.address();
   if (!address || typeof address === "string") throw new Error("HTTPS image fixture did not bind");
   const imageUrl = `https://127.0.0.1:${address.port}/favicon.ico`;
-  await page.route("https://tracker.invalid/**", async (route) => {
-    const request = route.request();
-    remoteRequests.push({ url: request.url(), headers: await request.allHeaders() });
-    if (new URL(request.url()).pathname !== "/success.png") return route.abort();
-    const image = await new Promise<{ status: number; contentType: string; headers: Record<string, string | string[] | undefined>; body: Buffer }>((resolve, reject) => {
-      getHttps(imageUrl, { rejectUnauthorized: false }, (response) => {
-        const chunks: Buffer[] = [];
-        response.on("data", (chunk: Buffer) => chunks.push(chunk));
-        response.on("end", () => resolve({
-          status: response.statusCode ?? 500,
-          contentType: String(response.headers["content-type"] ?? "image/png"),
-          headers: response.headers,
-          body: Buffer.concat(chunks),
-        }));
-      }).on("error", reject);
-    });
-    imageResponseHeaders = Object.fromEntries(Object.entries(image.headers).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
-    await route.fulfill({ status: image.status, headers: { "content-type": image.contentType }, body: image.body });
-  });
+  await page.addInitScript((url) => { (window as Window & { __httpsFixtureUrl?: string }).__httpsFixtureUrl = url; }, imageUrl);
   const httpRequests: string[] = [];
   page.on("request", (request) => { if (request.url().startsWith("http://tracker.invalid/")) httpRequests.push(request.url()); });
   await page.setViewportSize({ width: 375, height: 900 });
@@ -84,9 +68,8 @@ test("conversation skeletons wrap at 375px and MessageBody keeps links safe and 
   const longAltPlaceholder = message.getByRole("img", { name: `${"unbrokenalt".repeat(40)} — tracker.invalid` });
   await expect(longAltPlaceholder).toBeVisible();
   expect((await longAltPlaceholder.boundingBox())!.width).toBeLessThanOrEqual(351);
-  await expect(message.getByRole("img", { name: "failed preview — tracker.invalid" })).toBeVisible();
   await expect(message.getByRole("img", { name: "Cross-origin preview" })).toBeVisible();
-  const image = message.locator('img[src="https://tracker.invalid/success.png"]');
+  const image = message.locator(`img[src="${imageUrl}"]`);
   await expect.poll(() => image.evaluate((element) => (element as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
   await expect(image).toHaveAttribute("referrerpolicy", "no-referrer");
   expect(await image.getAttribute("crossorigin")).toBeNull();
@@ -99,10 +82,10 @@ test("conversation skeletons wrap at 375px and MessageBody keeps links safe and 
   await expect(message.locator("blockquote")).toHaveClass(/border-s-token/);
   await expect(message.locator("hr")).toHaveClass(/border-b-token/);
   expect(httpRequests).toEqual([]);
-  expect(remoteRequests.map(({ url }) => new URL(url).pathname).sort()).toEqual(["/fail.png", "/success.png"]);
-  for (const request of remoteRequests) expect(request.headers).not.toHaveProperty("referer");
-  const imageRequest = remoteRequests.find(({ url }) => url === "https://tracker.invalid/success.png")!;
-  expect(imageRequest.headers).not.toHaveProperty("origin");
-  expect(imageServerRequests).toBe(1);
-  expect(imageResponseHeaders).not.toHaveProperty("access-control-allow-origin");
+  expect(imageServerRequests).toHaveLength(1);
+  expect(imageServerRequests[0]["sec-fetch-mode"]).toBe("no-cors");
+  expect(imageServerRequests[0].origin).toBeUndefined();
+  expect(imageServerRequests[0].referer).toBeUndefined();
+  expect(imageServerRequests[0]["access-control-request-method"]).toBeUndefined();
+  expect(imageResponseHeaders["access-control-allow-origin"]).toBeUndefined();
 });

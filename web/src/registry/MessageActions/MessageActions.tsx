@@ -43,8 +43,8 @@ export function MessageActions({ answer_form, version_index, version_count, onCo
       <Button type="button" variant="outline" className="min-h-control" onClick={onCopy}>Copy</Button>
       <Button type="button" variant="outline" className="min-h-control" onClick={onRegenerate}>Regenerate</Button>
       <TooltipProvider>
-        <Tooltip><TooltipTrigger asChild><Button type="button" variant="ghost" className="min-h-control" aria-label="Helpful" onClick={() => onFeedback?.("positive")}><ThumbsUp aria-hidden="true" /></Button></TooltipTrigger><TooltipContent>Helpful</TooltipContent></Tooltip>
-        <Tooltip><TooltipTrigger asChild><Button type="button" variant="ghost" className="min-h-control" aria-label="Not helpful" onClick={() => onFeedback?.("negative")}><ThumbsDown aria-hidden="true" /></Button></TooltipTrigger><TooltipContent>Not helpful</TooltipContent></Tooltip>
+        <Tooltip><TooltipTrigger asChild><Button type="button" size="icon" variant="ghost" aria-label="Helpful" onClick={() => onFeedback?.("positive")}><ThumbsUp aria-hidden="true" /></Button></TooltipTrigger><TooltipContent>Helpful</TooltipContent></Tooltip>
+        <Tooltip><TooltipTrigger asChild><Button type="button" size="icon" variant="ghost" aria-label="Not helpful" onClick={() => onFeedback?.("negative")}><ThumbsDown aria-hidden="true" /></Button></TooltipTrigger><TooltipContent>Not helpful</TooltipContent></Tooltip>
       </TooltipProvider>
       <Button type="button" variant="outline" className="min-h-control" onClick={onRemember}>Remember this</Button>
     </ButtonGroup>
@@ -55,6 +55,6 @@ export function MessageActions({ answer_form, version_index, version_count, onCo
         <PaginationItem><Button type="button" size="icon" variant="ghost" className="min-h-control" aria-label="Next version" disabled={version_index >= version_count} onClick={() => onVersionChange?.(version_index + 1)}><ChevronRight aria-hidden="true" /></Button></PaginationItem>
       </PaginationContent>
     </Pagination>
-    {(["prose", "list", "table"] as const).map((form) => <Button key={form} type="button" size="sm" className="min-h-control" variant={answer_form === form ? "secondary" : "ghost"} aria-pressed={answer_form === form} onClick={() => onAnswerFormChange?.(form)}>{form[0].toUpperCase() + form.slice(1)}</Button>)}
+    {(["prose", "list", "table"] as const).map((form) => <Button key={form} type="button" size="sm" className="min-h-control min-w-control" variant={answer_form === form ? "secondary" : "ghost"} aria-pressed={answer_form === form} onClick={() => onAnswerFormChange?.(form)}>{form[0].toUpperCase() + form.slice(1)}</Button>)}
   </div>;
 }

@@ -673,10 +673,30 @@ test("conversation gallery renders every declared state", async ({ page }) => {
 
 test("combined gallery mounts T10 content and T9 conversation previews", async ({ page }) => {
   await page.goto("/");
-  for (const title of ["DataTable · table", "MessageBody · message"]) {
-    const frame = page.locator(`iframe[title="${title}"]`);
-    await expect(frame).toBeVisible();
-    await expect.poll(() => frame.evaluate((element) => !!(element as HTMLIFrameElement).contentDocument?.querySelector("#root")?.children.length), { timeout: 10000 }).toBe(true);
+  const table = page.frameLocator('iframe[title="DataTable · table"]');
+  await expect(table.getByRole("table")).toBeVisible();
+  const message = page.frameLocator('iframe[title="MessageBody · message"]');
+  await expect(message.getByRole("article", { name: "Message" })).toBeVisible();
+});
+
+test("compact tablet conversation controls meet the 44px target in both dimensions", async ({ page }) => {
+  await page.goto("/tests/browser/conversation-gallery.html");
+  await page.getByLabel("Screen size").selectOption("tablet");
+  await page.getByLabel("Density").selectOption("compact");
+  await page.getByLabel("Text size").selectOption("1");
+  const activity = page.frameLocator('iframe[title="RunActivity · folded"]');
+  const disclosure = activity.getByRole("button");
+  await expect.poll(() => disclosure.boundingBox()).toMatchObject({ width: expect.any(Number), height: expect.any(Number) });
+  const activitySize = await disclosure.boundingBox();
+  expect(activitySize!.width).toBeGreaterThanOrEqual(44);
+  expect(activitySize!.height).toBeGreaterThanOrEqual(44);
+  const actions = page.frameLocator('iframe[title="MessageActions · prose"]');
+  for (const name of ["Helpful", "Not helpful", "Prose", "List", "Table"]) {
+    const button = actions.getByRole("button", { name, exact: true });
+    const size = await button.boundingBox();
+    expect(size, name).not.toBeNull();
+    expect(size!.width, `${name} width`).toBeGreaterThanOrEqual(44);
+    expect(size!.height, `${name} height`).toBeGreaterThanOrEqual(44);
   }
 });
 
