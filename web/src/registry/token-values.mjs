@@ -64,6 +64,7 @@ for (const name of Object.keys(tokens.derivedTokens.dimensions)) {
     continue;
   }
   if (key === "content-max-height") {
+    utilityNames.add("h-content-height");
     utilityNames.add("max-h-content-height");
     utilityNames.add("min-h-content-height");
   }

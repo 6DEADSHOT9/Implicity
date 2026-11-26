@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "props": {
+      "type": "object",
+      "properties": {
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "chartValues": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "form": {
+          "default": "table",
+          "type": "string",
+          "enum": [
+            "table",
+            "chart"
+          ]
+        },
+        "state": {
+          "default": "default",
+          "type": "string",
+          "enum": [
+            "default",
+            "empty",
+            "loading",
+            "long_content",
+            "error"
+          ]
+        }
+      },
+      "required": [
+        "columns",
+        "rows",
+        "form",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "slots": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "props",
+    "slots"
+  ],
+  "additionalProperties": false
+}

@@ -260,7 +260,7 @@ describe("look contracts", () => {
       cssLength(density["--row-gap"], ["rem"]);
       cssLength(density["--section-gap"], ["rem"]);
     }
-    const dimensionKeys = ["--attachment-preview-size", "--attachment-thumbnail-size", "--border-width", "--container-size-lg", "--container-size-md", "--container-size-sm", "--container-size-xl", "--content-max-height", "--content-max-width", "--content-min-height", "--focus-ring-width", "--icon-size", "--layer-10", "--layer-20", "--layer-50", "--media-control-gap", "--media-control-size", "--media-track-height", "--panel-max-width", "--panel-min-width", "--panel-width", "--screen-lg", "--screen-md", "--screen-sm", "--screen-xl", "--sheet-width", "--sidebar-width", "--sidebar-width-icon", "--sidebar-width-mobile"].sort();
+    const dimensionKeys = ["--attachment-preview-size", "--attachment-thumbnail-size", "--border-width", "--chart-axis-width", "--container-size-lg", "--container-size-md", "--container-size-sm", "--container-size-xl", "--content-max-height", "--content-max-width", "--content-min-height", "--focus-ring-width", "--icon-size", "--layer-10", "--layer-20", "--layer-50", "--media-control-gap", "--media-control-size", "--media-track-height", "--panel-max-width", "--panel-min-width", "--panel-width", "--screen-lg", "--screen-md", "--screen-sm", "--screen-xl", "--sheet-width", "--sidebar-width", "--sidebar-width-icon", "--sidebar-width-mobile"].sort();
     const dimensions = tokenSet.derivedTokens.dimensions;
     expect(Object.keys(dimensions).sort()).toEqual(dimensionKeys);
     for (const key of dimensionKeys) {
