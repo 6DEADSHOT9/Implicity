@@ -31,12 +31,12 @@ async function panelMatrix(page: Page, look: string, mode: string) {
     labels[label] = value;
   };
 
-  for (const density of densities) for (const textSize of textSizes) for (const device of devices) {
+  for (const device of devices) for (const density of densities) for (const textSize of textSizes) {
+    await setOption("Screen size", device);
     await setOption("Look", look);
     await setOption("Mode", mode);
     await setOption("Density", density);
     await setOption("Text size", textSize);
-    await setOption("Screen size", device);
     await expect(page.locator("[data-gallery-root]")).toHaveAttribute("data-look", look);
     const rootTokens = await page.locator("[data-gallery-root]").evaluate((element) => {
       const style = getComputedStyle(element);
@@ -113,20 +113,30 @@ for (const look of ["default", "focused", "notebook"]) for (const mode of ["ligh
 }
 
 test("DockedPanel wraps and lets people select among 18 tabs on tablet", async ({ page }) => {
+  const longLabel = "Release readiness and operational handover checklist for the production rollout, including service ownership, alert response and rollback notes";
   await page.goto("/");
   await page.getByLabel("Screen size").selectOption("tablet");
   const tabs = page.frameLocator('iframe[title="DockedPanel · open_undocked"]');
   const dialog = tabs.getByRole("dialog", { name: "Workspace" });
   await expect(dialog).toBeVisible();
-  await expect.poll(() => dialog.evaluate((element) => {
-    const tabBoxes = [...element.querySelectorAll("[role=tab]")].map((tab) => tab.getBoundingClientRect());
+  const sheetFrame = page.locator('iframe[title="DockedPanel · open_undocked"]');
+  await sheetFrame.evaluate((frame, label) => {
+    const tabTriggers = (frame as HTMLIFrameElement).contentDocument!.querySelectorAll<HTMLElement>("[role=tab]");
+    tabTriggers[0].textContent = label;
+    tabTriggers[1].textContent = "A";
+  }, longLabel);
+  await expect.poll(() => dialog.evaluate((element, label) => {
+    const tabTriggers = [...element.querySelectorAll<HTMLElement>("[role=tab]")];
+    const tabBoxes = tabTriggers.map((tab) => tab.getBoundingClientRect());
     const tabPanel = element.querySelector('[role="tabpanel"]:not([hidden])')!.getBoundingClientRect();
-    return tabBoxes.length === 18 && tabBoxes.every(({ left, right, top, bottom }) => left >= 0 && right <= innerWidth && top >= 0 && bottom <= innerHeight && bottom <= tabPanel.top) ? "ok" : JSON.stringify({ tabs: tabBoxes.map(({ left, right, top, bottom }) => ({ left, right, top, bottom })), panelTop: tabPanel.top, viewport: { width: innerWidth, height: innerHeight } });
-  })).toBe("ok");
+    const target = Number.parseFloat(getComputedStyle(element.ownerDocument.documentElement).getPropertyValue("--target-min-size")) * 16;
+    return tabBoxes.length === 18 && tabBoxes.every(({ left, right, top, bottom, width, height }) => left >= 0 && right <= innerWidth && top >= 0 && bottom <= innerHeight && bottom <= tabPanel.top && width >= target && height >= target) && tabTriggers[0].textContent === label ? "ok" : JSON.stringify({ tabs: tabBoxes.map(({ left, right, top, bottom, width, height }) => ({ left, right, top, bottom, width, height })), panelTop: tabPanel.top, viewport: { width: innerWidth, height: innerHeight } });
+  }, longLabel)).toBe("ok");
   await expect.poll(() => page.locator('iframe[title="DockedPanel · open_undocked"]').getAttribute("height").then(Number)).toBeGreaterThan(852);
   await page.locator('iframe[title="DockedPanel · open_undocked"]').scrollIntoViewIfNeeded();
-  await tabs.getByRole("tab", { name: "Details" }).click({ timeout: 5000 });
-  await expect(tabs.getByRole("tab", { name: "Details" })).toHaveAttribute("aria-selected", "true");
+  await expect(tabs.getByRole("tab", { name: longLabel })).toBeVisible();
+  await tabs.getByRole("tab", { name: longLabel }).click({ timeout: 5000 });
+  await expect(tabs.getByRole("tab", { name: longLabel })).toHaveAttribute("aria-selected", "true");
 });
 
 test("gallery previews complete panel callbacks, fit overlays, and preserve keyboard behavior", async ({ page }) => {

@@ -56,8 +56,8 @@ export function DockedPanel({ title, tabs, activeTab, open, docked, slots, onTab
 
   const matchesInitialState = displayState === initialState.current;
   const panelTabs = <Tabs value={activeTab} onValueChange={onTabChange}>
-    <TabsList className="max-w-full flex-wrap" style={{ height: "auto" }}>
-      {tabs.map(({ id, label }) => <TabsTrigger key={id} value={id} className="bg-muted text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground" style={{ minHeight: "var(--target-min-size)", height: "auto", flex: "none" }}>{label}</TabsTrigger>)}
+    <TabsList className="w-full max-w-full flex-wrap" style={{ height: "auto" }}>
+      {tabs.map(({ id, label }) => <TabsTrigger key={id} value={id} className="min-w-0 max-w-full grow-0 shrink basis-auto whitespace-normal break-words bg-muted text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground" style={{ minWidth: "var(--target-min-size)", minHeight: "var(--target-min-size)", height: "auto" }}>{label}</TabsTrigger>)}
     </TabsList>
     {tabs.map(({ id }) => <TabsContent key={id} value={id} className="min-w-0 focus-visible:focus-ring-token focus-visible:ring-ring">{activeTab === id ? slots?.[id] : null}</TabsContent>)}
   </Tabs>;

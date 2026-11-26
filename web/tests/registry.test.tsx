@@ -98,6 +98,18 @@ describe("registry and renderer", () => {
     expect(new Ajv2020({ strict: false }).compile(entry.schema.toJSONSchema())(input)).toBe(false);
   });
 
+  it("rejects undeclared fixed slots through layout and message interfaces", async () => {
+    const definition = defineSkeletonDefinition({ id: "LoosePanel", props: z.object({ count: z.number() }), slots: z.object({ main: z.array(z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/)) }), events, meta: { ...meta, galleryStates: [{ id: "plain", props: { count: 1 }, slots: { main: [] } }] } });
+    const LoosePanel = defineSkeleton(definition, ({ count }: { count: number }) => <strong>{count}</strong>);
+    const current = createRegistry([LoosePanel], 1);
+    const valid = { registry_version: 1, root: "panel", elements: { panel: { type: "LoosePanel", props: { count: 7 }, slots: { main: [] } } } };
+    const invalid = { ...valid, elements: { panel: { ...valid.elements.panel, slots: { main: [], wrong: ["child"] } } } };
+
+    expect(definition.slotsSchema.safeParse(invalid.elements.panel.slots).success).toBe(false);
+    expect(resolveLayout(invalid, valid, current)).toEqual(valid);
+    expect(await markup(renderMessage(invalid, "plain answer", current))).toContain("plain answer");
+  });
+
   it("falls back for inherited, unknown and missing-root component ids", async () => {
     expect(await markup(renderMessage({ ...goodLayout, elements: { panel: { type: "constructor", props: {} } } }, "plain answer", panelRegistry))).toContain("plain answer");
     expect(await markup(renderMessage({ ...goodLayout, children: [] }, "plain answer", panelRegistry))).toContain("plain answer");

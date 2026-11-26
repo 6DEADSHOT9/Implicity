@@ -57,7 +57,8 @@ export type SkeletonDefinition<P extends z.ZodObject<z.ZodRawShape> = z.ZodObjec
 };
 
 export function createSkeletonSchema<P extends z.ZodObject<z.ZodRawShape>, S extends SlotsSchema>(props: P, slots: S) {
-  return z.object({ props: props.strict() as P, slots }).strict().superRefine((rawValue, context) => {
+  const slotSchema = slots instanceof z.ZodObject ? slots.strict() as S : slots;
+  return z.object({ props: props.strict() as P, slots: slotSchema }).strict().superRefine((rawValue, context) => {
     const value = rawValue as { props: unknown; slots: unknown };
     const props = value.props as Record<string, unknown>;
     const slots = value.slots as Record<string, unknown>;
@@ -75,7 +76,7 @@ export function defineSkeletonDefinition<P extends z.ZodObject<z.ZodRawShape>, S
   meta: SkeletonMeta;
 }): SkeletonDefinition<P, S> {
   const propsSchema = entry.props.strict() as P;
-  const slotsSchema = entry.slots;
+  const slotsSchema = entry.slots instanceof z.ZodObject ? entry.slots.strict() as S : entry.slots;
   const schema = createSkeletonSchema(propsSchema, slotsSchema);
   return { id: entry.id, propsSchema, slotsSchema, schema, events: entry.events, meta: entry.meta };
 }
