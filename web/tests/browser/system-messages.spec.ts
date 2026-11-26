@@ -193,6 +193,49 @@ test("Keep reports an opacity-revealed toast shown before the action", async ({ 
   expect(await page.evaluate(() => window.noticeActions)).toEqual(["opacity:keep"]);
 });
 
+test("shown inline actions work when only 38% of the notice remains visible", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(async () => {
+    const fixtureUrl = "/tests/browser/system-messages-entry.tsx";
+    const { mountPartialInlineNotice } = await import(/* @vite-ignore */ fixtureUrl) as typeof import("./system-messages-entry");
+    mountPartialInlineNotice();
+  });
+  const notice = page.getByRole("status", { name: "Partial inline notice" });
+  await notice.scrollIntoViewIfNeeded();
+  await expect.poll(() => page.evaluate(() => window.systemMessageEvents.some((event) => event.name === "change_shown" && "decision_id" in event && event.decision_id === "dec_623e4567-e89b-42d3-a456-426614174000"))).toBe(true);
+  await notice.getByRole("button", { name: "Keep" }).evaluate((button) => { (button as HTMLElement).style.cssText = "position: fixed; top: 177px; left: 32px; z-index: 10000"; });
+  await notice.getByRole("button", { name: "Undo" }).evaluate((button) => { (button as HTMLElement).style.cssText = "position: fixed; top: 224px; left: 32px; z-index: 10000"; });
+  await page.evaluate(() => {
+    const notice = document.querySelector<HTMLElement>("[role='status'][aria-labelledby]")!;
+    const bounds = notice.getBoundingClientRect();
+    window.scrollBy(0, bounds.top + bounds.height * 0.62);
+  });
+  await expect.poll(() => notice.evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    return Math.max(0, Math.min(bounds.bottom, innerHeight) - Math.max(bounds.top, 0)) / bounds.height;
+  })).toBeGreaterThan(0.35);
+  const ratio = await notice.evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    return Math.max(0, Math.min(bounds.bottom, innerHeight) - Math.max(bounds.top, 0)) / bounds.height;
+  });
+  expect(ratio).toBeCloseTo(0.38, 1);
+  const keep = notice.getByRole("button", { name: "Keep" });
+  await expect(keep).toBeInViewport();
+  const keepBounds = await keep.boundingBox();
+  expect(keepBounds).not.toBeNull();
+  const viewport = page.viewportSize()!;
+  expect(keepBounds!.x).toBeGreaterThanOrEqual(0);
+  expect(keepBounds!.y).toBeGreaterThanOrEqual(0);
+  expect(keepBounds!.x + keepBounds!.width).toBeLessThanOrEqual(viewport.width);
+  expect(keepBounds!.y + keepBounds!.height).toBeLessThanOrEqual(viewport.height);
+  await page.mouse.click(keepBounds!.x + keepBounds!.width / 2, keepBounds!.y + keepBounds!.height / 2);
+  const undo = notice.getByRole("button", { name: "Undo" });
+  await undo.focus();
+  await undo.press("Enter");
+  expect(await page.evaluate(() => window.noticeActions)).toEqual(["keep", "undo"]);
+  expect(await page.evaluate(() => window.systemMessageEvents.filter((event) => "decision_id" in event && event.decision_id === "dec_623e4567-e89b-42d3-a456-426614174000").map((event) => event.name))).toEqual(["change_shown", "change_kept", "change_undone"]);
+});
+
 test("concurrent Decision toasts stack and route each pointer action to its own Decision", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(async () => {

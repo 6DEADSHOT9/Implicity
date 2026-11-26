@@ -40,3 +40,14 @@ export function mountOpacityToast() {
     <ChangeNotice decision_id="dec_523e4567-e89b-42d3-a456-426614174000" title="Opacity toast" reason="Opacity reason" presentation="toast" onKeep={() => window.noticeActions.push("opacity:keep")} />
   </CaptureProvider>);
 }
+
+export function mountPartialInlineNotice() {
+  window.systemMessageEvents = [];
+  window.noticeActions = [];
+  const root = document.createElement("div");
+  root.style.cssText = "padding-top: 500px; padding-bottom: 1000px";
+  document.body.append(root);
+  createRoot(root).render(<CaptureProvider sink={(event) => window.systemMessageEvents.push(event)}>
+    <ChangeNotice decision_id="dec_623e4567-e89b-42d3-a456-426614174000" title="Partial inline notice" reason="Actions should remain available after it has been shown." presentation="inline" onKeep={() => window.noticeActions.push("keep")} onUndo={() => window.noticeActions.push("undo")} />
+  </CaptureProvider>);
+}
