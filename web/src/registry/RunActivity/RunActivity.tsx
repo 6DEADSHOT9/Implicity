@@ -32,7 +32,7 @@ export function RunActivity({ title, steps, open, onOpenChange }: { title: strin
 
   return <Tool ref={seenRef} open={open} onOpenChange={onOpenChange} className="box-border min-w-0 max-w-full">
     <div id={titleId} className="min-w-0"><ToolHeader type="dynamic-tool" toolName="activity" title={title} state={status} className="min-w-0 flex-wrap whitespace-normal break-all [&>div]:min-w-0 [&>div]:flex-1 [&>div]:flex-wrap [&_span]:min-w-0 [&_span]:whitespace-normal [&_span]:break-all" /></div>
-    <ToolContent id={`${titleId}-content`} role="region" aria-labelledby={titleId} className="min-w-0 max-w-full overflow-hidden">
+    <ToolContent role="region" aria-labelledby={titleId} className="min-w-0 max-w-full overflow-hidden">
       <ol className="flex min-w-0 flex-col gap-space-2">
         {steps.map(({ label, status: stepStatus }, index) => {
           const Icon = stepStatus === "complete" ? Check : stepStatus === "running" ? LoaderCircle : stepStatus === "error" ? TriangleAlert : Circle;

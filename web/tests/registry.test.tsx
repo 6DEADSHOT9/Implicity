@@ -14,6 +14,18 @@ import { ReviewPanel } from "./fixtures/ReviewPanel/ReviewPanel";
 import { definition as panelDefinition, propsSchema } from "./fixtures/ReviewPanel/schema";
 import { ReviewShellEntry } from "./fixtures/ReviewShell/entry";
 
+const fixedSlotPanel = defineSkeleton(defineSkeletonDefinition({
+  id: "ResultsPanel",
+  props: z.object({ tabs: z.array(z.object({ id: z.string(), label: z.string() })) }),
+  slots: z.object({ main: z.array(z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/)) }),
+  events: ["component_shown", "component_seen"],
+  meta: {
+    role: "content", slots: ["main"], defaultStates: ["default"], commands: [],
+    limits: { minWidth: 320, minHeight: 120, minContrast: 4.5 },
+    galleryStates: [{ id: "default", props: { tabs: [{ id: "results", label: "Results" }] }, slots: { main: ["results"] } }],
+  },
+}), ({ slots }: { tabs: { id: string; label: string }[]; slots?: { main?: ReactNode[] } }) => <section>{slots?.main}</section>);
+
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 Object.defineProperty(window, "matchMedia", { configurable: true, value: () => ({ matches: true }) });
 
@@ -141,6 +153,23 @@ describe("conversation registry entries", () => {
     expect(html).toContain("MY DETAILS CONTENT");
     expect(html).not.toContain("message_body");
   });
+
+  it("renders a valid RunActivity spec with no slot or an empty slots object", async () => {
+    for (const slots of [undefined, {}]) {
+      const spec = {
+        registry_version: registry.version,
+        root: "activity",
+        elements: {
+          activity: {
+            type: "RunActivity",
+            props: { title: "Run", steps: [{ label: "Search", status: "complete" }], open: true },
+            ...(slots ? { slots } : {}),
+          },
+        },
+      };
+      expect(await markup(renderMessage(spec, "fallback"))).toContain("Search");
+    }
+  });
 });
 
 describe("registry and renderer", () => {
@@ -153,6 +182,23 @@ describe("registry and renderer", () => {
     expect(panelRegistry.getSkeleton("constructor")).toBeUndefined();
     expect(getSkeleton("constructor")).toBeUndefined();
     expect(createRegistry([], 1).entries.size).toBe(0);
+  });
+
+  it("allows fixed slots on non-Tabs entries whose props happen to include tabs", () => {
+    const withFixedSlots = createRegistry([registry.getSkeleton("Tabs")!, fixedSlotPanel], registry.version);
+    expect(withFixedSlots.getSkeleton("ResultsPanel")?.meta.galleryStates[0]?.slots).toEqual({ main: ["results"] });
+  });
+
+  it("preserves Nudge's no-argument callback through the registry boundary", () => {
+    const nudge = registry.getSkeleton("Nudge")!;
+    const onAction = vi.fn();
+    const host = document.createElement("div");
+    const root = createRoot(host);
+    act(() => root.render(<nudge.Component props={{ title: "Continue", message: "Details", actionLabel: "Open" }} slots={{}} onAction={onAction} />));
+    act(() => (host.querySelector("button") as HTMLButtonElement).click());
+    expect(onAction).toHaveBeenCalledOnce();
+    expect(onAction.mock.calls).toEqual([[]]);
+    act(() => root.unmount());
   });
 
   it("derives json-render components and named slots from the entry", async () => {
@@ -217,6 +263,31 @@ describe("registry and renderer", () => {
     expect(await markup(renderMessage(missingSlot, "fallback", panelRegistry))).toContain("fallback");
     expect(resolveLayout(missingSlot, undefined, panelRegistry)).toEqual(baselineLayout);
     expect(await markup(renderMessage({ ...goodLayout, elements: { panel: { type: "ReviewPanel", props: { count: 8 }, slots: { main: [] } } } }, "fallback", panelRegistry))).toContain("<strong>8</strong>");
+  });
+
+  it("renders Tabs content through named slots and rejects cross-field tab errors", async () => {
+    const tabs = {
+      registry_version: registry.version,
+      root: "tabs",
+      elements: {
+        tabs: { type: "Tabs", props: { tabs: [{ id: "summary", label: "Summary" }], selected: "summary" }, slots: { summary: ["card"] } },
+        card: { type: "Card", props: { title: "Named slot content", state: "default" }, slots: { content: [] } },
+      },
+    };
+    expect(await markup(renderMessage(tabs, "fallback"))).toContain("Named slot content");
+    const invalid = { ...tabs, elements: { ...tabs.elements, tabs: { ...tabs.elements.tabs, props: { ...tabs.elements.tabs.props, selected: "missing" } } } };
+    expect(await markup(renderMessage(invalid, "plain fallback"))).toContain("plain fallback");
+    const invalidSlot = { ...tabs, elements: { ...tabs.elements, tabs: { ...tabs.elements.tabs, slots: { unrelated: ["card"] } } } };
+    expect(await markup(renderMessage(invalidSlot, "plain fallback"))).toContain("plain fallback");
+  });
+
+  it("rejects Metric progress bounds through renderer validation", async () => {
+    const metric = {
+      registry_version: registry.version,
+      root: "metric",
+      elements: { metric: { type: "Metric", props: { label: "Quota", value: "25", progress: { value: 25, max: 20 } } } },
+    };
+    expect(await markup(renderMessage(metric, "plain fallback"))).toContain("plain fallback");
   });
 
   it("falls back from a throwing message component in place", async () => {
@@ -319,6 +390,46 @@ describe("registry and renderer", () => {
     }
   });
 
+  it("accepts a public registry example with multiple required slots", () => {
+    const definition = defineSkeletonDefinition({
+      id: "TwoSlotPanel",
+      props: z.object({ count: z.number() }).strict(),
+      slots: z.object({ main: z.array(z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/)), side: z.array(z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/)) }).strict(),
+      events,
+      meta: { ...meta, slots: ["main", "side"], galleryStates: [{ id: "plain", props: { count: 1 }, slots: { main: [], side: [] } }] },
+    });
+    const entry = defineSkeleton(definition, ({ count }: { count: number }) => <b>{count}</b>);
+    expect(createRegistry([entry], 1).getSkeleton("TwoSlotPanel")).toBe(entry);
+  });
+
+  it("rejects named-part slots that have no matching tab", () => {
+    const tabs = registry.getSkeleton("Tabs")!;
+    expect(tabs.schema.safeParse({ props: { tabs: [{ id: "summary", label: "Summary" }], selected: "summary" }, slots: { unrelated: ["child"] } }).success).toBe(false);
+  });
+
+  it("registers named slots that use Object.prototype names", () => {
+    const tabs = registry.getSkeleton("Tabs")!;
+    const galleryState = {
+      id: "named_constructor",
+      props: { tabs: [{ id: "constructor", label: "Summary" }], selected: "constructor" },
+      slots: { constructor: ["child"] },
+    };
+    expect(() => createRegistry([{ ...tabs, meta: { ...tabs.meta, galleryStates: [...tabs.meta.galleryStates, galleryState] } }], registry.version)).not.toThrow();
+  });
+
+  it("enables named slot validation from the definition instead of a component name", () => {
+    const definition = defineSkeletonDefinition({
+      id: "NamedParts",
+      props: z.object({ parts: z.array(z.object({ id: z.string() })) }),
+      slots: z.object({}).catchall(z.array(z.string())),
+      events,
+      meta: { ...meta, slots: [] },
+      namedPartProp: "parts",
+    });
+    expect(definition.schema.safeParse({ props: { parts: [{ id: "summary" }] }, slots: { summary: ["child"] } }).success).toBe(true);
+    expect(definition.schema.safeParse({ props: { parts: [{ id: "summary" }] }, slots: { unrelated: ["child"] } }).success).toBe(false);
+  });
+
   it("rejects entries missing declarations, invalid ids, events or reviewed limits", () => {
     expect(() => createRegistry([{ ...ReviewPanelEntry, events: undefined } as never], 1)).toThrow(/events/);
     expect(() => createRegistry([{ ...ReviewPanelEntry, meta: { ...meta, slots: undefined } } as never], 1)).toThrow(/slots/);
@@ -350,5 +461,9 @@ describe("registry and renderer", () => {
       expect(() => createRegistry([{ ...ReviewPanelEntry, meta: { ...meta, galleryStates: [{ id: "busy", props: { count: 1 }, slots }] } } as never], 1)).toThrow(/ReviewPanel.*busy.*slots/);
     }
     expect(() => createRegistry([{ ...ReviewPanelEntry, id: "bad id" }], 1)).toThrow(/component id/);
+  });
+
+  it("requires a gallery example for every declared default state", () => {
+    expect(() => createRegistry([{ ...ReviewPanelEntry, meta: { ...meta, defaultStates: ["plain", "busy"], galleryStates: [{ id: "plain", props: { count: 1 }, slots: { main: [] } }] } }], 1)).toThrow(/gallery states must include every default state/);
   });
 });

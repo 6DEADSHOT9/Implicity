@@ -27,14 +27,25 @@ test("conversation skeletons wrap at 375px and MessageBody keeps links safe and 
   expect(title).not.toBeNull();
   expect(firstAction).not.toBeNull();
   expect(firstAction!.x).toBeGreaterThanOrEqual(title!.x);
+  expect(firstAction!.height).toBeGreaterThanOrEqual(44);
+
+  const activity = page.locator("[data-skeleton='RunActivity']");
+  const activityTrigger = activity.getByRole("button");
+  const contentId = await activityTrigger.getAttribute("aria-controls");
+  expect(contentId).toBeTruthy();
+  await expect(activity.locator(`#${contentId}`)).toHaveAttribute("role", "region");
 
   const message = page.locator("[data-skeleton='MessageBody']");
   const link = message.getByRole("link", { name: "Long link" });
+  await expect(page.locator("main")).toHaveAttribute("data-look", "default");
   await expect(link).toHaveAttribute("href", /^https:\/\/tracker\.invalid\//);
   await expect(link).toHaveAttribute("target", "_blank");
   await expect(message.locator("button")).toHaveCount(0);
   await expect(message.getByRole("img", { name: "blocked — tracker.invalid" })).toBeVisible();
   await expect(message.getByRole("img", { name: "Remote preview — tracker.invalid" })).toBeVisible();
+  await expect(message.locator("p code")).toHaveClass(/rounded-md/);
+  await expect(message.locator("blockquote")).toHaveClass(/border-s-token/);
+  await expect(message.locator("hr")).toHaveClass(/border-b-token/);
   expect(httpRequests).toEqual([]);
   expect(remoteRequests).toHaveLength(1);
   expect(remoteRequests[0].headers).not.toHaveProperty("cookie");

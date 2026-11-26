@@ -13,6 +13,14 @@ describe("RunActivity", () => {
     expect(propsSchema.safeParse({ title: "Run", steps: [{ label: "Step", status: "unknown" }], open: true }).success).toBe(false);
   });
 
+  it("keeps the open trigger connected to its content region", () => {
+    render(<RunActivity title="Run activity" steps={[{ label: "Searching", status: "running" }]} open />);
+    const trigger = screen.getByRole("button");
+    const contentId = trigger.getAttribute("aria-controls");
+    expect(contentId).toBeTruthy();
+    expect(document.getElementById(contentId!)).toBe(screen.getByRole("region", { name: /Run activity/ }));
+  });
+
   it("records section changes only after the controlled open state changes", async () => {
     const state = meta.galleryStates[0]; const recorder = recordingCapture(); const onOpenChange = vi.fn(); const user = userEvent.setup();
     const view = render(<CaptureProvider sink={recorder.sink}><RunActivity {...state.props} onOpenChange={onOpenChange} /></CaptureProvider>);

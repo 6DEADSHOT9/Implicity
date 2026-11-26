@@ -34,7 +34,10 @@ export function MessageBody({ content }: { content: string }) {
           codeBlockMaxHeight={0}
           tableMaxHeight={0}
           components={{
-            a: ({ href, children }) => <a href={href} target="_blank" rel="noreferrer" className="min-h-control break-all font-medium text-primary">{children}</a>,
+            a: ({ href, children }) => <a href={href} target="_blank" rel="noreferrer" className="break-all font-medium text-primary">{children}</a>,
+            code: ({ children, className }) => <code className={className ? "font-mono text-sm" : "rounded-md bg-muted px-space-2 py-space-1 font-mono text-sm"}>{children}</code>,
+            blockquote: ({ children }) => <blockquote className="my-space-4 border-s-token ps-space-3 text-muted-foreground">{children}</blockquote>,
+            hr: () => <hr className="my-space-4 border-b-token border-border" />,
             pre: ({ children }) => <pre className="max-w-full overflow-x-auto whitespace-pre-wrap break-words rounded-md border-token bg-muted p-space-3 font-mono text-sm">{children}</pre>,
             table: ({ children }) => <div className="max-w-full overflow-x-auto rounded-md border-token"><table className="min-w-full text-sm">{children}</table></div>,
             th: ({ children }) => <th className="border-token px-space-3 py-space-2 text-start font-medium">{children}</th>,

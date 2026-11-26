@@ -1,4 +1,7 @@
 import { createRoot } from "react-dom/client";
+import type { CSSProperties } from "react";
+import defaultLook from "../../../contracts/looks/default.json" with { type: "json" };
+import tokens from "../../../contracts/looks/tokens.json" with { type: "json" };
 import { CaptureProvider } from "../../src/registry";
 import { MessageBody } from "../../src/registry/MessageBody/MessageBody";
 import { Details } from "../../src/registry/Details/Details";
@@ -12,11 +15,30 @@ import { ApprovalRequest } from "../../src/registry/ApprovalRequest/ApprovalRequ
 import "../../src/tokens.css";
 
 const long = "https://tracker.invalid/" + "segment/".repeat(50);
-const path = "/" + "very-long-file-name/".repeat(35) + "report.pdf";
-const markdown = `[Long link](${long})\n\n\`\`\`text\ncode\n\`\`\`\n\n| Column | Value |\n| --- | --- |\n| Name | A |\n\n![blocked](http://tracker.invalid/pixel.png)\n\n![Remote preview](https://tracker.invalid/fail.png)`;
+const path = "unbrokenfilename".repeat(30);
+const plainText = "unbrokenmessage".repeat(30);
+const markdown = [
+  `[Long link](${long})`,
+  plainText,
+  "Inline `code`",
+  "> A block quote",
+  "---",
+  "```text\ncode\n```",
+  "| Column | Value |\n| --- | --- |\n| Name | A |",
+  "![blocked](http://tracker.invalid/pixel.png)",
+  "![Remote preview](https://tracker.invalid/fail.png)",
+].join("\n\n");
+const tokenStyles = {
+  ...Object.fromEntries(Object.entries(defaultLook.light).map(([name, value]) => [`--${name}`, value])),
+  ...Object.fromEntries(Object.entries(tokens.sharedPalette.light).map(([name, value]) => [`--${name}`, value])),
+  ...tokens.derivedTokens.radius[defaultLook.radius as keyof typeof tokens.derivedTokens.radius],
+  ...tokens.derivedTokens.density[defaultLook.density as keyof typeof tokens.derivedTokens.density],
+  ...tokens.derivedTokens.dimensions,
+  "--font-body": JSON.stringify(tokens.typefaces[defaultLook.typeface.body as keyof typeof tokens.typefaces].family),
+} as unknown as CSSProperties;
 
 createRoot(document.getElementById("root")!).render(<CaptureProvider sink={() => undefined}>
-  <main style={{ boxSizing: "border-box", width: "100%", minWidth: 0, padding: 12, display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 12 }}>
+  <main data-look={defaultLook.id} data-mode="light" style={{ ...tokenStyles, boxSizing: "border-box", width: "100%", minWidth: 0, padding: 12, display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: "var(--space-4)" }}>
     <section className="case" style={{ minWidth: 0 }} data-skeleton="MessageBody"><MessageBody content={markdown} /></section>
     <section className="case" data-skeleton="Details"><Details title={long} content={long} open /></section>
     <section className="case" data-skeleton="RunActivity"><RunActivity title={long} open steps={[{ label: long, status: "running" }]} /></section>

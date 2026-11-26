@@ -1,0 +1,27 @@
+{
+  "registry_version": 5,
+  "components": [
+    "ApprovalRequest",
+    "ArtifactWorkspace",
+    "AttachmentTray",
+    "Card",
+    "ChangeNotice",
+    "Checklist",
+    "Citation",
+    "CodeBlock",
+    "ContextChip",
+    "DataChart",
+    "DataTable",
+    "Details",
+    "List",
+    "MediaPlayer",
+    "MessageActions",
+    "MessageBody",
+    "Metric",
+    "Nudge",
+    "ProposalCard",
+    "RunActivity",
+    "ShortcutChips",
+    "Tabs"
+  ]
+}
