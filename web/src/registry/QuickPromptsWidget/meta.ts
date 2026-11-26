@@ -6,8 +6,8 @@ export const meta = {
   widget: { source: "quick_prompts_source", refresh: "on_open" },
   limits: { minWidth: 320, minHeight: 120, minContrast: 4.5 },
   galleryStates: [
-    { id: "quick-prompts", props: {}, slots: { content: ["quick_prompts_source"] } },
+    { id: "quick-prompts", props: {}, slots: { content: ["suggested_prompts"] } },
     { id: "empty", props: {}, slots: { content: [] } },
-    { id: "long-content", props: {}, slots: { content: ["long_content_example"] } },
+    { id: "long-content", props: {}, slots: { content: ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"] } },
   ],
 } as const;

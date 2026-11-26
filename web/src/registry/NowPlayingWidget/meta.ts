@@ -6,8 +6,8 @@ export const meta = {
   widget: { source: "now_playing_source", refresh: "live" },
   limits: { minWidth: 320, minHeight: 120, minContrast: 4.5 },
   galleryStates: [
-    { id: "now-playing", props: { progress: 35 }, slots: { content: ["now_playing_source"] } },
+    { id: "now-playing", props: { progress: 35 }, slots: { content: ["media_details"] } },
     { id: "empty", props: { progress: 0 }, slots: { content: [] } },
-    { id: "long-content", props: { progress: 35 }, slots: { content: ["long_content_example"] } },
+    { id: "long-content", props: { progress: 35 }, slots: { content: ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"] } },
   ],
 } as const;

@@ -43,7 +43,7 @@ export function WidgetFrame({ title, lastUpdate, source, onDismiss, slots }: Pro
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={onDismiss}>Dismiss</DropdownMenuItem>
+            <DropdownMenuItem className="min-h-control" onSelect={onDismiss}>Dismiss</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </CardHeader>

@@ -23,17 +23,19 @@ export function NowPlayingWidget({ progress, slots }: Props) {
 
   return (
     <div ref={seenRef} className="min-w-0 break-words">
-      <Progress aria-label="Playback progress" value={progress} max={100} />
       {slots?.content?.length ? (
-        <ItemGroup>
-          {slots.content.map((item, index) => (
-            <Item role="listitem" key={index} className="min-w-0 break-words">
-              <ItemContent className="min-w-0 break-words">
-                <ItemTitle className="min-w-0 break-words">{item}</ItemTitle>
-              </ItemContent>
-            </Item>
-          ))}
-        </ItemGroup>
+        <>
+          <Progress aria-label="Playback progress" value={progress} max={100} />
+          <ItemGroup>
+            {slots.content.map((item, index) => (
+              <Item role="listitem" key={index} className="min-w-0 break-words">
+                <ItemContent className="min-w-0 break-words">
+                  <ItemTitle className="block w-full min-w-0 break-words">{item}</ItemTitle>
+                </ItemContent>
+              </Item>
+            ))}
+          </ItemGroup>
+        </>
       ) : (
         <Empty>
           <EmptyTitle>Nothing is playing</EmptyTitle>

@@ -26,7 +26,7 @@ export function ScheduledWidget({slots}: Props) {
           {slots.content.map((item, index) => (
             <Item role="listitem" key={index} className="min-w-0 break-words">
               <ItemContent className="min-w-0 break-words">
-                <ItemTitle className="min-w-0 break-words">{item}</ItemTitle>
+                <ItemTitle className="block w-full min-w-0 break-words">{item}</ItemTitle>
               </ItemContent>
             </Item>
           ))}

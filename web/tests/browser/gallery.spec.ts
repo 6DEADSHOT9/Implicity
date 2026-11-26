@@ -602,13 +602,18 @@ test("Notebook applies its bundled body font, paper texture, and both mode palet
 
 
 test("content skeletons render every declared gallery state across gallery settings", async ({ page }) => {
+  test.setTimeout(120_000);
   await page.goto("/");
   const cards = await page.locator(".gallery-card[data-skeleton]").evaluateAll((elements) => elements.map((element) => ({
     name: element.getAttribute("data-skeleton")!,
     state: element.getAttribute("data-gallery-state")!,
   })));
   const names = new Set(cards.map(({ name }) => name));
-  expect(names).toEqual(new Set(["DataTable", "DataChart", "CodeBlock", "MediaPlayer", "ArtifactWorkspace", "Checklist", "List", "Metric", "Tabs", "Card", "ChangeNotice", "ProposalCard", "Nudge"]));
+  expect(names).toEqual(new Set([
+    "DataTable", "DataChart", "CodeBlock", "MediaPlayer", "ArtifactWorkspace", "Checklist", "List", "Metric",
+    "Tabs", "Card", "ChangeNotice", "ProposalCard", "Nudge", "HomeGrid", "WidgetFrame", "WidgetPicker",
+    "ResumeWidget", "ProjectsWidget", "ScheduledWidget", "QuickPromptsWidget", "NowPlayingWidget",
+  ]));
   for (const { name, state } of cards) {
     const frame = page.frameLocator(`iframe[title="${name} · ${state}"]`);
     await expect(page.locator(`iframe[title="${name} · ${state}"]`)).toBeVisible();
@@ -624,7 +629,7 @@ test("content skeletons render every declared gallery state across gallery setti
   await expect(page.locator("[data-gallery-root]")).toHaveAttribute("data-look", "notebook");
   await expect(page.locator("[data-gallery-root]")).toHaveAttribute("data-mode", "dark");
   await expect(page.locator("[data-gallery-root]")).toHaveAttribute("data-device-class", "tablet");
-  await expect(page.frameLocator('iframe[title="DataTable · table"]').locator("html")).toHaveAttribute("data-mode", "dark");
+  await expect(page.frameLocator('iframe[title="DataTable · table"]').locator("html")).toHaveAttribute("data-mode", "dark", { timeout: 15_000 });
   await expect(page.frameLocator('iframe[title="DataTable · table"]').locator("table")).toBeVisible();
   await expect(page.frameLocator('iframe[title="Tabs · default"]').getByRole("tablist")).toBeVisible();
   const chartView = page.frameLocator('iframe[title="DataTable · chart"]');
@@ -707,10 +712,12 @@ async function assertContentMatrix(page: import("@playwright/test").Page, device
 }
 
 test("content skeletons survive every desktop gallery setting", async ({ page }) => {
+  test.setTimeout(120_000);
   await assertContentMatrix(page, "desktop");
 });
 
 test("content skeletons survive every tablet gallery setting", async ({ page }) => {
+  test.setTimeout(120_000);
   await assertContentMatrix(page, "tablet");
 });
 

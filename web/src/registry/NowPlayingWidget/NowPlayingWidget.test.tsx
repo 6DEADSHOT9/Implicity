@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { CaptureProvider, recordingCapture, registry } from "../index";
 import { meta } from "./meta";
 import { propsSchema, slotsSchema } from "./schema";
@@ -29,8 +29,10 @@ describe("NowPlayingWidget", () => {
     }
   });
   it("renders the documented progress value", () => {
-    render(<NowPlayingWidget progress={35} />);
+    const { rerender } = render(<NowPlayingWidget progress={35} slots={{ content: ["media_details"] }} />);
     expect(screen.getByRole("progressbar", { name: "Playback progress" }).getAttribute("value")).toBe("35");
+    rerender(<NowPlayingWidget progress={35} />);
+    expect(screen.queryByRole("progressbar", { name: "Playback progress" })).toBeNull();
   });
   it("renders content without owning a heading", () => {
     const props = meta.galleryStates[0].props as React.ComponentProps<typeof NowPlayingWidget>;

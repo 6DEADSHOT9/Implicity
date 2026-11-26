@@ -4563,6 +4563,9 @@
         },
         {
           "$ref": "#/$defs/SettingChanged_AnswerTone"
+        },
+        {
+          "$ref": "#/$defs/SettingChanged_HomeWidgets"
         }
       ]
     },
@@ -4687,6 +4690,9 @@
         },
         {
           "$ref": "#/$defs/SettingChanged_AnswerTone"
+        },
+        {
+          "$ref": "#/$defs/SettingChanged_HomeWidgets"
         },
         {
           "$ref": "#/$defs/TurnSummary"
@@ -5076,6 +5082,109 @@
             "prose",
             "list",
             "table"
+          ]
+        }
+      }
+    },
+    "SettingChanged_HomeWidgets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "name",
+        "timestamp",
+        "contracts_version",
+        "session_id",
+        "device_class",
+        "input_type",
+        "dimension",
+        "value",
+        "layout_version",
+        "registry_version",
+        "component"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+        },
+        "contracts_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "session_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "conversation_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "enum": [
+                "casual",
+                "coding",
+                "writing",
+                "analysis",
+                "other"
+              ]
+            },
+            {
+              "type": "string",
+              "pattern": "^kind_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          ]
+        },
+        "component": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+        },
+        "slot": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "layout_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "registry_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "device_class": {
+          "enum": [
+            "desktop",
+            "tablet"
+          ]
+        },
+        "input_type": {
+          "enum": [
+            "mouse",
+            "touch",
+            "pen",
+            "none"
+          ]
+        },
+        "name": {
+          "const": "setting_changed"
+        },
+        "dimension": {
+          "const": "home_widgets"
+        },
+        "value": {
+          "enum": [
+            "on",
+            "off"
           ]
         }
       }

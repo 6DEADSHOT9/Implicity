@@ -19,10 +19,10 @@ export const skeletonMetaSchema = z.object({
   widget: z.object({
     source: z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/),
     refresh: z.enum(["on_open", "interval", "live"]),
-    intervalMinutes: z.number().int().positive().optional(),
+    intervalMinutes: z.number().int().min(60).optional(),
   }).strict().optional().superRefine((widget, ctx) => {
     if (widget?.refresh === "interval" && widget.intervalMinutes === undefined) {
-      ctx.addIssue({ code: "custom", message: "intervalMinutes is required for interval refresh" });
+      ctx.addIssue({ code: "custom", message: "intervalMinutes of at least 60 is required for interval refresh" });
     }
   }),
 }).strict();

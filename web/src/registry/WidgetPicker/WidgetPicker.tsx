@@ -1,4 +1,5 @@
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useRef } from "react";
+import { cn } from "cn";
 import { X } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
@@ -9,22 +10,22 @@ import { useCapture } from "../capture";
 import { useSeen } from "../use-seen";
 import { events } from "./events";
 
+type Widget = { id: string; label: string; enabled: boolean };
 type Props = {
   open: boolean;
   title: string;
-  enabled: boolean;
+  widgets: readonly Widget[];
+  availableWidgets: readonly { id: string; label: string }[];
   onOpenChange?: (open: boolean) => void;
-  onEnabledChange?: (enabled: boolean) => void;
-  onAddWidget?: () => void;
-  slots?: { widgets?: React.ReactNode[] };
+  onWidgetChange?: (id: string, enabled: boolean) => void;
+  onAdd?: (id: string) => void;
 };
 
-export function WidgetPicker({ open, title, enabled, onOpenChange, onEnabledChange, onAddWidget, slots }: Props) {
+export function WidgetPicker({ open, title, widgets, availableWidgets, onOpenChange, onWidgetChange, onAdd }: Props) {
   const { emit } = useCapture<(typeof events)[number]>();
   const emitRef = useRef(emit);
   const initialState = useRef(open ? "open" : "closed");
   const previousOpen = useRef(open);
-  const switchId = useId();
   const seenRef = useSeen({ component: "WidgetPicker", defaultState: initialState.current });
   emitRef.current = emit;
 
@@ -40,23 +41,23 @@ export function WidgetPicker({ open, title, enabled, onOpenChange, onEnabledChan
   }, []);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange} modal={Boolean(onOpenChange)}>
       <DialogTrigger asChild>
         <Button type="button" variant="outline" ref={!open ? seenRef : undefined}>Customize</Button>
       </DialogTrigger>
       <DialogContent
         ref={open ? seenRef : undefined}
-        className="box-border flex max-h-content-height flex-col overflow-hidden"
-        style={{ height: "var(--content-max-height)" }}
+        className={cn("box-border flex max-h-viewport-content max-w-full flex-col overflow-hidden", widgets.length > 2 && "h-full top-0 translate-y-0")}
         showCloseButton={false}
+        onOpenAutoFocus={(event) => { if (!onOpenChange) event.preventDefault(); }}
       >
-        <DialogHeader className="pr-space-6">
-          <DialogTitle style={{ fontSize: "var(--heading-4)" }}>{title}</DialogTitle>
-          <DialogDescription>Choose which widgets appear on Home.</DialogDescription>
+        <DialogHeader className="min-w-0 pr-space-6">
+          <DialogTitle className="min-w-0 break-words" style={{ fontSize: "var(--heading-4)" }}>{title}</DialogTitle>
+          <DialogDescription>Choose which widgets appear on Home. Dismiss removes a widget.</DialogDescription>
         </DialogHeader>
-        <Card className="min-h-0 min-w-0 flex-1 overflow-hidden">
-          <CardHeader className="flex-row items-center justify-between gap-space-2">
-            <CardTitle>Widgets</CardTitle>
+        <Card className="min-h-0 min-w-0 max-h-content-height flex-1 overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between gap-space-2">
+            <CardTitle className="min-w-0">Widgets</CardTitle>
             <DialogClose asChild>
               <Button type="button" variant="ghost" size="icon" className="min-h-control min-w-control" aria-label="Close widget picker">
                 <X aria-hidden="true" />
@@ -66,14 +67,25 @@ export function WidgetPicker({ open, title, enabled, onOpenChange, onEnabledChan
           <CardContent className="flex min-h-0 flex-1 flex-col">
             <ScrollArea className="min-h-0 max-h-content-height flex-1">
               <div className="min-w-0 break-words">
-                <label htmlFor={switchId} className="flex min-h-control items-center justify-between gap-space-4">
-                  <span>Show widgets</span>
-                  <Switch id={switchId} checked={enabled} onCheckedChange={onEnabledChange} />
-                </label>
-                {slots?.widgets?.map((widget, index) => (
-                  <div className="min-w-0 break-words" key={index}>{widget}</div>
-                ))}
-                <Button type="button" variant="outline" onClick={onAddWidget}>Add widget</Button>
+                <div className="flex flex-col">
+                  {widgets.map((widget, index) => (
+                    <label key={`${widget.id}-${index}`} className="flex min-h-control items-center justify-between gap-space-4">
+                      <span>{widget.label}</span>
+                      <Switch checked={widget.enabled} onCheckedChange={(enabled) => {
+                        if (enabled === widget.enabled) return;
+                        emit("setting_changed", { dimension: "home_widgets", value: enabled ? "on" : "off", component: widget.id });
+                        onWidgetChange?.(widget.id, enabled);
+                      }} />
+                    </label>
+                  ))}
+                </div>
+                <div className="flex flex-col">
+                  {availableWidgets.map((widget, index) => (
+                    <Button key={`${widget.id}-${index}`} type="button" variant="outline" onClick={() => onAdd?.(widget.id)}>
+                      Add {widget.label}
+                    </Button>
+                  ))}
+                </div>
               </div>
             </ScrollArea>
           </CardContent>

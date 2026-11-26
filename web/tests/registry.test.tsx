@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, type ReactElement, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
+import { render, screen } from "@testing-library/react";
 import Ajv2020 from "ajv/dist/2020.js";
 import { z } from "zod";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -168,6 +169,17 @@ describe("registry and renderer", () => {
       elements: { metric: { type: "Metric", props: { label: "Quota", value: "25", progress: { value: 25, max: 20 } } } },
     };
     expect(await markup(renderMessage(metric, "plain fallback"))).toContain("plain fallback");
+  });
+
+  it("renders a static open WidgetPicker message without a modal focus trap", async () => {
+    const spec = {
+      registry_version: registry.version,
+      root: "picker",
+      elements: { picker: { type: "WidgetPicker", props: { open: true, title: "Add widgets", widgets: [], availableWidgets: [] }, slots: {} } },
+    };
+    render(renderMessage(spec, "fallback"));
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog.getAttribute("aria-modal")).not.toBe("true");
   });
 
   it("falls back from a throwing message component in place", async () => {

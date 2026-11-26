@@ -6,8 +6,8 @@ export const meta = {
   widget: { source: "resume_source", refresh: "on_open" },
   limits: { minWidth: 320, minHeight: 120, minContrast: 4.5 },
   galleryStates: [
-    { id: "resume", props: {}, slots: { content: ["resume_source"] } },
+    { id: "resume", props: {}, slots: { content: ["recent_conversation"] } },
     { id: "empty", props: {}, slots: { content: [] } },
-    { id: "long-content", props: {}, slots: { content: ["long_content_example"] } },
+    { id: "long-content", props: {}, slots: { content: ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"] } },
   ],
 } as const;

@@ -20,8 +20,8 @@ export function HomeGrid({ title, slots }: Props) {
 
   return (
     <Card ref={seenRef} role="region" aria-labelledby={titleId} className="min-w-0 overflow-hidden">
-      <CardHeader className="min-w-0">
-        <CardTitle>
+      <CardHeader className="min-w-0 grid-rows-1">
+        <CardTitle className="min-w-0">
           <h2 id={titleId} style={{ fontSize: "var(--heading-2)" }} className="min-w-0 break-words">{title}</h2>
         </CardTitle>
       </CardHeader>

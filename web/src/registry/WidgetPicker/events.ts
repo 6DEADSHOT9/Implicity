@@ -1,1 +1,1 @@
-export const events = ["component_shown", "component_seen", "panel_opened", "panel_closed"] as const;
+export const events = ["component_shown", "component_seen", "panel_opened", "panel_closed", "setting_changed"] as const;

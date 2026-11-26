@@ -41,10 +41,26 @@ async function passTime(milliseconds: number) {
 }
 
 describe("Home Skeleton occasions", () => {
+  it("keeps the empty and long-content gallery examples and the picker's open state", () => {
+    const ids = ["HomeGrid", "WidgetFrame", "ResumeWidget", "ProjectsWidget", "ScheduledWidget", "QuickPromptsWidget", "NowPlayingWidget"];
+    for (const id of ids) {
+      const states = registry.getSkeleton(id)!.meta.galleryStates;
+      expect(states.map(({ id: state }) => state)).toContain("empty");
+      const longContent = states.find(({ id: state }) => state === "long-content")!;
+      if (id === "HomeGrid" || id === "WidgetFrame") expect(longContent.props.title).toHaveLength(150);
+      expect(Object.values(longContent.slots ?? {}).flat().some((slot) => slot.length >= 64)).toBe(true);
+    }
+    const picker = registry.getSkeleton("WidgetPicker")!.meta.galleryStates;
+    expect(picker.map(({ id }) => id)).toEqual(expect.arrayContaining(["open", "long-content"]));
+    expect(picker.find(({ id }) => id === "long-content")!.props.title).toHaveLength(150);
+    expect(picker.find(({ id }) => id === "long-content")!.props.widgets).toHaveLength(5);
+  });
+
   it("requires an interval for interval refreshed widgets", () => {
     const meta = registry.getSkeleton("ScheduledWidget")!.meta;
     expect(skeletonMetaSchema.safeParse({ ...meta, widget: { source: "scheduled_source", refresh: "interval" } }).success).toBe(false);
-    expect(skeletonMetaSchema.safeParse({ ...meta, widget: { source: "scheduled_source", refresh: "interval", intervalMinutes: 30 } }).success).toBe(true);
+    expect(skeletonMetaSchema.safeParse({ ...meta, widget: { source: "scheduled_source", refresh: "interval", intervalMinutes: 30 } }).success).toBe(false);
+    expect(skeletonMetaSchema.safeParse({ ...meta, widget: { source: "scheduled_source", refresh: "interval", intervalMinutes: 60 } }).success).toBe(true);
     expect(skeletonMetaSchema.safeParse({ ...meta, widget: { source: "Invalid source", refresh: "live" } }).success).toBe(false);
     for (const id of ["ResumeWidget", "ProjectsWidget", "ScheduledWidget", "QuickPromptsWidget", "NowPlayingWidget"]) {
       expect(registry.getSkeleton(id)!.meta.widget).toBeTruthy();
