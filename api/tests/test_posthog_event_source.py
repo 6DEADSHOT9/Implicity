@@ -50,16 +50,20 @@ def test_event_source_matches_fake_and_passes_window_and_exclusions(tmp_path):
             size = int(self.headers["Content-Length"])
             body = json.loads(self.rfile.read(size))
             requests.append((self.path, body))
-            payload = {
-                "results": rows,
-                "columns": [
-                    "day",
-                    "kind",
-                    "conversation_ids",
-                    "happened",
-                    "could_have",
-                ],
-            }
+            payload = (
+                {"results": [], "columns": []}
+                if "session_summaries" in self.path
+                else {
+                    "results": rows,
+                    "columns": [
+                        "day",
+                        "kind",
+                        "conversation_ids",
+                        "happened",
+                        "could_have",
+                    ],
+                }
+            )
             encoded = json.dumps(payload).encode()
             self.send_response(200)
             self.send_header("Content-Length", str(len(encoded)))
@@ -116,8 +120,24 @@ def test_event_source_matches_fake_and_passes_window_and_exclusions(tmp_path):
             "long_answer_expanded", date(2026, 11, 26), date(2026, 11, 27), ["excluded"]
         )
         assert actual == expected
+        assert (
+            source.session_summaries(
+                date(2026, 11, 26), date(2026, 11, 27), ["excluded"]
+            )
+            == []
+        )
         assert requests[0] == (
             "/api/environments/1/endpoints/long_answer_expanded/run/",
+            {
+                "variables": {
+                    "v_start": "2026-11-26",
+                    "v_end": "2026-11-27",
+                    "v_excluded_sessions": "excluded",
+                }
+            },
+        )
+        assert requests[1] == (
+            "/api/environments/1/endpoints/session_summaries/run/",
             {
                 "variables": {
                     "v_start": "2026-11-26",

@@ -352,7 +352,9 @@ class PostHogEventSource:
             SessionSummary.model_validate(
                 {
                     **row.get("properties", {}),
-                    "event_id": row["event_id"],
+                    "event_id": row.get("properties", {}).get(
+                        "event_id", row["event_id"]
+                    ),
                     "timestamp": row["timestamp"],
                 }
             )
