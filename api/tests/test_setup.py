@@ -5,6 +5,7 @@ import urllib.error
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from unittest.mock import Mock
+from zoneinfo import ZoneInfo
 
 import implicity_api.modules.event_source.posthog as posthog_api
 import pytest
@@ -41,7 +42,7 @@ def test_setup_fills_empty_timezone_and_preserves_an_existing_timezone(
     example.write_text("TZ=\n")
     values = setup.ensure_env(env, example)
     assert values["TZ"]
-    assert "/" in values["TZ"]
+    assert ZoneInfo(values["TZ"]).key == values["TZ"]
     env.write_text("TZ=America/Chicago\n")
     assert setup.ensure_env(env, example)["TZ"] == "America/Chicago"
 
@@ -176,7 +177,17 @@ def test_event_source_registers_s3_hogql_shape_and_reconciles_idempotently(tmp_p
 
         def get_endpoint(self, project_id, name):
             return (
-                {"name": name, "query": self.saved[name]}
+                {
+                    "name": name,
+                    "query": {
+                        **self.saved[name],
+                        "explain": None,
+                        "variables": {
+                            key: {**value, "isNull": None}
+                            for key, value in self.saved[name]["variables"].items()
+                        },
+                    },
+                }
                 if name in self.saved
                 else None
             )
@@ -196,9 +207,14 @@ def test_event_source_registers_s3_hogql_shape_and_reconciles_idempotently(tmp_p
     assert query["kind"] == s3["api_calls"][0]["payload"]["query"]["kind"]
     assert all(
         f"{{variables.{name}}}" in query["query"]
-        for name in ("daily_start", "daily_end", "daily_excluded_sessions")
+        for name in (
+            "daily_start",
+            "daily_end",
+            "daily_excluded_sessions",
+            "daily_zone",
+        )
     )
-    assert len(query["variables"]) == 3
+    assert len(query["variables"]) == 4
     assert register_features(client, 17, feature_dir, "Asia/Kolkata") == (0, 2)
     assert len(client.writes) == 2
     binding = next(iter(client.saved["daily"]["variables"].values()))
@@ -207,7 +223,7 @@ def test_event_source_registers_s3_hogql_shape_and_reconciles_idempotently(tmp_p
     assert client.writes[-1][0] == "PATCH"
     assert register_features(client, 17, feature_dir, "Asia/Kolkata") == (0, 2)
     assert len(client.writes) == 3
-    assert "toDate(timestamp, 'Asia/Kolkata')" in query["query"]
+    assert "toDate(timestamp, {variables.daily_zone})" in query["query"]
     assert any(write[2] == "session_summaries" for write in client.writes)
 
 
@@ -219,7 +235,7 @@ def test_named_missing_project_reports_available_projects():
     with pytest.raises(
         RuntimeError, match="PostHog project 'Implicity' was not found"
     ) as error:
-        setup.ensure_project(Client(), "Implicity", allow_sole=False)
+        posthog_api.ensure_project(Client(), "Implicity", allow_sole=False)
     assert "Existing projects: Default project" in str(error.value)
     assert "Create it in PostHog" in str(error.value)
 
@@ -329,18 +345,18 @@ def test_browser_gate_requires_tty_and_honors_all_ci_values(monkeypatch):
     stdin.isatty.return_value = stdout.isatty.return_value = True
     monkeypatch.setattr(setup.sys, "stdin", stdin)
     monkeypatch.setattr(setup.sys, "stdout", stdout)
-    monkeypatch.setattr(setup.webbrowser, "open", opener)
+    monkeypatch.setattr(posthog_api.webbrowser, "open", opener)
     monkeypatch.delenv("IMPLICITY_SETUP_NO_BROWSER", raising=False)
     for key in ("CI", "BROWSER", "DISPLAY", "WAYLAND_DISPLAY"):
         monkeypatch.delenv(key, raising=False)
     for value in ("true", "YES", "1"):
         monkeypatch.setenv("CI", value)
-        assert not setup.open_posthog_if_interactive("http://localhost")
+        assert not posthog_api.open_posthog_if_interactive("http://localhost")
     monkeypatch.delenv("CI")
-    assert setup.open_posthog_if_interactive("http://localhost")
+    assert posthog_api.open_posthog_if_interactive("http://localhost")
     opener.assert_called_once_with("http://localhost")
     stdin.isatty.return_value = False
-    assert not setup.open_posthog_if_interactive("http://localhost")
+    assert not posthog_api.open_posthog_if_interactive("http://localhost")
 
 
 def test_setup_entry_migrates_before_manual_stop_and_prints_exact_instructions(
@@ -519,13 +535,13 @@ def test_setup_entry_drives_http_and_docker_boundaries_and_is_idempotent(
         (tmp_path / ".env.example").write_text(
             "HERMES_API_KEY=populated-secret\nPOSTHOG_PERSONAL_API_KEY=personal\nPOSTHOG_PROJECT_ID=\nVITE_POSTHOG_API_KEY=\nPOSTHOG_PORT="
             + str(server.server_port)
-            + "\n"
+            + "\nTZ=\n"
         )
         env = tmp_path / ".env"
         env.write_text(
             "HERMES_API_KEY=populated-secret\nPOSTHOG_PERSONAL_API_KEY=personal\nPOSTHOG_PORT="
             + str(server.server_port)
-            + "\n"
+            + "\nTZ=\n"
         )
         features = tmp_path / "contracts" / "features"
         features.mkdir(parents=True)
@@ -543,6 +559,7 @@ def test_setup_entry_drives_http_and_docker_boundaries_and_is_idempotent(
             docker_calls.append(list(args))
             output = ""
             if args == ["make", "up-development"]:
+                assert kwargs["env"]["TZ"] == "Asia/Kolkata"
                 up_calls += 1
                 if up_calls == 2:
                     service_ids[:] = ["rotated-api", "rotated-web"]
@@ -570,6 +587,7 @@ def test_setup_entry_drives_http_and_docker_boundaries_and_is_idempotent(
         monkeypatch.setattr(setup.subprocess, "run", docker)
         monkeypatch.setenv("IMPLICITY_SETUP_NO_BROWSER", "1")
         monkeypatch.delenv("CI", raising=False)
+        monkeypatch.setenv("TZ", "Asia/Kolkata")
         assert setup.main() == 0
         first_output = capsys.readouterr().out
         assert "Compose: already healthy (no changes)" in first_output
@@ -594,11 +612,12 @@ def test_setup_entry_drives_http_and_docker_boundaries_and_is_idempotent(
             for method, path, body in state["requests"]
             if method == "POST" and path.endswith("/endpoints/")
         )
-        assert len(payload["variables"]) == 3
+        assert len(payload["variables"]) == 4
         assert {item["value"] for item in payload["variables"].values()} == {
             "2000-01-01",
             "2100-01-01",
             "",
+            "Asia/Kolkata",
         }
         assert any(
             method == "POST"
@@ -636,7 +655,7 @@ def test_setup_entry_drives_http_and_docker_boundaries_and_is_idempotent(
                 method == "POST" and path.endswith("/insight_variables/")
                 for method, path, _ in state["requests"]
             )
-            == 6
+            == 8
         )
         assert setup.main() == 0
         unchanged_output = capsys.readouterr().out
@@ -682,3 +701,37 @@ def test_setup_entry_drives_http_and_docker_boundaries_and_is_idempotent(
         server.shutdown()
         thread.join()
         server.server_close()
+
+
+def test_setup_persists_timezone_from_shell(tmp_path, monkeypatch):
+    env, example = tmp_path / ".env", tmp_path / ".env.example"
+    env.write_text("TZ=\n")
+    example.write_text("TZ=\n")
+    monkeypatch.setenv("TZ", "America/Chicago")
+    assert setup.ensure_env(env, example)["TZ"] == "America/Chicago"
+    assert env.read_text() == "TZ=America/Chicago\n"
+    monkeypatch.delenv("TZ")
+    assert setup.ensure_env(env, example)["TZ"] == "America/Chicago"
+
+
+def test_setup_rejects_timezone_abbreviation(tmp_path, monkeypatch):
+    env, example = tmp_path / ".env", tmp_path / ".env.example"
+    env.write_text("TZ=\n")
+    example.write_text("TZ=\n")
+    monkeypatch.setenv("TZ", "IST")
+    zone = "Asia/Kolkata"
+    zone_file = next(
+        Path(root) / zone for root in setup.TZPATH if (Path(root) / zone).is_file()
+    )
+    localtime = tmp_path / "localtime"
+    localtime.write_bytes(zone_file.read_bytes())
+    monkeypatch.setattr(setup, "LOCALTIME", localtime, raising=False)
+    monkeypatch.setattr(setup, "TIMEZONE_FILE", tmp_path / "missing", raising=False)
+    monkeypatch.setattr(setup, "available_timezones", lambda: {zone}, raising=False)
+    assert setup.ensure_env(env, example)["TZ"] == zone
+    assert env.read_text() == f"TZ={zone}\n"
+
+
+def test_provider_setup_lives_in_event_source():
+    source = Path(setup.__file__).read_text().lower()
+    assert "posthog" not in source

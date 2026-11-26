@@ -6,24 +6,15 @@ import secrets
 import subprocess
 import sys
 import tempfile
-import time
-import webbrowser
 from pathlib import Path
-from zoneinfo import TZPATH
+from zoneinfo import TZPATH, ZoneInfo, ZoneInfoNotFoundError, available_timezones
 
-from implicity_api.modules.event_source.posthog import (
-    PostHog,
-    ensure_project,
-    register_features,
-)
+from implicity_api.modules import event_source
 
 ROOT = Path(__file__).resolve().parents[3]
 SECRET_BYTES = {
     "HERMES_API_KEY": 32,
-    "POSTHOG_DB_PASSWORD": 32,
-    "POSTHOG_CH_PASSWORD": 32,
-    "POSTHOG_SECRET": 32,
-    "POSTHOG_ENCRYPTION_SALT_KEYS": 16,
+    **event_source.EVENT_STORE_SECRET_BYTES,
 }
 
 
@@ -101,7 +92,9 @@ def _expand(value: str, lookup, depth: int = 0) -> str:
     return value.replace(escaped, "$")
 
 
-def _env_lines(path: Path) -> tuple[list[str], dict[str, str]]:
+def _env_lines(
+    path: Path, *, ignore_shell_tz=False
+) -> tuple[list[str], dict[str, str]]:
     lines = path.read_text().splitlines() if path.exists() else []
     parsed = {}
     for line in lines:
@@ -113,7 +106,7 @@ def _env_lines(path: Path) -> tuple[list[str], dict[str, str]]:
     resolving = set()
 
     def lookup(key):
-        if key in os.environ:
+        if key in os.environ and not (key == "TZ" and ignore_shell_tz):
             return os.environ[key]
         if key in resolved:
             return resolved[key]
@@ -146,14 +139,13 @@ def set_env_value(path: Path, key: str, value: str) -> None:
     if key in os.environ:
         if os.environ[key] != value:
             raise RuntimeError(
-                f"{key} in the environment does not match the project returned "
-                "by PostHog"
+                f"{key} in the environment does not match the value returned by setup"
             )
         return
     if values.get(key):
         if values[key] != value:
             raise RuntimeError(
-                f"{key} in .env does not match the project returned by PostHog; "
+                f"{key} in .env does not match the value returned by setup; "
                 "reconcile it and rerun setup"
             )
         return
@@ -169,6 +161,43 @@ def set_env_value(path: Path, key: str, value: str) -> None:
     _write_env(path, lines)
 
 
+LOCALTIME = Path("/etc/localtime")
+TIMEZONE_FILE = Path("/etc/timezone")
+
+
+def _valid_zone(value: str) -> bool:
+    if not value or (value.isupper() and "/" not in value and value != "UTC"):
+        return False
+    try:
+        ZoneInfo(value)
+    except (ZoneInfoNotFoundError, ValueError):
+        return False
+    return True
+
+
+def _machine_timezone() -> str:
+    localtime = LOCALTIME.resolve()
+    marker = "/zoneinfo/"
+    if marker in str(localtime):
+        value = str(localtime).rsplit(marker, 1)[1]
+        if _valid_zone(value):
+            return value
+    if TIMEZONE_FILE.is_file():
+        value = TIMEZONE_FILE.read_text().strip()
+        if _valid_zone(value):
+            return value
+    if localtime.is_file():
+        data = localtime.read_bytes()
+        for zone in sorted(available_timezones()):
+            if not _valid_zone(zone):
+                continue
+            for directory in TZPATH:
+                candidate = Path(directory) / zone
+                if candidate.is_file() and candidate.read_bytes() == data:
+                    return zone
+    return "UTC"
+
+
 def ensure_env(
     path: Path,
     example: Path,
@@ -177,60 +206,44 @@ def ensure_env(
     existed = path.exists()
     lines, values = _env_lines(path)
     template = example.read_text().splitlines()
-    machine_timezone = os.environ.get("TZ", "")
-    if not machine_timezone:
-        localtime = Path("/etc/localtime").resolve()
-        for root in TZPATH:
-            try:
-                machine_timezone = str(localtime.relative_to(Path(root)))
-                break
-            except ValueError:
-                continue
-        if not machine_timezone:
-            marker = "/zoneinfo/"
-            resolved = str(localtime)
-            if marker in resolved:
-                machine_timezone = resolved.rsplit(marker, 1)[1]
-        if not machine_timezone:
-            timezone_file = Path("/etc/timezone")
-            machine_timezone = (
-                timezone_file.read_text().strip()
-                if timezone_file.exists()
-                else time.tzname[0]
-            )
+    shell_zone = os.environ.get("TZ", "")
+    if not _valid_zone(shell_zone):
+        shell_zone = ""
     for line in template:
         key, separator, value = line.partition("=")
         if not separator or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key):
             if not path.exists():
                 lines.append(line)
             continue
-        if not values.get(key) and (
-            key not in os.environ or key == "TZ" and not os.environ.get("TZ")
-        ):
+        if key == "TZ":
+            _, file_values = _env_lines(path, ignore_shell_tz=True)
+            if file_zone := file_values.get(key):
+                values[key] = shell_zone or file_zone
+                continue
+            generated = shell_zone or _machine_timezone()
+        elif not values.get(key) and key not in os.environ:
             generated = value
-            if key == "TZ":
-                generated = machine_timezone
             if key in SECRET_BYTES:
                 generated = token_hex(SECRET_BYTES[key])
             elif value.startswith("replace-with-"):
                 generated = token_hex(32)
-            existing = next(
-                (
-                    i
-                    for i in range(len(lines) - 1, -1, -1)
-                    if re.fullmatch(
-                        rf"\s*(?:export\s+)?{re.escape(key)}\s*[:=].*", lines[i]
-                    )
-                ),
-                None,
-            )
-            if existing is not None:
-                lines[existing] = f"{key}={generated}"
-            else:
-                lines.append(f"{key}={generated}")
-            values[key] = generated
         else:
             continue
+        existing = next(
+            (
+                i
+                for i in range(len(lines) - 1, -1, -1)
+                if re.fullmatch(
+                    rf"\s*(?:export\s+)?{re.escape(key)}\s*[:=].*", lines[i]
+                )
+            ),
+            None,
+        )
+        if existing is not None:
+            lines[existing] = f"{key}={generated}"
+        else:
+            lines.append(f"{key}={generated}")
+        values[key] = generated
     if not existed or lines != path.read_text().splitlines():
         _write_env(path, lines)
     else:
@@ -239,15 +252,14 @@ def ensure_env(
         {
             key: os.environ[key]
             for line in template
-            if (key := line.partition("=")[0]) in os.environ
-            and (key != "TZ" or os.environ[key])
+            if (key := line.partition("=")[0]) in os.environ and key != "TZ"
         }
     )
     return values
 
 
-def _run(args: list[str], *, capture=False) -> subprocess.CompletedProcess:
-    return subprocess.run(args, check=True, text=True, capture_output=capture)
+def _run(args: list[str], *, capture=False, env=None) -> subprocess.CompletedProcess:
+    return subprocess.run(args, check=True, text=True, capture_output=capture, env=env)
 
 
 def _healthy_stack() -> bool:
@@ -316,15 +328,20 @@ def hermes_codex_signed_in(status: str) -> bool:
     )
 
 
-def open_posthog_if_interactive(url: str) -> bool:
-    if (
-        sys.stdin.isatty()
-        and sys.stdout.isatty()
-        and os.getenv("IMPLICITY_SETUP_NO_BROWSER") != "1"
-        and os.getenv("CI", "").strip().lower() not in {"1", "true", "yes"}
-    ):
-        return webbrowser.open(url)
-    return False
+def _refresh_capture() -> None:
+    _run(
+        [
+            "docker",
+            "compose",
+            "--profile",
+            "development",
+            "up",
+            "-d",
+            "--no-deps",
+            "--wait",
+            "web-development",
+        ]
+    )
 
 
 def _setup() -> int:
@@ -348,7 +365,8 @@ def _setup() -> int:
     )
     stack_was_healthy = _healthy_stack()
     previous_containers = _container_ids()
-    _run(["make", "up-development"])
+    compose_env = {**os.environ, "TZ": values["TZ"]} if values.get("TZ") else None
+    _run(["make", "up-development"], env=compose_env)
     unchanged_stack = stack_was_healthy and previous_containers == _container_ids()
     print(
         "Compose: already healthy (no changes)"
@@ -383,87 +401,14 @@ def _setup() -> int:
         return error.returncode or 1
     print("Alembic: at head")
 
-    posthog_port = os.environ.get("POSTHOG_PORT", values.get("POSTHOG_PORT", "18000"))
-    posthog_url = f"http://127.0.0.1:{posthog_port}"
-    personal_key = values.get("POSTHOG_PERSONAL_API_KEY", "")
-    if not personal_key:
-        print(
-            f"PostHog needs one-time setup at {posthog_url}: create your account and "
-            "then create a personal API key with project:read, project:write, "
-            "endpoint:read, endpoint:write, insight_variable:read and "
-            "insight_variable:write scopes."
-        )
-        open_posthog_if_interactive(posthog_url)
-        print(
-            "Save the key as POSTHOG_PERSONAL_API_KEY in .env, then "
-            "run make setup again."
-        )
-        return 2
-
-    client = PostHog(posthog_url, personal_key)
-    project_name = values.get("POSTHOG_PROJECT_NAME") or "Implicity"
-    project, project_created = ensure_project(
-        client, project_name, allow_sole=not bool(values.get("POSTHOG_PROJECT_NAME"))
+    event_store_status = event_source.configure_event_store(
+        values,
+        ROOT / "contracts" / "features",
+        save_setting=lambda key, value: set_env_value(env_path, key, value),
+        refresh_capture=_refresh_capture,
     )
-    project_id = int(project["id"])
-    print(f"PostHog project: {'created' if project_created else 'found (skipped)'}")
-    if values.get("POSTHOG_PROJECT_ID") and values["POSTHOG_PROJECT_ID"] != str(
-        project_id
-    ):
-        raise RuntimeError(
-            "POSTHOG_PROJECT_ID in .env does not match the project returned by "
-            "PostHog; reconcile it and rerun setup"
-        )
-    project_id_changed = not values.get("POSTHOG_PROJECT_ID")
-    if project_id_changed:
-        set_env_value(env_path, "POSTHOG_PROJECT_ID", str(project_id))
-    print(
-        "PostHog project id: stored"
-        if project_id_changed
-        else "PostHog project id: already present (skipped)"
-    )
-    project_key = project.get("api_token")
-    if not project_key:
-        raise RuntimeError("PostHog returned a project without an API key")
-    if (
-        values.get("VITE_POSTHOG_API_KEY")
-        and values["VITE_POSTHOG_API_KEY"] != project_key
-    ):
-        raise RuntimeError(
-            "VITE_POSTHOG_API_KEY in .env does not match the project returned by "
-            "PostHog; reconcile it and rerun setup"
-        )
-    project_key_changed = not values.get("VITE_POSTHOG_API_KEY")
-    if project_key_changed:
-        set_env_value(env_path, "VITE_POSTHOG_API_KEY", project_key)
-        values["VITE_POSTHOG_API_KEY"] = project_key
-        _run(
-            [
-                "docker",
-                "compose",
-                "--profile",
-                "development",
-                "up",
-                "-d",
-                "--no-deps",
-                "--wait",
-                "web-development",
-            ]
-        )
-    print(
-        "PostHog project key: stored"
-        if project_key_changed
-        else "PostHog project key: already present (skipped)"
-    )
-
-    changed, unchanged = register_features(
-        client, project_id, ROOT / "contracts" / "features", values.get("TZ") or "UTC"
-    )
-    print(
-        f"Feature queries: {changed} created or updated, {unchanged} unchanged"
-        if changed + unchanged
-        else "Feature queries: skipped (no Feature definitions yet)"
-    )
+    if event_store_status:
+        return event_store_status
 
     auth_status = _codex_auth_status()
     if auth_status == "logged-out":
