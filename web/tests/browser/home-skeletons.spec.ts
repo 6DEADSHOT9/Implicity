@@ -184,6 +184,8 @@ test("long Switch and Add labels wrap inside the picker scroll viewport", async 
     const switchText = switchLabel.querySelector("span")!;
     const switchControl = switchLabel.querySelector("button[role=switch]")!;
     const add = element.querySelector('button[data-variant="outline"]')!;
+    const addText = add.querySelector("span")!;
+    const title = element.querySelector("[data-widget-picker-title]")!;
     const textBounds = (target: Element) => {
       const range = element.ownerDocument.createRange();
       range.selectNodeContents(target);
@@ -196,6 +198,8 @@ test("long Switch and Add labels wrap inside the picker scroll viewport", async 
       switchLabel: textBounds(switchText),
       wordBreak: getComputedStyle(element.querySelectorAll("label")[1].querySelector("span")!).wordBreak,
       addLabel: textBounds(add),
+      addWordBreak: getComputedStyle(addText).wordBreak,
+      titleWordBreak: getComputedStyle(title).wordBreak,
       scrollWidth: viewport.scrollWidth,
       clientWidth: viewport.clientWidth,
     };
@@ -210,6 +214,8 @@ test("long Switch and Add labels wrap inside the picker scroll viewport", async 
   expect(geometry.switchLabel.length).toBeGreaterThan(1);
   expect(geometry.wordBreak).toBe("normal");
   expect(geometry.addLabel.length, JSON.stringify(geometry)).toBeGreaterThan(1);
+  expect(geometry.addWordBreak).toBe("normal");
+  expect(geometry.titleWordBreak).toBe("normal");
 });
 
 test("WidgetPicker caps a dialog with two widgets and thirty Add rows", async ({ page }) => {

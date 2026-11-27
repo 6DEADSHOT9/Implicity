@@ -134,6 +134,29 @@ describe("WidgetPicker", () => {
     expect(onAdd).toHaveBeenCalledWith("supplier_watch");
   });
 
+  it("does not record a setting change when the parent accepts an added widget", async () => {
+    const recorder = recordingCapture();
+    const user = userEvent.setup();
+    const initial = meta.galleryStates[1].props;
+
+    function AcceptingParent() {
+      const [widgets, setWidgets] = useState(initial.widgets);
+      const [availableWidgets, setAvailableWidgets] = useState(initial.availableWidgets);
+      return <WidgetPicker {...initial} widgets={widgets} availableWidgets={availableWidgets} onAdd={(widgetId) => {
+        const added = availableWidgets.find((widget) => widget.widgetId === widgetId);
+        if (!added) return;
+        setWidgets((current) => [...current, { ...added, enabled: true }]);
+        setAvailableWidgets((current) => current.filter((widget) => widget.widgetId !== widgetId));
+      }} />;
+    }
+
+    render(<CaptureProvider sink={recorder.sink}><AcceptingParent /></CaptureProvider>);
+    await user.click(screen.getByRole("button", { name: "Add Data table" }));
+    expect(screen.getByRole("switch", { name: "Data table" }).getAttribute("aria-checked")).toBe("true");
+    expect(screen.queryByRole("button", { name: "Add Data table" })).toBeNull();
+    expect(recorder.events.filter(({ name }) => name === "setting_changed")).toEqual([]);
+  });
+
   it("returns focus to Customize when Escape closes the dialog", async () => {
     function ControlledPicker() {
       const [open, setOpen] = useState(false);

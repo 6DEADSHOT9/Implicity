@@ -73,7 +73,9 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
   const previewRoot = document.getElementById("root")!;
   const reportHeight = () => {
     if (!mounted || !fontsLoaded) return;
-    const height = Math.max(previewRoot.getBoundingClientRect().height, document.body.scrollHeight);
+    const height = document.body.dataset.previewPicker
+      ? Math.max(previewRoot.getBoundingClientRect().height, document.body.scrollHeight)
+      : previewRoot.getBoundingClientRect().height;
     if (height === previousHeight) return;
     previousHeight = height;
     window.parent.postMessage({ type: "preview-height", height }, location.origin);
