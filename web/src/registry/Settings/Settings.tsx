@@ -41,7 +41,7 @@ export function Settings({ open, tab, onTabChange, onClose, slots = {} }: Props)
         <DialogHeader><DialogTitle>Settings</DialogTitle><DialogDescription>Manage workspace settings.</DialogDescription></DialogHeader>
         <Tabs value={tab} onValueChange={(value) => onTabChange?.(value as View)} className="flex min-h-0 min-w-0 flex-1 flex-col">
           <TabsList className="h-auto w-full flex-wrap">{views.map(({ id, label }) => <TabsTrigger key={id} value={id} className="min-h-control min-w-0 whitespace-normal break-words">{label}</TabsTrigger>)}</TabsList>
-          {views.map(({ id, label }) => <TabsContent key={id} value={id} className="min-h-0 min-w-0 flex-1 overflow-y-auto break-words rounded-md border-token border-border p-space-3"><h3 className="mb-space-2 font-semibold">{label}</h3>{slots[id]}</TabsContent>)}
+          {views.map(({ id, label }) => <TabsContent key={id} value={id} className="min-h-0 min-w-0 flex-1 overflow-y-auto break-words rounded-md token-border border-border p-space-3"><h3 className="mb-space-2 font-semibold">{label}</h3>{slots[id]}</TabsContent>)}
         </Tabs>
       </DialogContent>
     </Dialog>

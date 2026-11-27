@@ -21,7 +21,7 @@ export function ChatHeader({ title, kind, settingsOpen = false, onSettingsOpenCh
     }
   };
   return (
-    <header ref={seenRef} aria-labelledby={titleId} className="flex min-w-0 flex-wrap items-center justify-between gap-space-2 border-b-token border-border p-space-3">
+    <header ref={seenRef} aria-labelledby={titleId} className="flex min-w-0 flex-wrap items-center justify-between gap-space-2 token-border-b border-border p-space-3">
       <h1 id={titleId} className="min-w-0 flex-1 break-words text-xl font-semibold">{title}</h1>
       <Badge variant="secondary" className="max-w-full break-words">{kind}</Badge>
       <DropdownMenu open={settingsOpen} onOpenChange={onSettingsOpenChange}>
