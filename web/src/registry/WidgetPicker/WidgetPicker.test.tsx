@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
@@ -218,6 +218,169 @@ describe("WidgetPicker", () => {
       { name: "setting_changed", dimension: "home_widgets", value: "off", component: "ResumeWidget" },
       { name: "setting_changed", dimension: "home_widgets", value: "on", component: "ResumeWidget" },
     ]));
+  });
+
+  it("settles every same-value request when the parent shows it once", async () => {
+    const recorder = recordingCapture();
+    const props = meta.galleryStates[1].props;
+    const answers: Array<(accepted: boolean) => void> = [];
+    let show: (enabled: boolean) => void = () => {};
+    function Parent() {
+      const [widgets, setWidgets] = useState(props.widgets);
+      show = (enabled) => setWidgets((current) => current.map((widget) => ({ ...widget, enabled })));
+      return <>
+        <WidgetPicker {...props} widgets={widgets} onWidgetChange={() => new Promise((resolve) => answers.push(resolve))} />
+        <button onClick={() => show(false)}>Show off</button>
+        <button onClick={() => show(true)}>App on</button>
+        <button onClick={() => show(false)}>App off</button>
+      </>;
+    }
+    const user = userEvent.setup();
+    render(<CaptureProvider sink={recorder.sink}><Parent /></CaptureProvider>);
+    const resume = screen.getByRole("switch", { name: "Resume" });
+    await user.click(resume);
+    await user.click(resume);
+    expect(answers).toHaveLength(2);
+    act(() => answers.forEach((resolve) => resolve(true)));
+    await user.click(screen.getByRole("button", { name: "Show off" }));
+    await waitFor(() => expect(recorder.events.filter(({ name }) => name === "setting_changed")).toEqual([
+      { name: "setting_changed", dimension: "home_widgets", value: "off", component: "ResumeWidget" },
+    ]));
+    await user.click(screen.getByRole("button", { name: "App on" }));
+    await user.click(screen.getByRole("button", { name: "App off" }));
+    expect(recorder.events.filter(({ name }) => name === "setting_changed")).toHaveLength(1);
+  });
+
+  it("ignores later answers after one accepted shown value settles the requests", async () => {
+    const recorder = recordingCapture();
+    const props = meta.galleryStates[1].props;
+    const answers: Array<(accepted: boolean) => void> = [];
+    let showOff: () => void = () => {};
+    function Parent() {
+      const [widgets, setWidgets] = useState(props.widgets);
+      showOff = () => setWidgets((current) => current.map((widget) => ({ ...widget, enabled: false })));
+      return <>
+        <WidgetPicker {...props} widgets={widgets} onWidgetChange={() => new Promise((resolve) => answers.push(resolve))} />
+        <button onClick={showOff}>Show off</button>
+      </>;
+    }
+    const user = userEvent.setup();
+    render(<CaptureProvider sink={recorder.sink}><Parent /></CaptureProvider>);
+    const resume = screen.getByRole("switch", { name: "Resume" });
+    await user.click(resume);
+    await user.click(resume);
+    act(() => answers[0](true));
+    await user.click(screen.getByRole("button", { name: "Show off" }));
+    await waitFor(() => expect(recorder.events.filter(({ name }) => name === "setting_changed")).toHaveLength(1));
+    act(() => answers[1](true));
+    expect(recorder.events.filter(({ name }) => name === "setting_changed")).toEqual([
+      { name: "setting_changed", dimension: "home_widgets", value: "off", component: "ResumeWidget" },
+    ]);
+  });
+
+  it("records the accepted second request when the first never settles", async () => {
+    const recorder = recordingCapture();
+    const props = meta.galleryStates[1].props;
+    let calls = 0;
+    let acceptSecond: (accepted: boolean) => void = () => {};
+    let showOff: () => void = () => {};
+    function Parent() {
+      const [widgets, setWidgets] = useState(props.widgets);
+      showOff = () => setWidgets((current) => current.map((widget) => ({ ...widget, enabled: false })));
+      return <>
+        <WidgetPicker {...props} widgets={widgets} onWidgetChange={() => {
+          calls += 1;
+          return calls === 1 ? new Promise<boolean>(() => {}) : new Promise((resolve) => { acceptSecond = resolve; });
+        }} />
+        <button onClick={showOff}>Show off</button>
+      </>;
+    }
+    const user = userEvent.setup();
+    render(<CaptureProvider sink={recorder.sink}><Parent /></CaptureProvider>);
+    const resume = screen.getByRole("switch", { name: "Resume" });
+    await user.click(resume);
+    await user.click(resume);
+    await user.click(screen.getByRole("button", { name: "Show off" }));
+    act(() => acceptSecond(true));
+    await waitFor(() => expect(recorder.events.filter(({ name }) => name === "setting_changed")).toEqual([
+      { name: "setting_changed", dimension: "home_widgets", value: "off", component: "ResumeWidget" },
+    ]));
+  });
+
+  it("records the accepted second request when the first rejects", async () => {
+    const recorder = recordingCapture();
+    const props = meta.galleryStates[1].props;
+    let calls = 0;
+    let acceptSecond: (accepted: boolean) => void = () => {};
+    let showOff: () => void = () => {};
+    function Parent() {
+      const [widgets, setWidgets] = useState(props.widgets);
+      showOff = () => setWidgets((current) => current.map((widget) => ({ ...widget, enabled: false })));
+      return <>
+        <WidgetPicker {...props} widgets={widgets} onWidgetChange={() => {
+          calls += 1;
+          if (calls === 1) throw new Error("save failed");
+          return new Promise((resolve) => { acceptSecond = resolve; });
+        }} />
+        <button onClick={showOff}>Show off</button>
+      </>;
+    }
+    const user = userEvent.setup();
+    render(<CaptureProvider sink={recorder.sink}><Parent /></CaptureProvider>);
+    const resume = screen.getByRole("switch", { name: "Resume" });
+    await user.click(resume);
+    await user.click(resume);
+    await user.click(screen.getByRole("button", { name: "Show off" }));
+    act(() => acceptSecond(true));
+    await waitFor(() => expect(recorder.events.filter(({ name }) => name === "setting_changed")).toEqual([
+      { name: "setting_changed", dimension: "home_widgets", value: "off", component: "ResumeWidget" },
+    ]));
+  });
+
+  it("ignores a new unchanged widgets array while an accepted request is pending", async () => {
+    const recorder = recordingCapture();
+    const props = meta.galleryStates[1].props;
+    let showOff: () => void = () => {};
+    let resolveSave: (accepted: boolean) => void = () => {};
+    function Parent() {
+      const [widgets, setWidgets] = useState(props.widgets);
+      const [revision, setRevision] = useState(0);
+      showOff = () => setWidgets((current) => current.map((widget) => ({ ...widget, enabled: false })));
+      return <>
+        <WidgetPicker {...props} widgets={widgets} onWidgetChange={() => new Promise((resolve) => { resolveSave = resolve; })} />
+        <button onClick={() => { setWidgets((current) => [...current]); setRevision((value) => value + 1); }}>New list {revision}</button>
+        <button onClick={showOff}>Show off</button>
+      </>;
+    }
+    const user = userEvent.setup();
+    render(<CaptureProvider sink={recorder.sink}><Parent /></CaptureProvider>);
+    await user.click(screen.getByRole("switch", { name: "Resume" }));
+    await user.click(screen.getByRole("button", { name: "New list 0" }));
+    await user.click(screen.getByRole("button", { name: "Show off" }));
+    act(() => resolveSave(true));
+    await waitFor(() => expect(recorder.events.filter(({ name }) => name === "setting_changed")).toEqual([
+      { name: "setting_changed", dimension: "home_widgets", value: "off", component: "ResumeWidget" },
+    ]));
+  });
+
+  it("does not record a promise refusal or rejection followed by an app change", async () => {
+    for (const getResult of [() => Promise.resolve(false), () => Promise.reject(new Error("save failed"))]) {
+      const recorder = recordingCapture();
+      const props = meta.galleryStates[1].props;
+      let appChange: () => void = () => {};
+      function Parent() {
+        const [widgets, setWidgets] = useState(props.widgets);
+        appChange = () => setWidgets((current) => current.map((widget) => ({ ...widget, enabled: false })));
+        return <WidgetPicker {...props} widgets={widgets} onWidgetChange={getResult} />;
+      }
+      const user = userEvent.setup();
+      render(<CaptureProvider sink={recorder.sink}><Parent /></CaptureProvider>);
+      await user.click(screen.getByRole("switch", { name: "Resume" }));
+      await act(async () => { await Promise.resolve(); });
+      act(() => appChange());
+      expect(recorder.events.filter(({ name }) => name === "setting_changed")).toEqual([]);
+      cleanup();
+    }
   });
 
   it("passes the selected available widget id to onAdd", async () => {

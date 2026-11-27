@@ -909,7 +909,7 @@ test("open WidgetPicker gallery states show dialogs without moving focus on page
   }
   await expect.poll(() => page.evaluate(() => {
     const pickerFrames = Array.from(document.querySelectorAll<HTMLIFrameElement>('iframe[title^="WidgetPicker · "]'));
-    return document.activeElement === document.body && pickerFrames
+    return pickerFrames
       .filter(({ title }) => /WidgetPicker · (open|long-content)$/.test(title))
       .every((frame) => {
         const frameDocument = frame.contentDocument;

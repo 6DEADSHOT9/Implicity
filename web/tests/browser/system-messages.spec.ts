@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import registrySnapshot from "../../../contracts/generated/components/registry.json" with { type: "json" };
 import { measureContrast } from "./contrast";
 
 async function expectPanelsInsideFrames(page: import("@playwright/test").Page, previews: readonly (readonly [string, string])[]) {
@@ -153,98 +154,81 @@ test("system message Skeletons render across every gallery setting", async ({ pa
   expect(errors).toEqual([]);
 });
 
-async function mountRealGallery(page: import("@playwright/test").Page) {
+const galleryCohorts = Array.from({ length: 4 }, (_, cohort) => ({
+  name: `cohort ${cohort + 1}`,
+  ids: registrySnapshot.components.filter((_, index) => index % 4 === cohort),
+}));
+
+async function mountRealGallery(page: import("@playwright/test").Page, componentIds: string[]) {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto("/");
+  await page.goto(`/tests/browser/focused-gallery.html?ids=${encodeURIComponent(componentIds.join(","))}`);
   const frameCount = await page.locator("iframe").count();
   expect(frameCount).toBeGreaterThan(0);
-  const observePreviewSettings = () => page.evaluate(() => {
-    const target = window as Window & {
-      __galleryApplied?: Map<string, string>;
-      __galleryDocuments?: WeakMap<HTMLIFrameElement, Document>;
-      __galleryLoadListeners?: WeakSet<HTMLIFrameElement>;
-    };
-    const applied = target.__galleryApplied ??= new Map();
-    const documents = target.__galleryDocuments ??= new WeakMap();
-    const loadListeners = target.__galleryLoadListeners ??= new WeakSet();
-    const observe = (frame: HTMLIFrameElement) => {
-      const preview = frame.contentDocument;
-      if (!preview?.documentElement || documents.get(frame) === preview) return;
-      documents.set(frame, preview);
-      const record = () => {
-        const { dataset } = preview.documentElement;
-        applied.set(frame.title, JSON.stringify({ look: dataset.look, mode: dataset.mode, density: dataset.density, textSize: dataset.textSize, deviceClass: dataset.deviceClass }));
-      };
-      new MutationObserver(record).observe(preview.documentElement, { attributes: true, attributeFilter: ["data-look", "data-mode", "data-density", "data-text-size", "data-device-class"] });
-      record();
-    };
-    for (const frame of document.querySelectorAll<HTMLIFrameElement>("iframe")) {
-      observe(frame);
-      if (!loadListeners.has(frame)) {
-        loadListeners.add(frame);
-        frame.addEventListener("load", () => observe(frame));
-      }
-    }
-  });
-  const waitForEveryPreview = async (key?: string) => {
-    try {
-      await page.waitForFunction(({ expectedCount, expectedKey }) => {
-        const frames = Array.from(document.querySelectorAll<HTMLIFrameElement>("iframe"));
-        if (frames.length !== expectedCount) return false;
-        const applied = (window as Window & { __galleryApplied?: Map<string, string> }).__galleryApplied;
-        return !!applied && frames.every((frame) => applied.get(frame.title) === expectedKey);
-      }, { expectedCount: frameCount, expectedKey: key }, { timeout: 10_000 });
-    } catch (error) {
-      const missing = await page.evaluate(({ expectedCount, expectedKey }) => {
-        const frames = Array.from(document.querySelectorAll<HTMLIFrameElement>("iframe"));
-        const applied = (window as Window & { __galleryApplied?: Map<string, string> }).__galleryApplied;
-        return frames.filter((frame) => applied?.get(frame.title) !== expectedKey).map((frame) => frame.title);
-      }, { expectedCount: frameCount, expectedKey: key });
-      throw new Error(`Gallery previews did not apply ${key ?? "their initial mount"}: ${missing.join(", ")}`, { cause: error });
-    }
-  };
-
+  const expectedFrames = frameCount;
   const waitForEverySetting = async () => {
     const expected = await Promise.all(["Look", "Mode", "Density", "Text size", "Screen size"].map(async (label) => [label, await page.getByLabel(label).inputValue()] as const));
     const settings = Object.fromEntries(expected) as Record<string, string>;
-    const key = JSON.stringify({ look: settings.Look, mode: settings.Mode, density: settings.Density, textSize: settings["Text size"], deviceClass: settings["Screen size"] });
-    await observePreviewSettings();
-    await waitForEveryPreview(key);
+    const expectedKey = JSON.stringify({ look: settings.Look, mode: settings.Mode, density: settings.Density, textSize: settings["Text size"], deviceClass: settings["Screen size"] });
+    await page.waitForFunction(({ expectedCount, key }) => {
+      const frames = Array.from(document.querySelectorAll<HTMLIFrameElement>("iframe"));
+      if (frames.length !== expectedCount) return false;
+      return frames.every((frame) => {
+        const document = frame.contentDocument;
+        if (!document?.querySelector("#root > *")) return false;
+        const { dataset } = document.documentElement;
+        return JSON.stringify({ look: dataset.look, mode: dataset.mode, density: dataset.density, textSize: dataset.textSize, deviceClass: dataset.deviceClass }) === key;
+      });
+    }, { expectedCount: expectedFrames, key: expectedKey }, { timeout: 10_000 });
   };
   const expectHealthyPreviews = async () => {
     const previewTexts = await page.locator("iframe").evaluateAll((frames) => (frames as HTMLIFrameElement[]).map((frame) => frame.contentDocument?.querySelector("#root")?.textContent ?? ""));
     expect(previewTexts.filter((text) => /Preview unavailable|preview failed/.test(text))).toEqual([]);
     expect(errors).toEqual([]);
   };
-  await observePreviewSettings();
+  await waitForEverySetting();
   return { waitForEverySetting, expectHealthyPreviews };
 }
 
-test("real gallery previews mount without uncaught errors", async ({ page }) => {
-  const { waitForEverySetting, expectHealthyPreviews } = await mountRealGallery(page);
-  for (const look of ["default", "focused", "notebook"]) {
-    await page.getByLabel("Look").selectOption(look);
-    await waitForEverySetting();
-    for (const mode of ["light", "dark"]) {
-      await page.getByLabel("Mode").selectOption(mode);
-      await waitForEverySetting();
+const realGallerySweeps = [
+  { name: "initial mount", run: async (_page: import("@playwright/test").Page, _wait: () => Promise<void>) => {} },
+  { name: "look and mode changes", run: async (page: import("@playwright/test").Page, wait: () => Promise<void>) => {
+    for (const look of ["default", "focused", "notebook"]) {
+      await page.getByLabel("Look").selectOption(look);
+      await wait();
+      for (const mode of ["light", "dark"]) {
+        await page.getByLabel("Mode").selectOption(mode);
+        await wait();
+      }
     }
+  } },
+  { name: "density and text size changes", run: async (page: import("@playwright/test").Page, wait: () => Promise<void>) => {
+    for (const density of ["compact", "comfortable", "spacious"]) {
+      await page.getByLabel("Density").selectOption(density);
+      await wait();
+    }
+    for (const textSize of ["1", "2", "3", "4", "5"]) {
+      await page.getByLabel("Text size").selectOption(textSize);
+      await wait();
+    }
+  } },
+  { name: "screen size changes", run: async (page: import("@playwright/test").Page, wait: () => Promise<void>) => {
+    for (const screenSize of ["desktop", "tablet"]) {
+      await page.getByLabel("Screen size").selectOption(screenSize);
+      await wait();
+    }
+  } },
+];
+
+for (const cohort of galleryCohorts) {
+  for (const sweep of realGallerySweeps) {
+    test(`real gallery ${cohort.name} ${sweep.name} have no uncaught preview errors`, async ({ page }) => {
+      const { waitForEverySetting, expectHealthyPreviews } = await mountRealGallery(page, cohort.ids);
+      await sweep.run(page, waitForEverySetting);
+      await expectHealthyPreviews();
+    });
   }
-  for (const density of ["compact", "comfortable", "spacious"]) {
-    await page.getByLabel("Density").selectOption(density);
-    await waitForEverySetting();
-  }
-  for (const textSize of ["1", "2", "3", "4", "5"]) {
-    await page.getByLabel("Text size").selectOption(textSize);
-    await waitForEverySetting();
-  }
-  for (const screenSize of ["desktop", "tablet"]) {
-    await page.getByLabel("Screen size").selectOption(screenSize);
-    await waitForEverySetting();
-  }
-  await expectHealthyPreviews();
-});
+}
 
 test("ChangeNotice shown events follow native disclosure and completed opacity reveals", async ({ page }) => {
   await page.goto("/");

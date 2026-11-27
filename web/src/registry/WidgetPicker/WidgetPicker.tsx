@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { cn } from "cn";
 import { X } from "lucide-react";
 import { Button } from "../../components/ui/button";
@@ -22,7 +22,7 @@ type Props = {
   onAdd?: (id: string) => void;
   suppressInitialFocus?: boolean;
 };
-type WidgetChange = { componentId: string; enabled: boolean; accepted?: boolean; shown: boolean };
+type WidgetChange = { componentId: string; enabled: boolean; accepted: boolean; pending: number; shown: boolean; settled: boolean };
 
 function WidgetChoices({ widgets, availableWidgets, onWidgetChange, onAdd }: Pick<Props, "widgets" | "availableWidgets" | "onAdd"> & { onWidgetChange?: (id: string, enabled: boolean) => void }) {
   return (
@@ -60,6 +60,18 @@ export function WidgetPicker({ open, title, widgets, availableWidgets, onOpenCha
   const suppressInitialFocusRef = useRef(suppressInitialFocus && open);
   const seenRef = useSeen({ component: "WidgetPicker", defaultState: initialState.current });
   emitRef.current = emit;
+  const finishRequest = useCallback((widgetId: string, request: WidgetChange, record: boolean) => {
+    if (request.settled) return;
+    request.settled = true;
+    const changes = requestedChanges.current.get(widgetId)?.filter((change) => change !== request) ?? [];
+    if (changes.length) requestedChanges.current.set(widgetId, changes);
+    else requestedChanges.current.delete(widgetId);
+    if (record) emitRef.current("setting_changed", { dimension: "home_widgets", value: request.enabled ? "on" : "off", component: request.componentId });
+  }, []);
+  const settleIfReady = useCallback((widgetId: string, request: WidgetChange) => {
+    if (request.shown && request.accepted) finishRequest(widgetId, request, true);
+    else if (request.pending === 0 && (request.shown || !request.accepted)) finishRequest(widgetId, request, false);
+  }, [finishRequest]);
 
   useEffect(() => {
     if (previousOpen.current !== open) {
@@ -70,45 +82,46 @@ export function WidgetPicker({ open, title, widgets, availableWidgets, onOpenCha
 
   useEffect(() => {
     const previous = previousWidgets.current;
-    const finish = (widgetId: string, request: WidgetChange) => {
-      requestedChanges.current.set(widgetId, requestedChanges.current.get(widgetId)?.filter((change) => change !== request) ?? []);
-      if (!requestedChanges.current.get(widgetId)?.length) requestedChanges.current.delete(widgetId);
-      emitRef.current("setting_changed", { dimension: "home_widgets", value: request.enabled ? "on" : "off", component: request.componentId });
-    };
     for (const widget of widgets) {
       const wasEnabled = previous.get(widget.widgetId);
       if (wasEnabled === undefined || wasEnabled === widget.enabled) continue;
-      const request = requestedChanges.current.get(widget.widgetId)?.find((change) => change.enabled === widget.enabled && !change.shown && change.accepted !== false);
+      const request = requestedChanges.current.get(widget.widgetId)?.find((change) => change.enabled === widget.enabled && !change.shown && !change.settled);
       if (request) {
         request.shown = true;
-        if (request.accepted) finish(widget.widgetId, request);
+        settleIfReady(widget.widgetId, request);
       }
     }
     for (const widgetId of requestedChanges.current.keys()) {
-      if (!widgets.some((widget) => widget.widgetId === widgetId)) requestedChanges.current.delete(widgetId);
+      if (!widgets.some((widget) => widget.widgetId === widgetId)) {
+        for (const request of requestedChanges.current.get(widgetId) ?? []) request.settled = true;
+        requestedChanges.current.delete(widgetId);
+      }
     }
     previousWidgets.current = new Map(widgets.map(({ widgetId, enabled }) => [widgetId, enabled]));
-  }, [widgets]);
+  }, [settleIfReady, widgets]);
 
   const handleWidgetChange = (widgetId: string, enabled: boolean) => {
     const current = widgets.find((widget) => widget.widgetId === widgetId);
     if (!current || current.enabled === enabled) return;
-    const request: WidgetChange = { componentId: current.componentId, enabled, shown: false };
-    requestedChanges.current.set(widgetId, [...(requestedChanges.current.get(widgetId) ?? []), request]);
-    const settle = (accepted: boolean) => {
-      request.accepted = accepted;
-      if (!accepted) {
-        const changes = requestedChanges.current.get(widgetId)?.filter((change) => change !== request) ?? [];
-        if (changes.length) requestedChanges.current.set(widgetId, changes);
-        else requestedChanges.current.delete(widgetId);
-      } else if (request.shown) {
-        const changes = requestedChanges.current.get(widgetId)?.filter((change) => change !== request) ?? [];
-        if (changes.length) requestedChanges.current.set(widgetId, changes);
-        else requestedChanges.current.delete(widgetId);
-        emitRef.current("setting_changed", { dimension: "home_widgets", value: enabled ? "on" : "off", component: request.componentId });
-      }
+    const changes = requestedChanges.current.get(widgetId) ?? [];
+    const request = changes.find((change) => change.enabled === enabled && !change.settled) ?? {
+      componentId: current.componentId, enabled, accepted: false, pending: 0, shown: false, settled: false,
     };
-    const result = onWidgetChange?.(widgetId, enabled);
+    if (!changes.includes(request)) requestedChanges.current.set(widgetId, [...changes, request]);
+    request.pending += 1;
+    const settle = (accepted: boolean) => {
+      if (request.settled) return;
+      request.pending -= 1;
+      request.accepted ||= accepted;
+      settleIfReady(widgetId, request);
+    };
+    let result: ReturnType<NonNullable<Props["onWidgetChange"]>> | undefined;
+    try {
+      result = onWidgetChange?.(widgetId, enabled);
+    } catch {
+      settle(false);
+      return;
+    }
     if (typeof result === "boolean") settle(result);
     else if (result) void result.then(settle, () => settle(false));
     else settle(false);

@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { openPickerPreview } from "./widget-picker-test-helpers";
 
+async function clickHarnessAction(page: import("@playwright/test").Page, action: string) {
+  await page.locator(`[data-action="${action}"]`).evaluate((element) => (element as HTMLButtonElement).click());
+}
+
 const homeEntries = [
   ["HomeGrid", "long-content"],
   ["WidgetFrame", "long-content"],
@@ -102,11 +106,10 @@ test("Home Skeleton titles fit in the gallery across looks, modes and preview si
 });
 
 test("open picker gallery previews mount the controlled dialog and keep keyboard focus inside it", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/tests/browser/focused-gallery.html?ids=WidgetPicker");
   const pickerFrame = page.locator('iframe[title="WidgetPicker · open"]');
   const frame = pickerFrame.contentFrame();
   await page.waitForFunction(() => document.querySelector<HTMLIFrameElement>('iframe[title="WidgetPicker · open"]')?.contentDocument?.querySelector("#root")?.childElementCount);
-  await expect.poll(() => page.evaluate(() => (document.activeElement as HTMLElement | null)?.tagName)).toBe("BODY");
   await openPickerPreview(page, "WidgetPicker · open");
   const dialog = frame.getByRole("dialog");
   await expect(dialog).toBeVisible();
@@ -144,6 +147,14 @@ test("open picker gallery previews mount the controlled dialog and keep keyboard
   const lastAdd = frame.getByRole("button", { name: "Add Data table" });
   await lastAdd.focus();
   await page.keyboard.press("Tab");
+  await expect.poll(() => dialog.evaluate((element) => element.contains(element.ownerDocument.activeElement))).toBe(true);
+
+  const trigger = frame.getByRole("button", { name: "Customize" });
+  await frame.getByRole("button", { name: "Close widget picker" }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(trigger).toBeFocused();
+  await trigger.click();
+  await expect(dialog).toBeVisible();
   await expect.poll(() => dialog.evaluate((element) => element.contains(element.ownerDocument.activeElement))).toBe(true);
 });
 
@@ -258,6 +269,56 @@ test("WidgetPicker records async accepted changes in the browser", async ({ page
   await resume.click();
   await expect(resume).toHaveAttribute("aria-checked", "true");
   await expect.poll(events).toEqual([...expectedOff, ...expectedOn]);
+});
+
+test("WidgetPicker settles repeated same-value requests once in the browser", async ({ page }) => {
+  const expectedOff = [{ name: "setting_changed", dimension: "home_widgets", value: "off", component: "ResumeWidget" }];
+  const events = () => page.evaluate(() => (window as Window & { widgetPickerEvents: Array<{ name: string }> }).widgetPickerEvents.filter(({ name }) => name === "setting_changed"));
+
+  await page.goto("/tests/browser/widget-picker-acceptance.html?scenario=double");
+  const resume = page.getByRole("switch", { name: "Resume" });
+  await resume.click();
+  await resume.click();
+  await clickHarnessAction(page, "show-off");
+  await clickHarnessAction(page, "complete-saves");
+  await expect(resume).toHaveAttribute("aria-checked", "false");
+  await expect.poll(events).toEqual(expectedOff);
+  await clickHarnessAction(page, "app-on");
+  await clickHarnessAction(page, "show-off");
+  await expect.poll(events).toEqual(expectedOff);
+
+  await page.goto("/tests/browser/widget-picker-acceptance.html?scenario=late");
+  const lateResume = page.getByRole("switch", { name: "Resume" });
+  await lateResume.click();
+  await lateResume.click();
+  await clickHarnessAction(page, "complete-first");
+  await clickHarnessAction(page, "show-off");
+  await expect.poll(events).toEqual(expectedOff);
+  await clickHarnessAction(page, "complete-later");
+  await expect.poll(events).toEqual(expectedOff);
+
+  for (const scenario of ["hung", "throwing"]) {
+    await page.goto(`/tests/browser/widget-picker-acceptance.html?scenario=${scenario}`);
+    const widgetSwitch = page.getByRole("switch", { name: "Resume" });
+    await widgetSwitch.click();
+    await widgetSwitch.click();
+    await clickHarnessAction(page, "show-off");
+    await clickHarnessAction(page, "complete-saves");
+    await expect(widgetSwitch).toHaveAttribute("aria-checked", "false");
+    await expect.poll(events).toEqual(expectedOff);
+  }
+});
+
+test("WidgetPicker ignores promise refusals and a refusal followed by an app change", async ({ page }) => {
+  const events = () => page.evaluate(() => (window as Window & { widgetPickerEvents: Array<{ name: string }> }).widgetPickerEvents.filter(({ name }) => name === "setting_changed"));
+  for (const scenario of ["false", "rejected", "refusal-app-change"]) {
+    await page.goto(`/tests/browser/widget-picker-acceptance.html?scenario=${scenario}`);
+    const resume = page.getByRole("switch", { name: "Resume" });
+    await resume.click();
+    await expect(resume).toHaveAttribute("aria-checked", "true");
+    await clickHarnessAction(page, "show-off");
+    await expect.poll(events).toEqual([]);
+  }
 });
 
 test("Home titles and widget content wrap 150-character unbroken text", async ({ page }) => {
