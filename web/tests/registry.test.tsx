@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { act, type ReactElement, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
-import { render as renderView } from "@testing-library/react";
+import { render as renderView, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import Ajv2020 from "ajv/dist/2020.js";
 import { z } from "zod";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -217,6 +218,7 @@ describe("conversation registry entries", () => {
   });
 });
 
+
 describe("registry and renderer", () => {
   it("keeps the reviewed minimum dimensions for every shell skeleton", () => {
     expect(Object.fromEntries(["AppShell", "ChatHeader", "Composer", "ConversationNavigation", "Search", "Settings"].map((id) => {
@@ -422,6 +424,47 @@ describe("registry and renderer", () => {
       elements: { metric: { type: "Metric", props: { label: "Quota", value: "25", progress: { value: 25, max: 20 } } } },
     };
     expect(await markup(renderMessage(metric, "plain fallback"))).toContain("plain fallback");
+  });
+
+  it("renders a static open WidgetPicker message inline", async () => {
+    const user = userEvent.setup();
+    const spec = {
+      registry_version: registry.version,
+      root: "picker",
+      elements: { picker: { type: "WidgetPicker", props: {
+        open: true,
+        title: "Add widgets",
+        widgets: [{ widgetId: "home_resume", componentId: "ResumeWidget", label: "Resume", enabled: true }],
+        availableWidgets: [{ widgetId: "supplier_watch", componentId: "DataTable", label: "Data table" }],
+      }, slots: {} } },
+    };
+    renderView(renderMessage(spec, "fallback"));
+    const preview = await screen.findByRole("region", { name: "Add widgets" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(preview).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Customize" })).toBeNull();
+    const resumeSwitch = screen.getByRole("switch", { name: "Resume" });
+    resumeSwitch.focus();
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("region", { name: "Add widgets" })).toBe(preview);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await user.tab();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Add Data table" }));
+    expect(screen.getByRole("region", { name: "Add widgets" })).toBe(preview);
+    await user.tab();
+    expect(preview.contains(document.activeElement)).toBe(false);
+  });
+
+  it("keeps a closed callback-free WidgetPicker message static", async () => {
+    const spec = {
+      registry_version: registry.version,
+      root: "picker",
+      elements: { picker: { type: "WidgetPicker", props: { open: false, title: "Add widgets", widgets: [], availableWidgets: [] }, slots: {} } },
+    };
+    const html = await markup(renderMessage(spec, "fallback"));
+    expect(html).toContain("Customize");
+    expect(html).not.toContain("<button");
+    expect(html).not.toContain('role="dialog"');
   });
 
   it("falls back from a throwing message component in place", async () => {

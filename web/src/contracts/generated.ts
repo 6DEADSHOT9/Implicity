@@ -1,5 +1,5 @@
 // Generated from contracts/schemas; run make contracts-generate.
-// schema-sha256: f8826138fc72ea352a776a935fff4699a57c9b773e054eb465fb41834d0ccf8a
+// schema-sha256: 2b93e4115e5ecebae93b018a1f3d73a59e316958dd45a28c3a4b7356d9e47887
 export type HttpsImplicityLocalContracts = Event | Proposal | Decision | Spec | ProposalRequest;
 export type Event =
   | Action_SessionStarted
@@ -42,6 +42,7 @@ export type Event =
   | SettingChanged_AnswerOrder
   | SettingChanged_AnswerForm
   | SettingChanged_AnswerTone
+  | SettingChanged_HomeWidgets
   | TurnSummary
   | SessionSummary
   | Action_RepresentationSwitched_DataForm
@@ -705,6 +706,23 @@ export interface SettingChanged_AnswerTone {
   name: "setting_changed";
   dimension: "answer_tone";
   value: "normal" | "warm" | "terse";
+}
+export interface SettingChanged_HomeWidgets {
+  event_id: string;
+  timestamp: string;
+  contracts_version: number;
+  session_id: string;
+  conversation_id?: string;
+  kind?: ("casual" | "coding" | "writing" | "analysis" | "other") | string;
+  component: string;
+  slot?: string;
+  layout_version: number;
+  registry_version: number;
+  device_class: "desktop" | "tablet";
+  input_type: "mouse" | "touch" | "pen" | "none";
+  name: "setting_changed";
+  dimension: "home_widgets";
+  value: "on" | "off";
 }
 export interface TurnSummary {
   event_id: string;
