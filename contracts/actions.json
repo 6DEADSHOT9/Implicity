@@ -1,0 +1,7 @@
+{
+  "length_cutoffs": {
+    "message_and_draft": { "medium": 80, "long": 400 },
+    "answer": { "medium": 600, "long": 2500 }
+  },
+  "meaningful_draft_characters": 80
+}

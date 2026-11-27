@@ -1,0 +1,4 @@
+export const SEEN_VISIBLE_RATIO = 0.5;
+export const SEEN_VISIBLE_SECONDS = 3;
+export const DEVICE_CLASS_BREAKPOINT = 1024;
+export const SECONDS_DECIMAL_PLACES = 1;

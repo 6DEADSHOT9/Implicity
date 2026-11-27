@@ -3,3 +3,5 @@ packages:
   - engine/react
   - engine/demo
 saveExact: true
+allowBuilds:
+  core-js: true

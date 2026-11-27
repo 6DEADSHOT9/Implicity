@@ -41,6 +41,7 @@ services:
     build: *web-build
     environment:
       VITE_POSTHOG_API_KEY: ${VITE_POSTHOG_API_KEY:-}
+      VITE_POSTHOG_HOST: ${VITE_POSTHOG_HOST:-http://127.0.0.1:${POSTHOG_PORT:-18000}}
     networks: [app]
     healthcheck:
       <<: *app-healthcheck
@@ -51,6 +52,7 @@ services:
     build: *web-build
     environment:
       VITE_POSTHOG_API_KEY: ${VITE_POSTHOG_API_KEY:-}
+      VITE_POSTHOG_HOST: ${VITE_POSTHOG_HOST:-http://127.0.0.1:${POSTHOG_PORT:-18000}}
     networks: [app]
     healthcheck:
       <<: *app-healthcheck

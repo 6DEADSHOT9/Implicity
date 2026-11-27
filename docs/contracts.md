@@ -88,6 +88,8 @@ A field that does not apply to an event is left out, never sent as null. A suspe
 
 **Vocabularies.** Every value an event carries is a closed enum, a typed measurement or an id minted by trusted code, so no field can hold content (ADR 0020).
 
+**Action measurements (T18).** The capture wrapper uses `contracts/actions.json` for the length buckets (messages and drafts: medium at 80 and long at 400 characters; answers: medium at 600 and long at 2,500) and considers a deleted draft meaningful at 80 characters, the first non-short boundary. Copy share is copied characters divided by the original answer or code-block character count; a full copy is `all`, under half is `some`, and half or more but less than all is `most`. A zero-length source maps to `all` because a copy action cannot meaningfully copy a fraction of an empty source. Durations are rounded to the nearest 0.1 second. Attachments map by MIME type: `image/*`, `audio/*` and `video/*` map directly; `application/*` and `text/*` map to `document`; all other or empty types map to `other`. File names are never used. `component_seen` uses the ADR 0025 threshold of at least 50% visibility for 3 seconds. Viewports below 1,024 CSS pixels are `tablet`; wider viewports are `desktop`.
+
 | Field | Values |
 | --- | --- |
 | Mode | `light` or `dark`: the variant of the look actually displayed |
