@@ -3,9 +3,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
+import { getSingletonHighlighter } from "shiki";
 import { CaptureProvider, recordingCapture } from "../capture";
 import { registry } from "../index";
 import { propsSchema } from "./schema";
+
+vi.mock("shiki", { spy: true });
 
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
@@ -67,6 +70,23 @@ describe("CodeBlock public registry entry", () => {
    expect(markup).toContain('role="alert"');
    expect(markup).toContain("Code could not be loaded");
    expect(markup).not.toContain("failure");
+  }
+ });
+ it("loads a grammar only for highlighted code", async () => {
+  const highlighter = vi.mocked(getSingletonHighlighter);
+  highlighter.mockClear();
+  const root = createRoot(document.createElement("div"));
+  try {
+   const terminal = entry.meta.galleryStates.find(({ id }) => id === "terminal_long")!;
+   await act(async () => root.render(<entry.Component props={terminal.props} slots={{}} />));
+   expect(highlighter).not.toHaveBeenCalled();
+
+   const code = entry.meta.galleryStates.find(({ id }) => id === "code")!;
+   await act(async () => root.render(<entry.Component props={code.props} slots={{}} />));
+   expect(highlighter).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ langs: ["javascript"] }));
+   await act(async () => { await highlighter.mock.results[0].value; });
+  } finally {
+   await act(async () => root.unmount());
   }
  });
  it("keeps long terminal output in the primitive's scroll region", () => {

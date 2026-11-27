@@ -8,6 +8,6 @@ export default defineConfig({
   use: { baseURL: `http://127.0.0.1:${testPort}`, browserName: "chromium", viewport: { width: 1201, height: 900 } },
   webServer: [
     { command: `pnpm exec vite --host 127.0.0.1 --port ${testPort} --strictPort`, url: `http://127.0.0.1:${testPort}`, reuseExistingServer: false },
-    { command: `pnpm exec vite preview --host 127.0.0.1 --port ${previewPort} --strictPort`, url: `http://127.0.0.1:${previewPort}`, reuseExistingServer: false },
+    { command: `pnpm exec vite preview --config tests/browser/preview-vite.config.ts --host 127.0.0.1 --port ${previewPort} --strictPort`, url: `http://127.0.0.1:${previewPort}`, reuseExistingServer: false },
   ],
 });
