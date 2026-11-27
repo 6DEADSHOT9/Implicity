@@ -944,8 +944,7 @@ test("compact tablet conversation controls meet the 44px target in both dimensio
 
 async function assertGalleryMatrix(page: Page, device: "desktop" | "tablet", fixture: string, skeletonNames: string[], styleNames: string[]) {
   await page.goto(fixture, { waitUntil: "domcontentloaded" });
-  await expect(page.locator("[data-gallery-root]")).toBeAttached();
-  await selectGallerySettings(page, { "Screen size": device });
+  await expect(page.locator("[data-gallery-root]"), `initial gallery device is ${device}`).toHaveAttribute("data-device-class", device);
   await expect.poll(() => page.locator("iframe.gallery-preview-frame").evaluateAll((frames, { names, device }) => {
     const previews = (frames as HTMLIFrameElement[]).filter((frame) => names.some((name) => frame.title.startsWith(`${name} · `)));
     return names.every((name) => previews.some((frame) => frame.title.startsWith(`${name} · `))) && previews.every((frame) => {
