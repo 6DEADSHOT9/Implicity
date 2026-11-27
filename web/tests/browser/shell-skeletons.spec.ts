@@ -29,7 +29,9 @@ const expectCurrentLimits = (handle: Locator, message: string) => expect.poll(()
 }), { message }).toEqual([]);
 
 test("the open Search preview leaves the host page's focus and scroll alone", async ({ page }) => {
-  await page.goto(galleryOf("Search"));
+  // Built assets keep cold dev-server transforms out of the dialog's first wait.
+  const previewPort = Number((globalThis as typeof globalThis & { process?: { env?: Record<string, string | undefined> } }).process?.env?.GALLERY_PREVIEW_PORT ?? 4174);
+  await page.goto(`http://127.0.0.1:${previewPort}${shellGallery}?${new URLSearchParams({ preview: "Search · open" })}`);
   const initialSearch = page.frameLocator("iframe[title='Search · open']");
   await expect(initialSearch.getByRole("dialog", { name: "Search" })).toBeVisible();
   // The gallery's own primitive Command scrolls the page on mount, so measure what the preview does from the top.
@@ -169,11 +171,16 @@ test("AppShell stacks panes at tablet widths and keeps the shrinking pane usable
     return { width: bounds.width, height: bounds.height };
   }));
   expect((await measure()).every(({ width }) => width >= 288)).toBe(true);
+  // The group mounts with no height and needs a resize notification before it can lay out.
+  await expect(handle).toHaveAttribute("aria-valuemin", "52");
+  await expect(handle).toHaveAttribute("aria-valuemax", "76");
   await handle.evaluate((element) => (element as HTMLElement).focus({ preventScroll: true }));
   const groupHeight = await group.evaluate((element) => element.getBoundingClientRect().height) - (await handle.evaluate((element) => element.getBoundingClientRect().height));
   await page.keyboard.press("End");
+  await expect(handle).toHaveAttribute("aria-valuenow", "76");
   expect((await measure())[1].height).toBeGreaterThanOrEqual(Math.floor(groupHeight * 0.24));
   await page.keyboard.press("Home");
+  await expect(handle).toHaveAttribute("aria-valuenow", "52");
   expect((await measure())[0].height).toBeGreaterThanOrEqual(Math.floor(groupHeight * 0.52));
 });
 
