@@ -494,9 +494,9 @@ test("SourcesPanel disclosure follows its controlled docked state", async ({ pag
   const sources = page.frameLocator('iframe[title="SourcesPanel · docked"]');
   const trigger = sources.getByRole("button", { name: "Sources (2)" });
   await expect(sources.getByText("Reference one")).toBeVisible({ timeout: 15000 });
-  await trigger.click();
+  await trigger.press("Enter");
   await expect(sources.getByRole("button", { name: "Sources (2)" })).toHaveAttribute("data-state", "closed");
   await expect(sources.getByText("Reference one")).toBeHidden();
-  await trigger.click();
+  await trigger.press("Enter");
   await expect(sources.getByText("Reference one")).toBeVisible();
 });

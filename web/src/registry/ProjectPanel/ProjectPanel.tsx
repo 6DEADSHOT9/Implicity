@@ -42,7 +42,7 @@ export function ProjectPanel({ title, tabs, activeTab, slots, onTabChange }: {
     <h2 className="text-heading-3">{title}</h2>
     <Tabs value={activeTab} onValueChange={(value) => onTabChange?.(value as typeof activeTab)} orientation={orientation} className="min-w-0">
       <TabsList style={orientation === "horizontal" ? { height: "auto" } : undefined} className="w-fit max-w-project-tabs shrink-0 items-stretch group-data-[orientation=horizontal]/tabs:h-auto group-data-[orientation=horizontal]/tabs:w-full group-data-[orientation=horizontal]/tabs:max-w-full group-data-[orientation=horizontal]/tabs:flex-wrap group-data-[orientation=horizontal]/tabs:justify-start">
-        {tabs.map(({ id, label }) => <TabsTrigger key={id} value={id} className="min-w-0 max-w-full whitespace-normal wrap-anywhere bg-muted text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground group-data-[orientation=horizontal]/tabs:flex-none" style={{ minHeight: "var(--target-min-size)", ...(orientation === "horizontal" ? { height: "auto" } : {}) }}>{label}</TabsTrigger>)}
+        {tabs.map(({ id, label }) => <TabsTrigger key={id} value={id} className="min-w-0 max-w-full whitespace-normal wrap-anywhere bg-muted text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground group-data-[orientation=horizontal]/tabs:flex-none" style={{ minHeight: "var(--target-min-size)" }}>{label}</TabsTrigger>)}
       </TabsList>
       {tabs.map(({ id }) => <TabsContent key={id} value={id} className="min-w-0 focus-visible:focus-ring-token focus-visible:ring-ring">
         {slots?.[id]?.length ? <ItemGroup aria-label={id}>
