@@ -154,9 +154,9 @@ test("system message Skeletons render across every gallery setting", async ({ pa
   expect(errors).toEqual([]);
 });
 
-const galleryCohorts = Array.from({ length: 4 }, (_, cohort) => ({
+const galleryCohorts = Array.from({ length: 8 }, (_, cohort) => ({
   name: `cohort ${cohort + 1}`,
-  ids: registrySnapshot.components.filter((_, index) => index % 4 === cohort),
+  ids: registrySnapshot.components.filter((_, index) => index % 8 === cohort),
 }));
 
 async function mountRealGallery(page: import("@playwright/test").Page, componentIds: string[]) {
