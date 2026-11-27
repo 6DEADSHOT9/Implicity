@@ -5,6 +5,7 @@ import focusedLook from "../../../contracts/looks/focused.json" with { type: "js
 import notebookLook from "../../../contracts/looks/notebook.json" with { type: "json" };
 import { tokenNames } from "../../src/registry/token-values.mjs";
 import { measureContrast } from "./contrast";
+import { openPickerPreview } from "./widget-picker-test-helpers";
 
 const lookById = { default: defaultLook, focused: focusedLook, notebook: notebookLook };
 
@@ -849,14 +850,12 @@ for (const look of ["default", "focused", "notebook"] as const) {
   test(`WidgetPicker gallery dialog Close meets the target size across modes and screens in ${look}`, async ({ page }) => {
     await page.goto("/tests/browser/widget-picker-gallery.html");
     const frame = page.locator('iframe[title="WidgetPicker · open"]');
-    await frame.scrollIntoViewIfNeeded();
     const preview = frame.contentFrame();
-    await page.waitForFunction(() => document.querySelector<HTMLIFrameElement>('iframe[title="WidgetPicker · open"]')?.contentDocument?.querySelector("#root")?.childElementCount);
     const waitForDialog = () => page.waitForFunction(() => {
       const dialog = document.querySelector<HTMLIFrameElement>('iframe[title="WidgetPicker · open"]')?.contentDocument?.querySelector("[data-widget-picker-dialog]");
       return !!dialog && dialog.getBoundingClientRect().width > 0;
     });
-    await preview.getByRole("button", { name: "Customize" }).click();
+    await openPickerPreview(page, "WidgetPicker · open");
     const dialog = preview.locator("[data-widget-picker-dialog]");
     const close = dialog.getByRole("button", { name: "Close widget picker" });
     await waitForDialog();
@@ -871,7 +870,7 @@ for (const look of ["default", "focused", "notebook"] as const) {
           return preview?.documentElement?.dataset.deviceClass === expectedDevice && !!preview.querySelector("#root")?.childElementCount;
         }, device);
         if (!(await dialog.count())) {
-          await preview.getByRole("button", { name: "Customize" }).click();
+          await openPickerPreview(page, "WidgetPicker · open");
           await waitForDialog();
         }
         const bounds = await close.evaluate((element) => {
@@ -905,7 +904,7 @@ test("conversation gallery renders every declared state", async ({ page }) => {
 });
 
 test("combined gallery mounts T10 content and T9 conversation previews", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/tests/browser/focused-gallery.html?ids=DataTable,MessageBody");
   const table = page.frameLocator('iframe[title="DataTable · table"]');
   await expect(table.getByRole("table")).toBeVisible();
   const message = page.frameLocator('iframe[title="MessageBody · message"]');

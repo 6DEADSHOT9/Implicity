@@ -362,6 +362,8 @@ describe("registry and renderer", () => {
     await user.tab();
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Add Data table" }));
     expect(screen.getByRole("region", { name: "Add widgets" })).toBe(preview);
+    await user.tab();
+    expect(preview.contains(document.activeElement)).toBe(false);
   });
 
   it("keeps a closed callback-free WidgetPicker message static", async () => {

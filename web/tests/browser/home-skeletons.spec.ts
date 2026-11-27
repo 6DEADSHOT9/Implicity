@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openPickerPreview } from "./widget-picker-test-helpers";
 
 const homeEntries = [
   ["HomeGrid", "long-content"],
@@ -13,7 +14,7 @@ const homeEntries = [
 async function expectHomeTitlesFit(page: import("@playwright/test").Page) {
   const pickerPreview = page.frameLocator('iframe[title="WidgetPicker · long-content"]');
   const pickerDialog = pickerPreview.locator("[data-widget-picker-dialog]");
-  if (!(await pickerDialog.count())) await pickerPreview.getByRole("button", { name: "Customize" }).click();
+  if (!(await pickerDialog.count())) await openPickerPreview(page, "WidgetPicker · long-content");
   const result = await page.waitForFunction((entries) => {
     const frames = Array.from(document.querySelectorAll("iframe"));
     const previews = entries.map(([id, state]) => {
@@ -103,12 +104,10 @@ test("Home Skeleton titles fit in the gallery across looks, modes and preview si
 test("open picker gallery previews mount the controlled dialog and keep keyboard focus inside it", async ({ page }) => {
   await page.goto("/");
   const pickerFrame = page.locator('iframe[title="WidgetPicker · open"]');
-  await pickerFrame.scrollIntoViewIfNeeded();
   const frame = pickerFrame.contentFrame();
   await page.waitForFunction(() => document.querySelector<HTMLIFrameElement>('iframe[title="WidgetPicker · open"]')?.contentDocument?.querySelector("#root")?.childElementCount);
   await expect.poll(() => page.evaluate(() => (document.activeElement as HTMLElement | null)?.tagName)).toBe("BODY");
-  await expect(frame.getByRole("button", { name: "Customize" })).toBeVisible();
-  await frame.getByRole("button", { name: "Customize" }).click();
+  await openPickerPreview(page, "WidgetPicker · open");
   const dialog = frame.getByRole("dialog");
   await expect(dialog).toBeVisible();
   const visibleHandle = await page.waitForFunction(() => {

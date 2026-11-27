@@ -30,7 +30,7 @@ test("system message Skeletons render across every gallery setting", async ({ pa
   test.setTimeout(60_000);
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto("/");
+  await page.goto("/tests/browser/focused-gallery.html?ids=ChangeNotice,ProposalCard,Nudge");
   const previews = [
     ["ChangeNotice", "inline"],
     ["ChangeNotice", "toast"],
