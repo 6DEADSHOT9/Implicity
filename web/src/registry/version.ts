@@ -1,1 +1,1 @@
-export const registryVersion = 7;
+export const registryVersion = 8;
