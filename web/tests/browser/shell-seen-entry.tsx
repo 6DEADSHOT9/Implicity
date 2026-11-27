@@ -19,7 +19,7 @@ const entries = [
   <ConversationNavigation key="ConversationNavigation" items={[{ id: "chat", label: "Planning" }]} projects={[]} recent={[]} quota="Available" />,
   <Composer key="Composer" attachments={[]} shortcuts={[]} />,
   <ChatHeader key="ChatHeader" title="Planning" kind="coding" />,
-  <Search key="Search" open={false} results={[]} />,
+  <Search key="Search" open results={[]} />,
   <Settings key="Settings" open tab="preferences" />,
 ];
 

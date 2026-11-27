@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { SEEN_VISIBLE_SECONDS } from "../../src/registry/use-seen";
 
 const previews = [
   ["AppShell", "default"], ["AppShell", "docked"],
@@ -100,6 +101,8 @@ test("shell skeletons fit a 375px viewport", async ({ page }) => {
     else if (entry === "Composer") await expect(page.getByRole("textbox", { name: "Message" })).toBeVisible();
     else await expect(page.locator("main[data-slot=sidebar-inset]")).toBeVisible();
     if (entry === "Composer") {
+      const textarea = page.getByRole("textbox", { name: "Message" });
+      expect(await textarea.evaluate((element) => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
       const shortcut = page.getByRole("button", { name: "Summarize" });
       await shortcut.evaluate((element) => { element.textContent = "unbroken".repeat(100); });
       const composer = page.getByRole("region", { name: "Message composer" });
@@ -120,7 +123,7 @@ test("AppShell stacks panes at tablet widths and keeps the shrinking pane usable
   await page.getByLabel("Screen size").selectOption("tablet");
   const app = page.frameLocator("iframe[title='AppShell · docked']");
   const handle = app.locator("[data-slot=resizable-handle]");
-  await expect(handle).toHaveAttribute("aria-orientation", "horizontal");
+  await expect(handle, await app.locator("body").innerText()).toHaveAttribute("aria-orientation", "horizontal");
   const group = app.locator("[data-slot=resizable-panel-group]");
   const panels = app.locator("[data-slot=resizable-panel]");
   const measure = () => panels.evaluateAll((elements) => elements.map((element) => {
@@ -136,6 +139,73 @@ test("AppShell stacks panes at tablet widths and keeps the shrinking pane usable
   expect((await measure())[0].height).toBeGreaterThanOrEqual(Math.floor(groupHeight * 0.52));
 });
 
+test("AppShell preview heights settle on tablet", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Screen size").selectOption("tablet");
+  for (const state of ["default", "docked"]) {
+    const frame = page.locator(`iframe[title='AppShell · ${state}']`);
+    await expect(frame.contentFrame().locator("main[data-slot=sidebar-inset]")).toBeVisible();
+    const heights: number[][] = [];
+    for (let sample = 0; sample < 3; sample++) {
+      heights.push(await frame.evaluate((element) => [Number((element as HTMLIFrameElement).height)]));
+      await page.waitForTimeout(350);
+    }
+    expect(Math.max(...heights.map(([height]) => height)) - Math.min(...heights.map(([height]) => height)), state).toBeLessThanOrEqual(1);
+  }
+});
+
+test("AppShell keeps usable slot minima at the docked threshold in each density", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Screen size").selectOption("desktop");
+  const frame = page.locator("iframe[title='AppShell · docked']");
+  const app = page.frameLocator("iframe[title='AppShell · docked']");
+  const handle = app.locator("[data-slot=resizable-handle]");
+  const panels = app.locator("[data-slot=resizable-panel]");
+  for (const density of ["comfortable", "spacious"]) {
+    await page.getByLabel("Density").selectOption(density);
+    await expect(app.locator("html")).toHaveAttribute("data-density", density);
+    const threshold = await app.locator("[data-slot=resizable-panel-group]").evaluate((group) => {
+      const shellChrome = window.innerWidth - group.getBoundingClientRect().width;
+      const panes = [...group.querySelectorAll<HTMLElement>("[data-slot=resizable-panel]")];
+      const slot = (panel: HTMLElement) => panel.querySelector<HTMLElement>("[class*='p-space-']")!;
+      const padding = (element: HTMLElement) => {
+        const style = getComputedStyle(slot(element));
+        return parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+      };
+      const handleWidth = group.querySelector<HTMLElement>("[data-slot=resizable-handle]")!.getBoundingClientRect().width;
+      return shellChrome + 320 + padding(panes[0]) + 288 + padding(panes[1]) + handleWidth + 4;
+    });
+    await frame.evaluate((element, width) => {
+      (element as HTMLIFrameElement).width = String(Math.ceil(width));
+      (element as HTMLIFrameElement).style.width = `${Math.ceil(width)}px`;
+    }, threshold);
+    await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentWindow!.innerWidth)).toBe(Math.ceil(threshold));
+    const geometry = await app.locator("[data-slot=resizable-panel-group]").evaluate((group) => ({
+      window: innerWidth,
+      group: group.getBoundingClientRect().width,
+      sidebar: group.closest("[data-slot=sidebar-inset]")?.parentElement?.querySelector("[data-slot=sidebar]")?.getBoundingClientRect().width,
+      handle: group.querySelector("[data-slot=resizable-handle]")?.getBoundingClientRect().width,
+      slots: [...group.querySelectorAll<HTMLElement>("[data-slot=resizable-panel]")].map((panel) => panel.querySelector<HTMLElement>("[class*='p-space-']")?.getBoundingClientRect().width),
+    }));
+    await expect(handle, `${density} threshold ${threshold}; ${JSON.stringify(geometry)}`).toHaveAttribute("aria-orientation", "vertical");
+    const measureUsableWidths = () => panels.evaluateAll((elements) => elements.map((panel) => {
+      const slot = panel.querySelector<HTMLElement>("[class*='p-space-']")!;
+      const style = getComputedStyle(slot);
+      return slot.getBoundingClientRect().width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+    }));
+    const assertMinimums = async () => {
+      const widths = await measureUsableWidths();
+      expect(widths[0]).toBeGreaterThanOrEqual(320);
+      expect(widths[1]).toBeGreaterThanOrEqual(288);
+    };
+    await handle.focus();
+    await page.keyboard.press("Home");
+    await assertMinimums();
+    await page.keyboard.press("End");
+    await assertMinimums();
+  }
+});
+
 test("Search and Settings fit, filter, and return keyboard focus in a short viewport", async ({ page }) => {
   await page.setViewportSize({ width: 800, height: 375 });
   await page.goto("/");
@@ -144,10 +214,12 @@ test("Search and Settings fit, filter, and return keyboard focus in a short view
     await import(/* @vite-ignore */ fixtureUrl) as typeof import("./shell-interactions-entry");
     window.mountShellInteractions();
   });
+  const appSearch = page.getByRole("button", { name: "Open app search" });
+  await appSearch.click();
   const dialog = page.getByRole("dialog", { name: "Search" });
   const input = page.getByRole("combobox", { name: "Search conversations" });
   await expect(dialog).toBeVisible();
-  await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute("aria-label"))).toBe("Search conversations");
+  await expect(input).toBeFocused();
   const dialogBounds = await dialog.boundingBox();
   expect(dialogBounds).not.toBeNull();
   expect(dialogBounds!.y).toBeGreaterThanOrEqual(0);
@@ -157,16 +229,23 @@ test("Search and Settings fit, filter, and return keyboard focus in a short view
   expect(closeBounds!.y).toBeGreaterThanOrEqual(0);
   const list = page.getByRole("listbox");
   expect(await list.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
-  await input.fill("no matching results");
-  await expect(page.getByRole("option")).toHaveCount(0);
+  await input.fill("planning");
+  await expect(page.getByRole("option", { name: "Filtered result" })).toBeVisible();
   await input.clear();
   await expect(page.getByRole("option")).toHaveCount(30);
   expect(await page.evaluate(() => window.shellSearchQueries.at(-1))).toBe("");
   await page.keyboard.press("Escape");
-  const searchTrigger = page.getByRole("button", { name: "Search" });
-  await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute("data-slot"))).toBe("dialog-trigger");
-  await searchTrigger.click();
+  await appSearch.click();
   await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute("aria-label"))).toBe("Search conversations");
+  await input.fill("planning");
+  await expect(page.getByRole("option", { name: "Filtered result" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await appSearch.click();
+  await expect(input).toHaveValue("planning");
+  await expect(page.getByRole("option", { name: "Filtered result" })).toBeVisible();
+  expect(await page.evaluate(() => window.shellSearchQueries)).toEqual(["planning", "", "planning"]);
+  await page.waitForTimeout(SEEN_VISIBLE_SECONDS * 1000 + 1500);
+  expect(await page.evaluate(() => ({ events: window.shellInteractionEvents, bounds: document.querySelector("[role=dialog]")?.getBoundingClientRect().toJSON(), visible: document.querySelector<HTMLElement>("[role=dialog]")?.checkVisibility({ opacityProperty: true, visibilityProperty: true }) }))).toMatchObject({ events: expect.arrayContaining([expect.objectContaining({ name: "component_seen", component: "Search" })]), visible: true });
   await page.keyboard.press("Escape");
 
   await page.waitForTimeout(3200);
@@ -174,10 +253,20 @@ test("Search and Settings fit, filter, and return keyboard focus in a short view
   const settingsOpener = page.getByRole("button", { name: "Open app settings" });
   await settingsOpener.click();
   await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
+  await page.getByRole("tab", { name: "Change history" }).click();
+  const settingsDialog = page.getByRole("dialog", { name: "Settings" });
+  const settingsClose = page.getByRole("button", { name: "Close settings" });
+  const settingsBounds = await settingsDialog.boundingBox();
+  const settingsCloseBounds = await settingsClose.boundingBox();
+  expect(settingsBounds).not.toBeNull();
+  expect(settingsBounds!.y + settingsBounds!.height).toBeLessThanOrEqual(375);
+  expect(settingsCloseBounds).not.toBeNull();
+  expect(settingsCloseBounds!.y).toBeGreaterThanOrEqual(0);
+  expect(await page.getByRole("tabpanel").evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
   await page.keyboard.press("Escape");
   await expect.poll(() => page.evaluate(() => document.activeElement?.textContent?.trim())).toBe("Open app settings");
   await settingsOpener.click();
-  await expect.poll(() => page.evaluate(() => window.shellInteractionEvents.some((event) => event.name === "component_seen" && event.component === "Settings" && event.default_state === "preferences"))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.shellInteractionEvents.some((event) => event.name === "component_seen" && event.component === "Settings" && event.default_state === "history"))).toBe(true);
 });
 
 test("native visibility reports the correct seen state for each shell", async ({ page }) => {
@@ -187,14 +276,18 @@ test("native visibility reports the correct seen state for each shell", async ({
     await import(/* @vite-ignore */ fixtureUrl) as typeof import("./shell-seen-entry");
     window.mountShellSeen();
   });
+  await page.waitForTimeout((SEEN_VISIBLE_SECONDS - 0.5) * 1000);
+  expect(await page.evaluate(() => window.shellSeenEvents.filter((event) => event.name === "component_seen"))).toEqual([]);
   await expect.poll(() => page.evaluate(() => window.shellSeenEvents.filter((event) => event.name === "component_seen").length)).toBe(6);
+  const seenEvents = await page.evaluate(() => window.shellSeenEvents.filter((event) => event.name === "component_seen"));
+  expect(seenEvents.every((event) => event.seconds_visible >= SEEN_VISIBLE_SECONDS)).toBe(true);
   const states = await page.evaluate(() => window.shellSeenEvents.filter((event) => event.name === "component_seen").map(({ component, default_state }) => [component, default_state]).sort(([left], [right]) => left.localeCompare(right)));
   expect(states).toEqual([
     ["AppShell", "default"],
     ["ChatHeader", "standard"],
     ["Composer", "empty"],
     ["ConversationNavigation", "populated"],
-    ["Search", "closed"],
+    ["Search", "open"],
     ["Settings", "preferences"],
   ]);
 });

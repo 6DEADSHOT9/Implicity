@@ -49,6 +49,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+function commandsDeclaredByRegistry(registry: Registry, componentId: string, props: unknown): boolean {
+  if (componentId !== "ShortcutChips" || !isRecord(props) || !Array.isArray(props.commands)) return true;
+  const declared = new Set([...registry.entries.values()].flatMap(({ meta }) => meta.commands));
+  return props.commands.every((command) => isRecord(command) && typeof command.id === "string" && (command.id.startsWith("cmd_") || declared.has(command.id)));
+}
+
 function getEnvelope(value: unknown): RawSpec | undefined {
   if (!isT3SpecEnvelope(value) || !isRecord(value) || typeof value.root !== "string" || !isRecord(value.elements)) return undefined;
   if (!Object.hasOwn(value.elements, value.root)) return undefined;
@@ -88,6 +94,7 @@ function isRenderableSpec(value: unknown, current: Registry): value is Spec {
     const entry = current.getSkeleton(element.type);
     const slots = element.slots ?? {};
     return !!entry
+      && commandsDeclaredByRegistry(current, element.type, element.props)
       && entry.schema.safeParse({ props: element.props, slots }).success
       && Object.keys(slots).every((slot) => Object.hasOwn(entry.slotsSchema.shape, slot) || !!entry.slotsSchema._def.catchall)
       && Object.values(slots).flat().every((child) => Object.hasOwn(spec.elements, child));
@@ -123,6 +130,7 @@ function messageSpec(value: unknown, current: Registry): Spec | undefined {
     const slots = element.slots ?? {};
     const refsExist = Object.values(slots).flat().every((child) => Object.hasOwn(envelope.elements, child));
     const componentValid = entry
+      && commandsDeclaredByRegistry(current, element.type, element.props)
       && entry.schema.safeParse({ props: element.props, slots }).success
       && Object.keys(slots).every((slot) => Object.hasOwn(entry.slotsSchema.shape, slot) || !!entry.slotsSchema._def.catchall)
       && refsExist;

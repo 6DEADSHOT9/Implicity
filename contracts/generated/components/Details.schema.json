@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "props": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content": {
+          "type": "string",
+          "minLength": 1
+        },
+        "open": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "title",
+        "content",
+        "open"
+      ],
+      "additionalProperties": false
+    },
+    "slots": {
+      "type": "object",
+      "properties": {
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "props",
+    "slots"
+  ],
+  "additionalProperties": false
+}

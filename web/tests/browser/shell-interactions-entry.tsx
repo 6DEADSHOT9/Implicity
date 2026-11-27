@@ -15,16 +15,18 @@ declare global {
 const allResults = Array.from({ length: 30 }, (_, index) => ({ id: `conversation-${index}`, label: `Planning conversation ${index}` }));
 
 function ShellInteractions() {
-  const [searchOpen, setSearchOpen] = useState(true);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [results, setResults] = useState(allResults);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<"preferences" | "locks" | "notices" | "history" | "quota">("preferences");
   return <>
-    <Search open={searchOpen} results={results} onOpenChange={setSearchOpen} onSearch={(query) => {
+    <div style={{ position: "absolute", top: 1000, width: "100%" }}><Search open={searchOpen} results={results} onOpenChange={setSearchOpen} onSearch={(query) => {
       window.shellSearchQueries.push(query);
-      setResults(query ? [] : allResults);
-    }} />
+      setResults(query ? [{ id: "filtered", label: "Filtered result" }] : allResults);
+    }} /></div>
+    <button type="button" onClick={() => setSearchOpen(true)}>Open app search</button>
     <button type="button" onClick={() => setSettingsOpen(true)}>Open app settings</button>
-    <Settings open={settingsOpen} tab="preferences" onClose={() => setSettingsOpen(false)} />
+    <Settings open={settingsOpen} tab={settingsTab} onTabChange={setSettingsTab} onClose={() => setSettingsOpen(false)} slots={{ history: Array.from({ length: 30 }, (_, index) => <p key={index}>History record {index + 1}</p>) }} />
   </>;
 }
 

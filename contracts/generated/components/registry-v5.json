@@ -1,24 +1,27 @@
 {
   "registry_version": 5,
   "components": [
-    "AppShell",
+    "ApprovalRequest",
     "ArtifactWorkspace",
+    "AttachmentTray",
     "Card",
     "ChangeNotice",
-    "ChatHeader",
     "Checklist",
+    "Citation",
     "CodeBlock",
-    "Composer",
-    "ConversationNavigation",
+    "ContextChip",
     "DataChart",
     "DataTable",
+    "Details",
     "List",
     "MediaPlayer",
+    "MessageActions",
+    "MessageBody",
     "Metric",
     "Nudge",
     "ProposalCard",
-    "Search",
-    "Settings",
+    "RunActivity",
+    "ShortcutChips",
     "Tabs"
   ]
 }

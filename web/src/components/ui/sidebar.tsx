@@ -224,7 +224,7 @@ function Sidebar({
           // Adjust the padding for floating and inset variants.
           variant === "floating" || variant === "inset"
             ? "p-space-2 group-data-[collapsible=icon]:w-sidebar-icon"
-            : "group-data-[collapsible=icon]:w-sidebar-icon group-data-[side=left]:border-r-token group-data-[side=right]:border-l-token",
+            : "group-data-[collapsible=icon]:w-sidebar-icon group-data-[side=left]:token-border-r group-data-[side=right]:token-border-l",
           className
         )}
         {...props}
@@ -232,7 +232,7 @@ function Sidebar({
         <div
           data-sidebar="sidebar"
           data-slot="sidebar-inner"
-          className="flex h-full w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border-token group-data-[variant=floating]:border-sidebar-border "
+          className="flex h-full w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:token-border group-data-[variant=floating]:border-sidebar-border "
         >
           {children}
         </div>
@@ -617,7 +617,7 @@ function SidebarMenuSub({ className, ...props }: React.ComponentProps<"ul">) {
       data-slot="sidebar-menu-sub"
       data-sidebar="menu-sub"
       className={cn(
-        "mx-space-3 flex min-w-0 translate-x-space-1 flex-col gap-space-1 border-l-token border-sidebar-border px-space-2 py-space-1",
+        "mx-space-3 flex min-w-0 translate-x-space-1 flex-col gap-space-1 token-border-l border-sidebar-border px-space-2 py-space-1",
         "group-data-[collapsible=icon]:hidden",
         className
       )}

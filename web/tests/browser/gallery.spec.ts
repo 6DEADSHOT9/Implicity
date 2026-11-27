@@ -4,6 +4,7 @@ import defaultLook from "../../../contracts/looks/default.json" with { type: "js
 import focusedLook from "../../../contracts/looks/focused.json" with { type: "json" };
 import notebookLook from "../../../contracts/looks/notebook.json" with { type: "json" };
 import { tokenNames } from "../../src/registry/token-values.mjs";
+import { measureContrast } from "./contrast";
 
 const lookById = { default: defaultLook, focused: focusedLook, notebook: notebookLook };
 
@@ -87,6 +88,188 @@ test("base primitives stay in the gallery across token selections", async ({ pag
     expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(await page.evaluate(() => innerWidth));
     expect(bounds!.y).toBeGreaterThanOrEqual(0);
     expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(await page.evaluate(() => innerHeight));
+  }
+});
+
+test("Button variants and Tabs triggers meet 4.5:1 contrast in every look and mode", async ({ page }) => {
+  await page.goto("/tests/browser/gallery.html");
+  for (const look of ["default", "focused", "notebook"]) {
+    await page.getByLabel("Look").selectOption(look);
+    for (const mode of ["light", "dark"]) {
+      await page.getByLabel("Mode").selectOption(mode);
+      const buttons = page.locator(".primitive-gallery-grid > :first-child [data-slot='button']");
+      await expect(buttons).toHaveCount(8);
+      expect(await buttons.evaluateAll((elements) => [...new Set(elements.map((element) => element.getAttribute("data-variant")))].sort())).toEqual(["default", "destructive", "ghost", "link", "outline", "secondary"]);
+      const triggers = page.locator("[data-slot='tabs-trigger']");
+      await expect(triggers).toHaveCount(2);
+      for (const control of await page.locator(".primitive-gallery [data-slot='button'], .primitive-gallery [data-slot='tabs-trigger']").all()) {
+        const result = await control.evaluate(measureContrast);
+        expect(result.ratio, `${look} ${mode}: ${await control.evaluate((element) => element.outerHTML)} (${result.foreground} on ${result.background})`).toBeGreaterThanOrEqual(4.5);
+      }
+      if (look === "default" && mode === "light") {
+        const ghost = page.locator("[data-slot='button'][data-variant='ghost']").first();
+        await ghost.evaluate((element) => { (element as HTMLElement).style.color = "oklab(0.276448 0 0 / 0.1)"; });
+        expect((await ghost.evaluate(measureContrast)).ratio).toBeLessThan(4.5);
+        await ghost.evaluate((element) => { (element as HTMLElement).style.color = ""; element.parentElement!.style.opacity = "0.1"; });
+        expect((await ghost.evaluate(measureContrast)).ratio).toBeLessThan(4.5);
+        await ghost.evaluate((element) => { element.parentElement!.style.opacity = ""; });
+        const outline = page.locator("[data-slot='button'][data-variant='outline']").first();
+        await outline.evaluate((element) => { Object.assign((element as HTMLElement).style, { color: "black", backgroundColor: "rgb(100 100 100)", opacity: "0.7" }); });
+        expect((await outline.evaluate(measureContrast)).ratio).toBeLessThan(4.5);
+        await outline.evaluate((element) => { (element as HTMLElement).removeAttribute("style"); });
+      }
+      for (const [opener, overlay, buttons] of [
+        ["Open dialog", "[data-slot='dialog-content']", ["Outline dialog", "Ghost dialog"]],
+        ["Open sheet", "[data-slot='sheet-content']", ["Outline sheet", "Ghost sheet"]],
+      ] as const) {
+        await page.getByRole("button", { name: opener }).click();
+        if (opener === "Open dialog") await expect(page.locator("[data-slot='dialog-content']")).toHaveCSS("opacity", "1");
+        const close = page.locator(overlay).getByRole("button", { name: "Close" });
+        for (const button of [close, ...buttons.map((name) => page.getByRole("button", { name }))]) {
+          const result = await button.evaluate(measureContrast);
+          expect(result.ratio, `${look} ${mode} overlay: ${await button.evaluate((element) => element.outerHTML)} (${result.foreground} on ${result.background})`).toBeGreaterThanOrEqual(4.5);
+        }
+        await page.keyboard.press("Escape");
+      }
+    }
+  }
+});
+
+test("Preflight leaves visible token borders on shared form controls", async ({ page }) => {
+  await page.goto("/tests/browser/gallery.html");
+  const controls = page.locator("[data-slot='input'], [data-slot='textarea'], [data-slot='checkbox'], [data-slot='select-trigger'], [data-slot='input-group'], [role='slider'], [data-slot='attachment']");
+  await expect(controls).toHaveCount(8);
+  for (const control of await controls.all()) {
+    const style = await control.evaluate((element) => ({ width: getComputedStyle(element).borderTopWidth, style: getComputedStyle(element).borderTopStyle }));
+    expect(Number.parseFloat(style.width), await control.evaluate((element) => element.outerHTML)).toBeGreaterThan(0);
+    expect(style.style).toBe("solid");
+    const borderColor: "borderColor" = "borderColor";
+    const contrast = await control.evaluate(measureContrast, borderColor);
+    expect(contrast.ratio, `${await control.evaluate((element) => element.outerHTML)} (${contrast.foreground} on ${contrast.background})`).toBeGreaterThanOrEqual(3);
+  }
+});
+
+test("gallery progress bar paints its token track and primary value", async ({ page }) => {
+  await page.goto("/tests/browser/gallery.html");
+  for (const look of ["default", "focused", "notebook"]) {
+    await page.getByLabel("Look").selectOption(look);
+    for (const mode of ["light", "dark"]) {
+      await page.getByLabel("Mode").selectOption(mode);
+      const progress = page.getByRole("progressbar", { name: "Task progress", exact: true });
+      const colors = await progress.evaluate((element) => {
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d")!;
+        const rgba = (color: string) => { context.clearRect(0, 0, 1, 1); context.fillStyle = color; context.fillRect(0, 0, 1, 1); return [...context.getImageData(0, 0, 1, 1).data]; };
+        const root = getComputedStyle(document.documentElement);
+        return { appearance: getComputedStyle(element).appearance, direction: getComputedStyle(element).direction, muted: rgba(root.getPropertyValue("--muted")), primary: rgba(root.getPropertyValue("--primary")) };
+      });
+      const pixels = await page.evaluate(async (base64) => {
+        const image = await createImageBitmap(await fetch(`data:image/png;base64,${base64}`).then((response) => response.blob()));
+        const canvas = document.createElement("canvas");
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const context = canvas.getContext("2d")!;
+        context.drawImage(image, 0, 0);
+        const read = (x: number) => [...context.getImageData(x, Math.floor(image.height / 2), 1, 1).data];
+        return { value: read(Math.floor(image.width * 0.2)), track: read(Math.floor(image.width * 0.9)) };
+      }, (await progress.screenshot()).toString("base64"));
+      expect(colors.appearance).toBe("none");
+      expect(pixels.track, JSON.stringify(pixels)).toEqual(colors.muted);
+      expect(pixels.value, JSON.stringify(pixels)).toEqual(colors.primary);
+    }
+  }
+  const indeterminate = page.getByLabel("Indeterminate task progress");
+  await expect(indeterminate).not.toHaveAttribute("value");
+  expect(await indeterminate.evaluate((element) => (element as HTMLProgressElement).position)).toBe(-1);
+  const motion = await indeterminate.evaluate((element) => {
+    const token = getComputedStyle(document.documentElement).getPropertyValue("--motion-progress-indeterminate").trim();
+    const [name, duration, easing, iterations] = token.split(/\s+/);
+    const style = getComputedStyle(element);
+    return {
+      expected: { name, duration, easing, iterations },
+      actual: { name: style.animationName, duration: style.animationDuration, easing: style.animationTimingFunction, iterations: style.animationIterationCount },
+      durationMs: duration.endsWith("ms") ? Number.parseFloat(duration) : Number.parseFloat(duration) * 1000,
+    };
+  });
+  expect(motion.actual).toEqual(motion.expected);
+  await indeterminate.evaluate((element) => (element as HTMLElement).style.setProperty("--motion-progress-indeterminate", "progress-indeterminate 3s linear infinite"));
+  await expect(indeterminate).toHaveCSS("animation-duration", "3s");
+  await indeterminate.evaluate((element) => (element as HTMLElement).style.removeProperty("--motion-progress-indeterminate"));
+  const tokenColors = await indeterminate.evaluate((element) => {
+    const root = getComputedStyle(element.ownerDocument.documentElement);
+    return { primary: root.getPropertyValue("--primary"), muted: root.getPropertyValue("--muted") };
+  });
+  const paintedPixels = async () => {
+    const image = await indeterminate.screenshot();
+    return page.evaluate(async ({ base64, primary, muted }) => {
+    const image = await createImageBitmap(await fetch(`data:image/png;base64,${base64}`).then((response) => response.blob()));
+    const canvas = document.createElement("canvas");
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const context = canvas.getContext("2d")!;
+    context.drawImage(image, 0, 0);
+    const data = context.getImageData(0, 0, image.width, image.height).data;
+    const probe = document.createElement("canvas").getContext("2d")!;
+    const matches = (color: string, x: number) => {
+      probe.clearRect(0, 0, 1, 1);
+      probe.fillStyle = color;
+      probe.fillRect(0, 0, 1, 1);
+      const expected = probe.getImageData(0, 0, 1, 1).data;
+      const offset = (Math.floor(image.height / 2) * image.width + x) * 4;
+      return data[offset] === expected[0] && data[offset + 1] === expected[1] && data[offset + 2] === expected[2];
+    };
+    const primaryPixels = Array.from({ length: image.width }, (_, x) => x).filter((x) => matches(primary, x));
+    return { width: image.width, primaryPixels, hasMuted: Array.from({ length: image.width }, (_, x) => x).some((x) => matches(muted, x)) };
+    }, { base64: image.toString("base64"), ...tokenColors });
+  };
+  const setAnimationTime = (time: number) => indeterminate.evaluate((element, currentTime) => {
+    const animation = element.getAnimations()[0];
+    animation.pause();
+    animation.currentTime = currentTime;
+  }, time);
+  await setAnimationTime(0);
+  const start = await paintedPixels();
+  expect(start.hasMuted).toBe(true);
+  expect(start.primaryPixels).toHaveLength(0);
+  await setAnimationTime(motion.durationMs * 0.25);
+  const left = await paintedPixels();
+  expect(left.primaryPixels).not.toHaveLength(0);
+  expect(left.primaryPixels.at(-1)).toBeLessThan(left.width * 0.5);
+  await setAnimationTime(motion.durationMs * 0.5);
+  const center = await paintedPixels();
+  expect(center.primaryPixels[0]).toBeLessThan(center.width * 0.5);
+  expect(center.primaryPixels.at(-1)).toBeGreaterThan(center.width * 0.5);
+  expect(center.hasMuted).toBe(true);
+  await setAnimationTime(motion.durationMs * 0.75);
+  const right = await paintedPixels();
+  expect(right.primaryPixels[0]).toBeGreaterThan(right.width * 0.5);
+  await setAnimationTime(motion.durationMs * 0.99);
+  const leaving = await paintedPixels();
+  expect(leaving.primaryPixels[0]).toBeGreaterThan(leaving.width * 0.95);
+  expect(leaving.primaryPixels.length).toBeLessThan(leaving.width * 0.05);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect(indeterminate).toHaveCSS("animation-name", "none");
+  await expect(indeterminate).toHaveCSS("background-position", "50% 0px");
+  const still = await paintedPixels();
+  expect(still.primaryPixels[0]).toBeGreaterThan(still.width * 0.15);
+  expect(still.primaryPixels.at(-1)).toBeLessThan(still.width * 0.85);
+  expect(still.hasMuted).toBe(true);
+});
+
+test("Preflight preserves gallery heading hierarchy and token-bordered controls", async ({ page }) => {
+  await page.goto("/tests/browser/gallery.html");
+  for (const heading of [page.getByRole("heading", { name: "Skeleton gallery" }), page.getByRole("heading", { name: "Base primitives" }), page.locator(".gallery-card > header h2").first()]) {
+    await expect(heading).toHaveCSS("font-weight", "700");
+  }
+  for (const select of await page.locator(".gallery-control select").all()) {
+    const style = await select.evaluate((element) => {
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d")!;
+      const rgba = (color: string) => { context.clearRect(0, 0, 1, 1); context.fillStyle = color; context.fillRect(0, 0, 1, 1); return [...context.getImageData(0, 0, 1, 1).data]; };
+      return { width: getComputedStyle(element).borderTopWidth, color: rgba(getComputedStyle(element).borderTopColor), input: rgba(getComputedStyle(document.documentElement).getPropertyValue("--input")) };
+    });
+    expect(style.width).not.toBe("0px");
+    expect(style.color).toEqual(style.input);
   }
 });
 
@@ -602,21 +785,30 @@ test("Notebook applies its bundled body font, paper texture, and both mode palet
 
 
 test("content skeletons render every declared gallery state across gallery settings", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/tests/browser/content-gallery.html");
   const cards = await page.locator(".gallery-card[data-skeleton]").evaluateAll((elements) => elements.map((element) => ({
     name: element.getAttribute("data-skeleton")!,
     state: element.getAttribute("data-gallery-state")!,
   })));
-  const shellNames = new Set(["AppShell", "ChatHeader", "Composer", "ConversationNavigation", "Search", "Settings"]);
-  const contentCards = cards.filter(({ name }) => !shellNames.has(name));
-  const names = new Set(contentCards.map(({ name }) => name));
+  const names = new Set(cards.map(({ name }) => name));
+  const legacyCards = cards;
   expect(names).toEqual(new Set(["DataTable", "DataChart", "CodeBlock", "MediaPlayer", "ArtifactWorkspace", "Checklist", "List", "Metric", "Tabs", "Card", "ChangeNotice", "ProposalCard", "Nudge"]));
-  for (const { name, state } of contentCards) {
-    const frame = page.frameLocator(`iframe[title="${name} · ${state}"]`);
-    await expect(page.locator(`iframe[title="${name} · ${state}"]`)).toBeVisible();
-    await expect(frame.locator("#root")).not.toContainText("Preview unavailable");
-    await expect(frame.locator("#root")).not.toContainText("preview failed");
-  }
+  await expect.poll(() => page.locator("iframe").evaluateAll((frames, expectedTitles) => {
+    for (const title of expectedTitles) {
+      const frame = (frames as HTMLIFrameElement[]).find(({ title: frameTitle }) => frameTitle === title);
+      const root = frame?.contentDocument?.querySelector("#root");
+      if (!root?.children.length || /Preview unavailable|preview failed/.test(root.textContent ?? "")) return `${title}: loading`;
+    }
+    return "ready";
+  }, legacyCards.map(({ name, state }) => `${name} · ${state}`)), { timeout: 10000 }).toBe("ready");
+  const cardEmpty = page.frameLocator('iframe[title="Card · empty"]').locator("[data-slot='empty']");
+  const emptyBorder = await cardEmpty.evaluate((element) => ({
+    width: getComputedStyle(element).borderTopWidth,
+    style: getComputedStyle(element).borderTopStyle,
+    token: getComputedStyle(element.ownerDocument.documentElement).getPropertyValue("--border-width").trim(),
+  }));
+  expect(emptyBorder.width).toBe(emptyBorder.token);
+  expect(emptyBorder.style).toBe("dashed");
 
   await page.getByLabel("Look").selectOption("notebook");
   await page.getByLabel("Mode").selectOption("dark");
@@ -646,20 +838,63 @@ test("content skeletons render every declared gallery state across gallery setti
   await expect(tabs.getByRole("tabpanel").getByText("additional-details")).toBeVisible();
   for (const device of ["desktop", "tablet"] as const) {
     await page.getByLabel("Screen size").selectOption(device);
-    for (const name of names) {
-      const frame = page.locator(`iframe[title^="${name} · "]`).first();
-      await expect(frame).toBeVisible();
-      await expect(frame.contentFrame().locator("#root")).not.toContainText("Preview unavailable");
-      await expect(frame.contentFrame().locator("#root")).not.toContainText("preview failed");
+    await expect.poll(() => page.locator("iframe").evaluateAll((frames, args) => {
+      const legacyFrames = (frames as HTMLIFrameElement[]).filter((frame) => args.names.some((name) => frame.title.startsWith(`${name} · `)));
+      return legacyFrames.length === args.count && legacyFrames.every((frame) => frame.getAttribute("data-device-class") === args.device && !!frame.contentDocument?.querySelector("#root")?.children.length);
+  }, { device, names: [...names], count: legacyCards.length }), { timeout: 10000 }).toBe(true);
+  }
+});
+
+test("conversation gallery renders every declared state", async ({ page }) => {
+  await page.goto("/tests/browser/conversation-gallery.html");
+  const states = await page.locator(".gallery-card[data-skeleton]").evaluateAll((elements) => elements.map((element) => `${element.getAttribute("data-skeleton")} · ${element.getAttribute("data-gallery-state")}`));
+  expect(new Set(states.map((title) => title.split(" · ")[0]))).toEqual(new Set(["MessageBody", "Details", "RunActivity", "MessageActions", "AttachmentTray", "Citation", "ContextChip", "ShortcutChips", "ApprovalRequest"]));
+  await expect.poll(() => page.locator("iframe").evaluateAll((frames, expectedTitles) => {
+    if (frames.length !== expectedTitles.length) return `frames: ${frames.length}/${expectedTitles.length}`;
+    const remainingTitles = new Set(expectedTitles);
+    for (const frame of frames as HTMLIFrameElement[]) {
+      if (!remainingTitles.delete(frame.title)) return `${frame.title}: unexpected`;
+      const root = frame.contentDocument?.querySelector("#root");
+      if (!root?.children.length) return `${frame.title}: loading`;
+      if (/Preview unavailable|preview failed/.test(root.textContent ?? "")) return `${frame.title}: ${root.textContent}`;
     }
+    return remainingTitles.size ? `${remainingTitles.size} states missing` : "ready";
+  }, states), { timeout: 10000 }).toBe("ready");
+});
+
+test("combined gallery mounts T10 content and T9 conversation previews", async ({ page }) => {
+  await page.goto("/");
+  const table = page.frameLocator('iframe[title="DataTable · table"]');
+  await expect(table.getByRole("table")).toBeVisible();
+  const message = page.frameLocator('iframe[title="MessageBody · message"]');
+  await expect(message.getByRole("article", { name: "Message" })).toBeVisible();
+});
+
+test("compact tablet conversation controls meet the 44px target in both dimensions", async ({ page }) => {
+  await page.goto("/tests/browser/conversation-gallery.html");
+  await page.getByLabel("Screen size").selectOption("tablet");
+  await page.getByLabel("Density").selectOption("compact");
+  await page.getByLabel("Text size").selectOption("1");
+  const activity = page.frameLocator('iframe[title="RunActivity · folded"]');
+  const disclosure = activity.getByRole("button");
+  await expect.poll(() => disclosure.boundingBox()).toMatchObject({ width: expect.any(Number), height: expect.any(Number) });
+  const activitySize = await disclosure.boundingBox();
+  expect(activitySize!.width).toBeGreaterThanOrEqual(44);
+  expect(activitySize!.height).toBeGreaterThanOrEqual(44);
+  const actions = page.frameLocator('iframe[title="MessageActions · prose"]');
+  for (const name of ["Helpful", "Not helpful", "Prose", "List", "Table"]) {
+    const button = actions.getByRole("button", { name, exact: true });
+    const size = await button.boundingBox();
+    expect(size, name).not.toBeNull();
+    expect(size!.width, `${name} width`).toBeGreaterThanOrEqual(44);
+    expect(size!.height, `${name} height`).toBeGreaterThanOrEqual(44);
   }
 });
 
 
-async function assertContentMatrix(page: import("@playwright/test").Page, device: "desktop" | "tablet") {
-  await page.goto("/");
-  const skeletonNames = ["DataTable", "DataChart", "CodeBlock", "MediaPlayer", "ArtifactWorkspace", "Checklist", "List", "Metric", "Tabs", "Card"];
-  await expect.poll(() => page.locator("iframe").evaluateAll((frames, names) => frames.some((frame) => frame.getAttribute("title")?.startsWith("DataTable ·")) && names.every((name) => frames.some((frame) => frame.getAttribute("title")?.startsWith(`${name} · `))) && frames.filter((frame) => names.some((name) => frame.getAttribute("title")?.startsWith(`${name} · `))).every((frame) => {
+async function assertGalleryMatrix(page: import("@playwright/test").Page, device: "desktop" | "tablet", fixture: string, skeletonNames: string[], styleNames: string[]) {
+  await page.goto(fixture);
+  await expect.poll(() => page.locator("iframe").evaluateAll((frames, names) => frames.some((frame) => frame.getAttribute("title")?.startsWith(`${names[0]} · `)) && names.every((name) => frames.some((frame) => frame.getAttribute("title")?.startsWith(`${name} · `))) && frames.filter((frame) => names.some((name) => frame.getAttribute("title")?.startsWith(`${name} · `))).every((frame) => {
     const root = (frame as HTMLIFrameElement).contentDocument?.querySelector("#root");
     return !!root && !/Preview unavailable|preview failed/.test(root.textContent ?? "");
   }), skeletonNames), { timeout: 10000 }).toBe(true);
@@ -677,8 +912,8 @@ async function assertContentMatrix(page: import("@playwright/test").Page, device
       }
     }
     const lookConfig = lookById[look as keyof typeof lookById];
-    const expected = { names: skeletonNames, look, mode, density, densitySpace: tokens.derivedTokens.density[density]["--space-1"], background: lookConfig[mode as "light" | "dark"].background, font: tokens.typefaces[lookConfig.typeface.body as keyof typeof tokens.typefaces].family, checkStyles: textSize === "1", checkHeight: textSize === "1" && density === "compact", textSize, width: device === "tablet" ? 800 : 1440 };
-    await expect.poll(() => page.evaluate(async ({ names, density, densitySpace, background, font, checkStyles, checkHeight, ...settings }) => {
+    const expected = { names: skeletonNames, styleNames, look, mode, density, densitySpace: tokens.derivedTokens.density[density]["--space-1"], background: lookConfig[mode as "light" | "dark"].background, font: tokens.typefaces[lookConfig.typeface.body as keyof typeof tokens.typefaces].family, checkStyles: textSize === "1", checkHeight: textSize === "1" && density === "compact", textSize, width: device === "tablet" ? 800 : 1440 };
+    await expect.poll(() => page.evaluate(async ({ names, styleNames, density, densitySpace, background, font, checkStyles, checkHeight, ...settings }) => {
       const gallery = document.querySelector("[data-gallery-root]");
       if (!gallery || Object.entries(settings).some(([key, value]) => gallery.getAttribute(`data-${key === "textSize" ? "text-size" : key === "width" ? "device-class" : key}`) !== (key === "width" ? (value === 800 ? "tablet" : "desktop") : value))) return "gallery settings";
       const frames = [...document.querySelectorAll<HTMLIFrameElement>("iframe")].filter((frame) => names.some((name) => frame.title.startsWith(`${name} · `)));
@@ -690,7 +925,7 @@ async function assertContentMatrix(page: import("@playwright/test").Page, device
         if (!doc || !root?.children.length || !root.textContent?.trim() || !html) return `${frame.title}: content`;
         if (/Preview unavailable|preview failed/.test(root.textContent)) return `${frame.title}: preview fallback`;
         if (html.dataset.look !== settings.look || html.dataset.mode !== settings.mode || html.dataset.density !== density || html.dataset.textSize !== settings.textSize || frame.contentWindow?.innerWidth !== settings.width) return `${frame.title}: settings ${JSON.stringify({look:html.dataset.look,mode:html.dataset.mode,density:html.dataset.density,textSize:html.dataset.textSize,width:frame.contentWindow?.innerWidth})}`;
-        if (checkStyles && ["DataChart", "Tabs", "CodeBlock", "Card"].some((name) => frame.title.startsWith(`${name} · `))) {
+        if (checkStyles && styleNames.some((name) => frame.title.startsWith(`${name} · `))) {
           const style = getComputedStyle(html);
           if (style.getPropertyValue("--space-1").trim() !== densitySpace) return `${frame.title}: density token`;
           if (style.getPropertyValue("--background").trim() !== background) return `${frame.title}: mode palette`;
@@ -708,16 +943,28 @@ async function assertContentMatrix(page: import("@playwright/test").Page, device
   expect(combinations).toBe(90);
 }
 
+const contentMatrixNames = ["DataTable", "DataChart", "CodeBlock", "MediaPlayer", "ArtifactWorkspace", "Checklist", "List", "Metric", "Tabs", "Card"];
+const contentMatrixStyles = ["DataChart", "Tabs", "CodeBlock", "Card"];
+const conversationMatrixNames = ["MessageBody", "Details", "RunActivity", "MessageActions", "AttachmentTray", "Citation", "ContextChip", "ShortcutChips", "ApprovalRequest"];
+
 test("content skeletons survive every desktop gallery setting", async ({ page }) => {
-  await assertContentMatrix(page, "desktop");
+  await assertGalleryMatrix(page, "desktop", "/tests/browser/content-gallery.html", contentMatrixNames, contentMatrixStyles);
 });
 
 test("content skeletons survive every tablet gallery setting", async ({ page }) => {
-  await assertContentMatrix(page, "tablet");
+  await assertGalleryMatrix(page, "tablet", "/tests/browser/content-gallery.html", contentMatrixNames, contentMatrixStyles);
+});
+
+test("conversation skeletons survive every desktop gallery setting", async ({ page }) => {
+  await assertGalleryMatrix(page, "desktop", "/tests/browser/conversation-gallery.html", conversationMatrixNames, conversationMatrixNames);
+});
+
+test("conversation skeletons survive every tablet gallery setting", async ({ page }) => {
+  await assertGalleryMatrix(page, "tablet", "/tests/browser/conversation-gallery.html", conversationMatrixNames, conversationMatrixNames);
 });
 
 test("content controls use their host, show focus rings, preserve list markers, and apply chart tokens", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/tests/browser/content-gallery.html");
   const table = page.frameLocator('iframe[title="DataTable · table"]');
   const tableButton = table.getByRole("button", { name: "Table" });
   await tableButton.focus();
@@ -769,7 +1016,7 @@ test("content controls use their host, show focus rings, preserve list markers, 
 });
 
 test("DataChart reads the live chart axis token when the host updates styles", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/tests/browser/content-gallery.html");
   const frame = page.locator('iframe[title="DataChart · line"]');
   await expect(frame.contentFrame().locator(".recharts-dot").first()).toBeVisible();
   await page.evaluate(() => {
@@ -790,7 +1037,7 @@ test("DataChart reads the live chart axis token when the host updates styles", a
 });
 
 test("rendered code, diff, stack trace and terminal text stay readable in every look and mode", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/tests/browser/content-gallery.html");
   const ratio = (foreground: string, background: string) => {
     const luminance = (input: string) => {
       const rgb = input.match(/[\d.]+/g)?.slice(0, 3).map(Number);
@@ -872,7 +1119,7 @@ test("rendered code, diff, stack trace and terminal text stay readable in every 
 });
 
 test("long terminal logs stay inside the token-bounded scroll region", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/tests/browser/content-gallery.html");
   const frame = page.frameLocator('iframe[title="CodeBlock · terminal_long"]');
   const content = frame.getByRole("region", { name: "Terminal output" }).locator('[tabindex="0"]');
   await expect(content).toContainText("Info: log line 200");

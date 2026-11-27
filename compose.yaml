@@ -62,6 +62,7 @@ services:
     command: [uv, run, --locked, uvicorn, implicity_api.app:app, --app-dir, api/src, --host, 0.0.0.0, --port, "8000", --reload]
     environment:
       MCP_ALLOWED_HOSTS: api-development:8000
+      TZ: ${TZ:-UTC}
     volumes:
       - ./api/src:/workspace/api/src
       - api-data:/workspace/data
@@ -78,6 +79,7 @@ services:
       - api-data:/workspace/data
     environment:
       MCP_ALLOWED_HOSTS: api-production:8000
+      TZ: ${TZ:-UTC}
     networks: [app]
     healthcheck:
       <<: *app-healthcheck

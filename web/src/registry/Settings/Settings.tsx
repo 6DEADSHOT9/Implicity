@@ -36,12 +36,12 @@ export function Settings({ open, tab, onTabChange, onClose, slots = {} }: Props)
   };
   return <div className="box-border w-full min-w-0">
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onClose?.(); }}>
-      <DialogContent ref={seenRef} showCloseButton={false} className="box-border min-w-0 max-w-full" onOpenAutoFocus={focusSettings} onCloseAutoFocus={restoreFocus}>
+      <DialogContent ref={seenRef} showCloseButton={false} className="box-border flex max-h-dvh min-w-0 max-w-full flex-col overflow-hidden" onOpenAutoFocus={focusSettings} onCloseAutoFocus={restoreFocus}>
         <DialogClose asChild><Button type="button" variant="ghost" size="icon" aria-label="Close settings" className="absolute right-space-2 top-space-2"><XIcon /></Button></DialogClose>
         <DialogHeader><DialogTitle>Settings</DialogTitle><DialogDescription>Manage workspace settings.</DialogDescription></DialogHeader>
-        <Tabs value={tab} onValueChange={(value) => onTabChange?.(value as View)} className="min-w-0">
+        <Tabs value={tab} onValueChange={(value) => onTabChange?.(value as View)} className="flex min-h-0 min-w-0 flex-1 flex-col">
           <TabsList className="h-auto w-full flex-wrap">{views.map(({ id, label }) => <TabsTrigger key={id} value={id} className="box-border min-h-control min-w-0 whitespace-normal break-words">{label}</TabsTrigger>)}</TabsList>
-          {views.map(({ id, label }) => <TabsContent key={id} value={id} className="box-border min-w-0 break-words rounded-md border-token border-border p-space-3"><h3 className="mb-space-2 font-semibold">{label}</h3>{slots[id]}</TabsContent>)}
+          {views.map(({ id, label }) => <TabsContent key={id} value={id} className="box-border min-h-0 min-w-0 flex-1 overflow-y-auto break-words rounded-md border-token border-border p-space-3"><h3 className="mb-space-2 font-semibold">{label}</h3>{slots[id]}</TabsContent>)}
         </Tabs>
       </DialogContent>
     </Dialog>

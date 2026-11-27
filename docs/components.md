@@ -64,7 +64,7 @@ These never move. Only additions, such as a new shortcut chip, are allowed.
 | --- | --- | --- | --- |
 | DockedPanel | A side panel that can hold any tabs (one or more `{ id, label }` entries, the active one among them). Docked, it is a resizable pane beside the content; undocked, and on small screens, it opens as a Sheet over the content. On small screens it hides Dock and Undock and is shown as undocked, without changing the person's saved docked preference; crossing the breakpoint records no dock event | Resizable when docked, Sheet when undocked or on small screens, Tabs | Composed |
 | SourcesPanel | Sources for the current answer | Sources | Direct |
-| ProjectPanel | Decisions, constraints and files for a project, as tabs with fixed ids; it shows any non-empty subset of them that includes the active tab | Tabs, Item | Composed |
+| ProjectPanel | Decisions, constraints and files for a project, as tabs with fixed ids; it shows any non-empty subset of them that includes the active tab. The tabs sit beside the content; when the panel itself is too narrow for both a whole tab label and readable content, they move to a row above the content, so the content gets the full width. The switch depends on the panel's own width, not the window's | Tabs, Item | Composed |
 
 ### Home
 
@@ -72,7 +72,7 @@ These never move. Only additions, such as a new shortcut chip, are allowed.
 | --- | --- | --- | --- |
 | HomeGrid | The arrangement of widgets | Card in a CSS grid | Composed |
 | WidgetFrame | The wrapper every widget gets: title, last update, source, dismiss. It owns the Card and the heading; a widget renders only its content inside it | Card, Dropdown Menu | Composed |
-| WidgetPicker | "Customize": one Switch per widget on Home, which shows or hides that widget without removing it (removing is WidgetFrame's dismiss). "Add widget": the widgets not yet on Home, passed in as a prop; choosing one calls `onAdd` with its id. Its open and close record `panel_opened` and `panel_closed`, as a panel does | Sheet or Dialog, Card, Switch | Composed |
+| WidgetPicker | "Customize": one Switch per widget on Home, which shows or hides that widget without removing it (removing is WidgetFrame's dismiss). Each widget is passed in with a widget id, unique on Home, as well as its component id, because two widgets can be built from the same component; the picker tells widgets apart by widget id, and `onWidgetChange` is called with it. `onWidgetChange` returns, or resolves to, whether the parent accepted the change; the parent may show an accepted change later, for example after saving it. "Add widget": the widgets not yet on Home, passed in as a prop; choosing one calls `onAdd` with its widget id. Its open and close record `panel_opened` and `panel_closed`, as a panel does. In the gallery, its open states show the Dialog open without moving focus into the preview when the page loads | Sheet or Dialog, Card, Switch | Composed |
 | ResumeWidget | Built-in widget: Resume | Item, Progress, Empty | Composed |
 | ProjectsWidget | Built-in widget: Projects | Item, Progress, Empty | Composed |
 | ScheduledWidget | Built-in widget: Scheduled | Item, Progress, Empty | Composed |

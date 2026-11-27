@@ -73,7 +73,7 @@ function BubbleContent({
     <Comp
       data-slot="bubble-content"
       className={cn(
-        "w-fit max-w-full min-w-0 overflow-hidden rounded-lg border-token border-transparent px-space-3 py-space-2 text-sm leading-body wrap-break-word group-data-[align=end]/bubble:self-end [button]:text-left [button,a]:transition-colors [button,a]:outline-none [button,a]:focus-visible:border-ring [button,a]:focus-visible:focus-ring-token [button,a]:focus-visible:ring-ring",
+        "w-fit max-w-full min-w-0 overflow-hidden rounded-lg token-border border-transparent px-space-3 py-space-2 text-sm leading-body wrap-break-word group-data-[align=end]/bubble:self-end [button]:text-left [button,a]:transition-colors [button,a]:outline-none [button,a]:focus-visible:border-ring [button,a]:focus-visible:focus-ring-token [button,a]:focus-visible:ring-ring",
         className
       )}
       {...props}

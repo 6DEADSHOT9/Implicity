@@ -144,5 +144,8 @@ describe("token-only style guard", () => {
     expect(tokenNames.has("--font-heading")).toBe(true);
     expect(tokenNames.has("--gallery-device-width")).toBe(false);
     expect(tokenNames.has("--code-background")).toBe(true);
+    for (const side of ["", "-x", "-y", "-t", "-r", "-b", "-l", "-s", "-e"]) {
+      expect(tokenNames.has(`border${side}-token`)).toBe(false);
+    }
   });
 });
