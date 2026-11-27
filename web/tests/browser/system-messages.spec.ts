@@ -163,6 +163,38 @@ test("real gallery previews mount without uncaught errors", async ({ page }) => 
   const galleryFrames = () => page.frames().filter((frame) => frame.parentFrame() === page.mainFrame());
   await expect.poll(() => galleryFrames().length).toBe(frameCount);
   await Promise.all(galleryFrames().map((frame) => frame.locator("#root > *").first().waitFor({ state: "attached" })));
+
+  const waitForEveryPreview = async () => {
+    const expected = await Promise.all(["Look", "Mode", "Density", "Text size", "Screen size"].map(async (label) => [label, await page.getByLabel(label).inputValue()] as const));
+    const settings = Object.fromEntries(expected) as Record<string, string>;
+    await Promise.all(galleryFrames().map((frame) => frame.waitForFunction((value) => {
+      const { dataset } = document.documentElement;
+      return dataset.look === value.Look && dataset.mode === value.Mode && dataset.density === value.Density && dataset.textSize === value["Text size"] && dataset.deviceClass === value["Screen size"];
+    }, settings)));
+  };
+  for (const look of ["default", "focused", "notebook"]) {
+    await page.getByLabel("Look").selectOption(look);
+    await waitForEveryPreview();
+    for (const mode of ["light", "dark"]) {
+      await page.getByLabel("Mode").selectOption(mode);
+      await waitForEveryPreview();
+    }
+  }
+  for (const density of ["compact", "comfortable", "spacious"]) {
+    await page.getByLabel("Density").selectOption(density);
+    await waitForEveryPreview();
+  }
+  for (const textSize of ["1", "2", "3", "4", "5"]) {
+    await page.getByLabel("Text size").selectOption(textSize);
+    await waitForEveryPreview();
+  }
+  for (const screenSize of ["desktop", "tablet"]) {
+    await page.getByLabel("Screen size").selectOption(screenSize);
+    await expect.poll(() => galleryFrames().length).toBe(frameCount);
+    await waitForEveryPreview();
+  }
+  const previewTexts = await Promise.all(galleryFrames().map((frame) => frame.locator("#root").innerText()));
+  expect(previewTexts.filter((text) => /Preview unavailable|preview failed/.test(text))).toEqual([]);
   expect(errors).toEqual([]);
 });
 
