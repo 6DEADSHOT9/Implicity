@@ -1,12 +1,40 @@
 import { Component, useEffect, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import type { SkeletonEntry } from "./registry";
+import { WidgetPicker } from "./registry/WidgetPicker/WidgetPicker";
+import type { propsSchema } from "./registry/WidgetPicker/schema";
+import type { z } from "zod";
 import { ChangeNoticeToastHost } from "./components/change-notice-toast-host";
 
 class PreviewBoundary extends Component<{ children: ReactNode; label: string }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
   render() { return this.state.failed ? <p style={{ color: "var(--destructive)" }} role="alert">{this.props.label}: preview failed</p> : this.props.children; }
+}
+
+function WidgetPickerExample({ props }: { props: z.infer<typeof propsSchema> }) {
+  const [open, setOpen] = useState(false);
+  const [widgets, setWidgets] = useState(props.widgets);
+  const [availableWidgets, setAvailableWidgets] = useState(props.availableWidgets);
+  useEffect(() => {
+    if (open) document.body.dataset.previewPicker = "open";
+    else delete document.body.dataset.previewPicker;
+    return () => { delete document.body.dataset.previewPicker; };
+  }, [open]);
+  return <WidgetPicker
+    open={open}
+    title={props.title}
+    widgets={widgets}
+    availableWidgets={availableWidgets}
+    onOpenChange={setOpen}
+    onWidgetChange={(widgetId, enabled) => setWidgets((current) => current.map((widget) => widget.widgetId === widgetId ? { ...widget, enabled } : widget))}
+    onAdd={(widgetId) => {
+      const added = availableWidgets.find((widget) => widget.widgetId === widgetId);
+      if (!added) return;
+      setWidgets((current) => [...current, { ...added, enabled: true }]);
+      setAvailableWidgets((current) => current.filter((widget) => widget.widgetId !== widgetId));
+    }}
+  />;
 }
 
 function PreviewExample({ entry, props, slots, label }: { entry: SkeletonEntry; props: Record<string, unknown>; slots: Record<string, ReactNode>; label: string }) {
@@ -17,7 +45,9 @@ function PreviewExample({ entry, props, slots, label }: { entry: SkeletonEntry; 
     if (action === "tab_select" && typeof value === "string") setExampleProps((current) => ({ ...current, selected: value }));
     if (action === "checklist_toggle" && typeof value === "number") setExampleProps((current) => ({ ...current, items: (current.items as Array<{ label: string; checked: boolean }>).map((item, index) => index === value ? { ...item, checked: !item.checked } : item) }));
   };
-  return <PreviewBoundary label={label}><entry.Component props={exampleProps} slots={slots} onAction={onAction} /></PreviewBoundary>;
+  return <PreviewBoundary label={label}>{entry.id === "WidgetPicker"
+    ? <WidgetPickerExample props={props as z.infer<typeof propsSchema>} />
+    : <entry.Component props={exampleProps} slots={slots} onAction={onAction} />}</PreviewBoundary>;
 }
 
 function PreviewMounted({ children, onMounted, version }: { children: ReactNode; onMounted: (version: number) => void; version: number }) {
@@ -43,7 +73,7 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
   const previewRoot = document.getElementById("root")!;
   const reportHeight = () => {
     if (!mounted || !fontsLoaded) return;
-    const height = previewRoot.getBoundingClientRect().height;
+    const height = Math.max(previewRoot.getBoundingClientRect().height, document.body.scrollHeight);
     if (height === previousHeight) return;
     previousHeight = height;
     window.parent.postMessage({ type: "preview-height", height }, location.origin);
@@ -60,6 +90,7 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
   };
   const heightObserver = new ResizeObserver(reportHeight);
   heightObserver.observe(document.documentElement);
+  heightObserver.observe(document.body);
   heightObserver.observe(previewRoot);
   const render = () => {
     if (styles === undefined || texture === undefined || config === undefined || !entrySettled) return;

@@ -11,6 +11,9 @@ const homeEntries = [
 ] as const;
 
 async function expectHomeTitlesFit(page: import("@playwright/test").Page) {
+  const pickerPreview = page.frameLocator('iframe[title="WidgetPicker · long-content"]');
+  const pickerDialog = pickerPreview.locator("[data-widget-picker-dialog]");
+  if (!(await pickerDialog.count())) await pickerPreview.getByRole("button", { name: "Customize" }).click();
   const result = await page.waitForFunction((entries) => {
     const frames = Array.from(document.querySelectorAll("iframe"));
     const previews = entries.map(([id, state]) => {
@@ -35,7 +38,7 @@ async function expectHomeTitlesFit(page: import("@playwright/test").Page) {
       return { id, width: rect.width, left: rect.left, right: rect.right, viewport: frameDocument.defaultView!.innerWidth, scrollWidth: root.scrollWidth, textNodes };
     });
     const frame = frames.find((item) => item.title === "WidgetPicker · long-content");
-    const picker = frame?.contentDocument?.querySelector("[data-widget-picker-preview]");
+    const picker = frame?.contentDocument?.querySelector("[data-widget-picker-dialog]");
     if (previews.some((preview) => !preview) || !frame || !picker || picker.getBoundingClientRect().width === 0) return false;
     const rect = picker.getBoundingClientRect();
     if (Number(frame.height) < rect.bottom) return false;
@@ -97,16 +100,20 @@ test("Home Skeleton titles fit in the gallery across looks, modes and preview si
   }
 });
 
-test("open picker previews do not steal focus and remain visible in the gallery", async ({ page }) => {
+test("open picker gallery previews mount the controlled dialog and keep keyboard focus inside it", async ({ page }) => {
   await page.goto("/");
-  await expect.poll(() => page.evaluate(() => (document.activeElement as HTMLElement | null)?.tagName)).toBe("BODY");
-  await page.keyboard.press("Tab");
-  await expect(page.getByLabel("Look")).toBeFocused();
   const pickerFrame = page.locator('iframe[title="WidgetPicker · open"]');
+  await pickerFrame.scrollIntoViewIfNeeded();
   const frame = pickerFrame.contentFrame();
+  await page.waitForFunction(() => document.querySelector<HTMLIFrameElement>('iframe[title="WidgetPicker · open"]')?.contentDocument?.querySelector("#root")?.childElementCount);
+  await expect.poll(() => page.evaluate(() => (document.activeElement as HTMLElement | null)?.tagName)).toBe("BODY");
+  await expect(frame.getByRole("button", { name: "Customize" })).toBeVisible();
+  await frame.getByRole("button", { name: "Customize" }).click();
+  const dialog = frame.getByRole("dialog");
+  await expect(dialog).toBeVisible();
   const visibleHandle = await page.waitForFunction(() => {
     const iframe = Array.from(document.querySelectorAll("iframe")).find((item) => item.title === "WidgetPicker · open");
-    const picker = iframe?.contentDocument?.querySelector("[data-widget-picker-preview]");
+    const picker = iframe?.contentDocument?.querySelector("[data-widget-picker-dialog]");
     if (!iframe || !picker || picker.getBoundingClientRect().width === 0) return false;
     const rect = picker.getBoundingClientRect();
     if (Number(iframe.height) < rect.bottom) return false;
@@ -131,15 +138,14 @@ test("open picker previews do not steal focus and remain visible in the gallery"
   expect(visible.titleRight).toBeLessThanOrEqual(visible.right);
   expect(visible.titleLines.every(({ left, right }) => left >= visible.left && right <= visible.right)).toBe(true);
   expect(visible.frameHeight).toBeGreaterThanOrEqual(visible.bottom);
-  await expect(frame.getByRole("dialog")).toHaveCount(0);
   const firstSwitch = frame.getByRole("switch").first();
   await firstSwitch.focus();
   await page.keyboard.press("Shift+Tab");
-  await expect.poll(() => pickerFrame.evaluate((iframe) => iframe.ownerDocument.activeElement !== iframe)).toBe(true);
+  await expect.poll(() => dialog.evaluate((element) => element.contains(element.ownerDocument.activeElement))).toBe(true);
   const lastAdd = frame.getByRole("button", { name: "Add Data table" });
   await lastAdd.focus();
   await page.keyboard.press("Tab");
-  await expect.poll(() => pickerFrame.evaluate((iframe) => iframe.ownerDocument.activeElement !== iframe)).toBe(true);
+  await expect.poll(() => dialog.evaluate((element) => element.contains(element.ownerDocument.activeElement))).toBe(true);
 });
 
 test("WidgetPicker fits short viewports and scrolls its rows", async ({ page }) => {
@@ -188,6 +194,7 @@ test("long Switch and Add labels wrap inside the picker scroll viewport", async 
       viewport: { left: viewportRect.left, right: viewportRect.right },
       switch: { left: switchRect.left, right: switchRect.right },
       switchLabel: textBounds(switchText),
+      wordBreak: getComputedStyle(element.querySelectorAll("label")[1].querySelector("span")!).wordBreak,
       addLabel: textBounds(add),
       scrollWidth: viewport.scrollWidth,
       clientWidth: viewport.clientWidth,
@@ -201,7 +208,29 @@ test("long Switch and Add labels wrap inside the picker scroll viewport", async 
     expect(line.right).toBeLessThanOrEqual(geometry.viewport.right + 1);
   }
   expect(geometry.switchLabel.length).toBeGreaterThan(1);
+  expect(geometry.wordBreak).toBe("normal");
   expect(geometry.addLabel.length, JSON.stringify(geometry)).toBeGreaterThan(1);
+});
+
+test("WidgetPicker caps a dialog with two widgets and thirty Add rows", async ({ page }) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.goto("/tests/browser/home-skeletons.html?picker-height-cap");
+  await page.getByRole("button", { name: "Customize" }).click();
+  const dialog = page.getByRole("dialog", { name: "Choose Home widgets" });
+  await expect(dialog.getByRole("switch")).toHaveCount(2);
+  await expect(dialog.getByRole("button", { name: /^Add Data table/ })).toHaveCount(30);
+  const bounds = await dialog.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const viewport = element.ownerDocument.defaultView!;
+    const scroll = element.querySelector('[data-slot="scroll-area-viewport"]')!;
+    const close = element.querySelector('[aria-label="Close widget picker"]')!.getBoundingClientRect();
+    return { top: rect.top, bottom: rect.bottom, height: rect.height, viewportHeight: viewport.innerHeight, scrollHeight: scroll.scrollHeight, clientHeight: scroll.clientHeight, closeTop: close.top, closeBottom: close.bottom };
+  });
+  expect(bounds.top).toBeGreaterThanOrEqual(0);
+  expect(bounds.bottom).toBeLessThanOrEqual(bounds.viewportHeight);
+  expect(bounds.height).toBeLessThanOrEqual(390);
+  expect(bounds.closeTop).toBeGreaterThanOrEqual(0);
+  expect(bounds.closeBottom).toBeLessThanOrEqual(390);
 });
 
 test("Home titles and widget content wrap 150-character unbroken text", async ({ page }) => {

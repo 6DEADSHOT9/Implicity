@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { render } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import { CaptureProvider, recordingCapture, registry } from "../index";
 import { meta } from "./meta";
 import { propsSchema, slotsSchema } from "./schema";

@@ -47,12 +47,16 @@ const content = [<p key="paragraph">{paragraph}</p>, <span key="hash">{longText}
 
 function HomeSkeletonHarness() {
   const [open, setOpen] = useState(false);
-  const longPickerLabels = new URLSearchParams(location.search).has("long-picker-labels");
-  const pickerWidgets = Array.from({ length: 60 }, (_, index) => ({
-    id: ["ResumeWidget", "ProjectsWidget", "ScheduledWidget", "QuickPromptsWidget", "NowPlayingWidget"][index % 5],
-    label: longPickerLabels && index === 0 ? "W".repeat(150) : `Widget ${index + 1}`,
+  const params = new URLSearchParams(location.search);
+  const longPickerLabels = params.has("long-picker-labels");
+  const heightCap = params.has("picker-height-cap");
+  const pickerWidgets = Array.from({ length: heightCap ? 2 : 60 }, (_, index) => ({
+    widgetId: `home-widget-${index + 1}`,
+    componentId: ["ResumeWidget", "ProjectsWidget", "ScheduledWidget", "QuickPromptsWidget", "NowPlayingWidget"][index % 5],
+    label: longPickerLabels && index === 0 ? "W".repeat(150) : longPickerLabels && index === 1 ? "Quarterly supplier compliance monitoring and procurement notifications" : `Widget ${index + 1}`,
     enabled: true,
   }));
+  const availableWidgets = Array.from({ length: heightCap ? 30 : 1 }, (_, index) => ({ widgetId: `available-${index + 1}`, componentId: "DataTable", label: longPickerLabels ? "A".repeat(150) : `Data table ${index + 1}` }));
   return <main>
     <HomeGrid title={longTitle} slots={{ widgets: [<span key="hash">{longText}</span>, <span key="url">{longUrl}</span>] }} />
     <WidgetFrame title={longTitle} lastUpdate="Updated today" source="Workspace" slots={{ content }} />
@@ -61,7 +65,7 @@ function HomeSkeletonHarness() {
     <WidgetFrame title={longTitle} lastUpdate="Updated today" source="scheduled_source" slots={{ content: [<ScheduledWidget key="scheduled" slots={{ content }} />] }} />
     <WidgetFrame title={longTitle} lastUpdate="Updated today" source="quick_prompts_source" slots={{ content: [<QuickPromptsWidget key="prompts" slots={{ content }} />] }} />
     <WidgetFrame title={longTitle} lastUpdate="Updated today" source="now_playing_source" slots={{ content: [<NowPlayingWidget key="now-playing" progress={35} slots={{ content }} />] }} />
-    <WidgetPicker open={open} title="Choose Home widgets" widgets={pickerWidgets} availableWidgets={[{ id: "DataTable", label: longPickerLabels ? "A".repeat(150) : "Data table" }]} onOpenChange={setOpen} onWidgetChange={() => undefined} onAdd={() => undefined} />
+    <WidgetPicker open={open} title="Choose Home widgets" widgets={pickerWidgets} availableWidgets={availableWidgets} onOpenChange={setOpen} onWidgetChange={() => undefined} onAdd={() => undefined} />
   </main>;
 }
 

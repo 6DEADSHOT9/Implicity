@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, type ReactElement, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import Ajv2020 from "ajv/dist/2020.js";
 import { z } from "zod";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -171,7 +171,7 @@ describe("registry and renderer", () => {
     expect(await markup(renderMessage(metric, "plain fallback"))).toContain("plain fallback");
   });
 
-  it("renders a static open WidgetPicker message inline and dismisses it with Escape", async () => {
+  it("renders a static open WidgetPicker message inline", async () => {
     const spec = {
       registry_version: registry.version,
       root: "picker",
@@ -180,9 +180,20 @@ describe("registry and renderer", () => {
     render(renderMessage(spec, "fallback"));
     const preview = await screen.findByRole("region", { name: "Add widgets" });
     expect(screen.queryByRole("dialog")).toBeNull();
-    fireEvent.keyDown(preview, { key: "Escape" });
-    expect(screen.queryByRole("region", { name: "Add widgets" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Customize" })).toBeTruthy();
+    expect(preview).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Customize" })).toBeNull();
+  });
+
+  it("keeps a closed callback-free WidgetPicker message static", async () => {
+    const spec = {
+      registry_version: registry.version,
+      root: "picker",
+      elements: { picker: { type: "WidgetPicker", props: { open: false, title: "Add widgets", widgets: [], availableWidgets: [] }, slots: {} } },
+    };
+    const html = await markup(renderMessage(spec, "fallback"));
+    expect(html).toContain("Customize");
+    expect(html).not.toContain("<button");
+    expect(html).not.toContain('role="dialog"');
   });
 
   it("falls back from a throwing message component in place", async () => {

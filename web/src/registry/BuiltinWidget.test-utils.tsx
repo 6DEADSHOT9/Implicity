@@ -14,7 +14,7 @@ export function testBuiltinWidget(id: string) {
         expect(entry.schema.safeParse({ props: state.props, slots: state.slots }).success).toBe(true);
         const recorder = recordingCapture();
         const slotIds = (state.slots?.content ?? []) as string[];
-        const content = slotIds.map((slot) => <span key={slot}>{slot}</span>);
+        const content = slotIds;
         const view = render(<CaptureProvider sink={recorder.sink}><entry.Component props={state.props} slots={{ content }} /></CaptureProvider>);
         if (slotIds.length) {
           for (const slot of slotIds) expect(document.body.textContent).toContain(slot);

@@ -1,26 +1,27 @@
 {
   "registry_version": 5,
   "components": [
+    "ApprovalRequest",
     "ArtifactWorkspace",
+    "AttachmentTray",
     "Card",
     "ChangeNotice",
     "Checklist",
+    "Citation",
     "CodeBlock",
+    "ContextChip",
     "DataChart",
     "DataTable",
-    "HomeGrid",
+    "Details",
     "List",
     "MediaPlayer",
+    "MessageActions",
+    "MessageBody",
     "Metric",
-    "NowPlayingWidget",
     "Nudge",
-    "ProjectsWidget",
     "ProposalCard",
-    "QuickPromptsWidget",
-    "ResumeWidget",
-    "ScheduledWidget",
-    "Tabs",
-    "WidgetFrame",
-    "WidgetPicker"
+    "RunActivity",
+    "ShortcutChips",
+    "Tabs"
   ]
 }

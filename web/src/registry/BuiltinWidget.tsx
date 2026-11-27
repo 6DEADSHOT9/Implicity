@@ -33,7 +33,7 @@ export function BuiltinWidget({ component, defaultState, emptyTitle, emptyDescri
           {slots.content.map((item, index) => (
             <Item role="listitem" key={index} className="min-w-0 break-words">
               <ItemContent className="min-w-0 break-words">
-              <ItemTitle className="block w-full min-w-0 break-words">{typeof item === "string" ? item.replaceAll("_", " ") : item}</ItemTitle>
+                <ItemTitle className="block w-full min-w-0 break-words">{item}</ItemTitle>
               </ItemContent>
             </Item>
           ))}

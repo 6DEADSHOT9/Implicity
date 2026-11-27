@@ -1,0 +1,7 @@
+const longText = "Averylongunbrokenapprovaldescription/".repeat(12);
+export const meta = { role: "content", slots: [], defaultStates: ["pending", "approved", "denied"], commands: [], limits: { minWidth: 320, minHeight: 120, minContrast: 4.5 }, galleryStates: [
+  { id: "pending", props: { title: "Run this command?", detail: "This operation will update the selected files.", state: "pending" } },
+  { id: "approved", props: { title: "Request approved", detail: "The operation was approved.", state: "approved" } },
+  { id: "denied", props: { title: "Request denied", detail: "The operation was denied.", state: "denied" } },
+  { id: "long_content", props: { title: longText, detail: longText, state: "pending" } },
+] } as const;

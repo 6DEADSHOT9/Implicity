@@ -17,7 +17,11 @@
           "items": {
             "type": "object",
             "properties": {
-              "id": {
+              "widgetId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "componentId": {
                 "type": "string",
                 "pattern": "^[A-Z][A-Za-z0-9_-]{0,63}$"
               },
@@ -30,7 +34,8 @@
               }
             },
             "required": [
-              "id",
+              "widgetId",
+              "componentId",
               "label",
               "enabled"
             ],
@@ -42,7 +47,11 @@
           "items": {
             "type": "object",
             "properties": {
-              "id": {
+              "widgetId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "componentId": {
                 "type": "string",
                 "pattern": "^[A-Z][A-Za-z0-9_-]{0,63}$"
               },
@@ -52,7 +61,8 @@
               }
             },
             "required": [
-              "id",
+              "widgetId",
+              "componentId",
               "label"
             ],
             "additionalProperties": false
