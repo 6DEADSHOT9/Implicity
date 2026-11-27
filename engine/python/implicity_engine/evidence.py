@@ -55,6 +55,10 @@ class EventSource(Protocol):
     ) -> list[SessionSummary]: ...
 
 
+class EventSourceUnavailable(RuntimeError):
+    """The event store cannot currently serve evidence."""
+
+
 class FakeEventSource:
     def __init__(
         self,
