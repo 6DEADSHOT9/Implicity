@@ -104,7 +104,7 @@ export function WidgetPicker({ open, title, widgets, availableWidgets, onOpenCha
     const current = widgets.find((widget) => widget.widgetId === widgetId);
     if (!current || current.enabled === enabled) return;
     const changes = requestedChanges.current.get(widgetId) ?? [];
-    const request = changes.find((change) => change.enabled === enabled && !change.settled) ?? {
+    const request = changes.find((change) => change.enabled === enabled && !change.shown && !change.settled) ?? {
       componentId: current.componentId, enabled, accepted: false, pending: 0, shown: false, settled: false,
     };
     if (!changes.includes(request)) requestedChanges.current.set(widgetId, [...changes, request]);
@@ -118,9 +118,9 @@ export function WidgetPicker({ open, title, widgets, availableWidgets, onOpenCha
     let result: ReturnType<NonNullable<Props["onWidgetChange"]>> | undefined;
     try {
       result = onWidgetChange?.(widgetId, enabled);
-    } catch {
+    } catch (error) {
       settle(false);
-      return;
+      throw error;
     }
     if (typeof result === "boolean") settle(result);
     else if (result) void result.then(settle, () => settle(false));

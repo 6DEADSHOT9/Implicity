@@ -48,6 +48,12 @@ function AcceptanceHarness() {
       window.setTimeout(() => updateWidget(setWidgets, enabled), 10);
       return new Promise((resolve) => window.setTimeout(() => resolve(true), 60));
     }
+    if (["rollback", "three-quick", "shown-refused"].includes(scenario ?? "")) {
+      calls.current += 1;
+      if (scenario === "rollback" && calls.current > 1) return true;
+      updateWidget(setWidgets, enabled);
+      return new Promise((resolve) => answers.current.push(resolve));
+    }
     if (scenario === "false") return Promise.resolve(false);
     if (scenario === "rejected") return Promise.reject(new Error("save failed"));
     if (["double", "late", "hung", "throwing"].includes(scenario ?? "")) {
@@ -66,6 +72,7 @@ function AcceptanceHarness() {
     <button data-action="new-list" onClick={() => setWidgets((current) => [...current])}>New list</button>
     <button data-action="complete-first" onClick={() => answers.current.shift()?.(true)}>Complete first</button>
     <button data-action="complete-later" onClick={() => answers.current.shift()?.(true)}>Complete later</button>
+    <button data-action="refuse-saves" onClick={() => answers.current.splice(0).forEach((resolve) => resolve(false))}>Refuse saves</button>
     <button data-action="complete-saves" onClick={() => answers.current.splice(0).forEach((resolve) => resolve(true))}>Complete saves</button>
   </CaptureProvider>;
 }

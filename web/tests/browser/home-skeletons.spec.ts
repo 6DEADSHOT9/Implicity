@@ -110,6 +110,7 @@ test("open picker gallery previews mount the controlled dialog and keep keyboard
   const pickerFrame = page.locator('iframe[title="WidgetPicker · open"]');
   const frame = pickerFrame.contentFrame();
   await page.waitForFunction(() => document.querySelector<HTMLIFrameElement>('iframe[title="WidgetPicker · open"]')?.contentDocument?.querySelector("#root")?.childElementCount);
+  await expect.poll(() => page.evaluate(() => (document.activeElement as HTMLElement | null)?.tagName)).toBe("BODY");
   await openPickerPreview(page, "WidgetPicker · open");
   const dialog = frame.getByRole("dialog");
   await expect(dialog).toBeVisible();
@@ -307,6 +308,45 @@ test("WidgetPicker settles repeated same-value requests once in the browser", as
     await expect(widgetSwitch).toHaveAttribute("aria-checked", "false");
     await expect.poll(events).toEqual(expectedOff);
   }
+});
+
+test("WidgetPicker records nothing when a move after a shown one is accepted but never shown", async ({ page }) => {
+  const events = () => page.evaluate(() => (window as Window & { widgetPickerEvents: Array<{ name: string }> }).widgetPickerEvents.filter(({ name }) => name === "setting_changed"));
+  const resume = page.getByRole("switch", { name: "Resume" });
+
+  // The parent shows the first move, rolls it back, then accepts the second without showing it.
+  await page.goto("/tests/browser/widget-picker-acceptance.html?scenario=rollback");
+  await resume.click();
+  await expect(resume).toHaveAttribute("aria-checked", "false");
+  await clickHarnessAction(page, "app-on");
+  await expect(resume).toHaveAttribute("aria-checked", "true");
+  await resume.click();
+  await expect(resume).toHaveAttribute("aria-checked", "true");
+  expect(await events()).toEqual([]);
+});
+
+test("WidgetPicker records each of three quick moves that are shown at once", async ({ page }) => {
+  const off = { name: "setting_changed", dimension: "home_widgets", value: "off", component: "ResumeWidget" };
+  const events = () => page.evaluate(() => (window as Window & { widgetPickerEvents: Array<{ name: string }> }).widgetPickerEvents.filter(({ name }) => name === "setting_changed"));
+  const resume = page.getByRole("switch", { name: "Resume" });
+  await page.goto("/tests/browser/widget-picker-acceptance.html?scenario=three-quick");
+  for (const checked of ["false", "true", "false"]) {
+    await resume.click();
+    await expect(resume).toHaveAttribute("aria-checked", checked);
+  }
+  await clickHarnessAction(page, "complete-saves");
+  await expect.poll(events).toEqual([off, { ...off, value: "on" }, off]);
+});
+
+test("WidgetPicker records nothing for a change shown while pending and then refused", async ({ page }) => {
+  const events = () => page.evaluate(() => (window as Window & { widgetPickerEvents: Array<{ name: string }> }).widgetPickerEvents.filter(({ name }) => name === "setting_changed"));
+  await page.goto("/tests/browser/widget-picker-acceptance.html?scenario=shown-refused");
+  const resume = page.getByRole("switch", { name: "Resume" });
+  await resume.click();
+  await expect(resume).toHaveAttribute("aria-checked", "false");
+  expect(await events()).toEqual([]);
+  await clickHarnessAction(page, "refuse-saves");
+  expect(await events()).toEqual([]);
 });
 
 test("WidgetPicker ignores promise refusals and a refusal followed by an app change", async ({ page }) => {

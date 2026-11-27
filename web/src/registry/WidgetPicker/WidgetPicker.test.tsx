@@ -272,7 +272,7 @@ describe("WidgetPicker", () => {
     act(() => answers[0](true));
     await user.click(screen.getByRole("button", { name: "Show off" }));
     await waitFor(() => expect(recorder.events.filter(({ name }) => name === "setting_changed")).toHaveLength(1));
-    act(() => answers[1](true));
+    await act(async () => answers[1](true));
     expect(recorder.events.filter(({ name }) => name === "setting_changed")).toEqual([
       { name: "setting_changed", dimension: "home_widgets", value: "off", component: "ResumeWidget" },
     ]);
@@ -307,7 +307,10 @@ describe("WidgetPicker", () => {
     ]));
   });
 
-  it("records the accepted second request when the first rejects", async () => {
+  it("records the accepted second request when the first throws, and lets the error surface", async () => {
+    const errors: string[] = [];
+    const onError = (event: ErrorEvent) => { errors.push(event.error.message); event.preventDefault(); };
+    window.addEventListener("error", onError);
     const recorder = recordingCapture();
     const props = meta.galleryStates[1].props;
     let calls = 0;
@@ -335,6 +338,8 @@ describe("WidgetPicker", () => {
     await waitFor(() => expect(recorder.events.filter(({ name }) => name === "setting_changed")).toEqual([
       { name: "setting_changed", dimension: "home_widgets", value: "off", component: "ResumeWidget" },
     ]));
+    window.removeEventListener("error", onError);
+    expect(errors).toEqual(["save failed"]);
   });
 
   it("ignores a new unchanged widgets array while an accepted request is pending", async () => {
@@ -381,6 +386,107 @@ describe("WidgetPicker", () => {
       expect(recorder.events.filter(({ name }) => name === "setting_changed")).toEqual([]);
       cleanup();
     }
+  });
+
+  const off = { name: "setting_changed", dimension: "home_widgets", value: "off", component: "ResumeWidget" };
+  const on = { ...off, value: "on" };
+
+  // Each Switch move takes the next answer. `show` is the parent or the app changing what the Switch shows.
+  function renderScripted(onMove: (enabled: boolean, show: (enabled: boolean) => void) => boolean | Promise<boolean>) {
+    const recorder = recordingCapture();
+    const props = meta.galleryStates[1].props;
+    let show: (enabled: boolean) => void = () => {};
+    function Parent() {
+      const [widgets, setWidgets] = useState(props.widgets);
+      show = (enabled) => setWidgets((current) => current.map((widget) => ({ ...widget, enabled })));
+      return <WidgetPicker {...props} widgets={widgets} onWidgetChange={(_id, enabled) => onMove(enabled, show)} />;
+    }
+    const user = userEvent.setup();
+    render(<CaptureProvider sink={recorder.sink}><Parent /></CaptureProvider>);
+    return {
+      move: () => user.click(screen.getByRole("switch", { name: "Resume" })),
+      show: (enabled: boolean) => act(() => show(enabled)),
+      changes: () => recorder.events.filter(({ name }) => name === "setting_changed"),
+    };
+  }
+
+  function deferredAnswers() {
+    const answers: Array<(accepted: boolean) => void> = [];
+    return {
+      next: () => new Promise<boolean>((resolve) => answers.push(resolve)),
+      answer: (index: number, accepted: boolean) => act(async () => answers[index](accepted)),
+    };
+  }
+
+  it("does not let a move join a shown request: an accepted change never shown records nothing", async () => {
+    let calls = 0;
+    const picker = renderScripted((enabled, show) => {
+      if (++calls > 1) return true;
+      show(enabled);
+      return new Promise<boolean>(() => {});
+    });
+    await picker.move();
+    picker.show(true);
+    await picker.move();
+    expect(picker.changes()).toEqual([]);
+  });
+
+  it("does not let a move join a shown request: nothing is recorded before the value is shown", async () => {
+    let calls = 0;
+    const picker = renderScripted((enabled, show) => {
+      if (++calls > 1) return true;
+      show(enabled);
+      return new Promise<boolean>(() => {});
+    });
+    await picker.move();
+    picker.show(true);
+    await picker.move();
+    expect(picker.changes()).toEqual([]);
+    picker.show(false);
+    expect(picker.changes()).toEqual([off]);
+  });
+
+  it("records three quick moves shown at once and accepted in order", async () => {
+    const saves = deferredAnswers();
+    const picker = renderScripted((enabled, show) => { show(enabled); return saves.next(); });
+    await picker.move();
+    await picker.move();
+    await picker.move();
+    for (const index of [0, 1, 2]) await saves.answer(index, true);
+    expect(picker.changes()).toEqual([off, on, off]);
+  });
+
+  it("does not record a change shown while its answer is pending and then refused", async () => {
+    const saves = deferredAnswers();
+    const picker = renderScripted((enabled, show) => { show(enabled); return saves.next(); });
+    await picker.move();
+    expect(picker.changes()).toEqual([]);
+    await saves.answer(0, false);
+    expect(picker.changes()).toEqual([]);
+  });
+
+  it("does not record an app change that follows a throwing parent", async () => {
+    const errors: string[] = [];
+    const onError = (event: ErrorEvent) => { errors.push(event.error.message); event.preventDefault(); };
+    window.addEventListener("error", onError);
+    const picker = renderScripted(() => { throw new Error("save failed"); });
+    await picker.move();
+    picker.show(false);
+    window.removeEventListener("error", onError);
+    expect(picker.changes()).toEqual([]);
+    expect(errors).toEqual(["save failed"]);
+  });
+
+  it("records a grouped change that one move accepted and a later answer refused", async () => {
+    const saves = deferredAnswers();
+    const picker = renderScripted(saves.next);
+    await picker.move();
+    await picker.move();
+    await saves.answer(0, true);
+    await saves.answer(1, false);
+    expect(picker.changes()).toEqual([]);
+    picker.show(false);
+    expect(picker.changes()).toEqual([off]);
   });
 
   it("passes the selected available widget id to onAdd", async () => {

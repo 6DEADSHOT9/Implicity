@@ -937,7 +937,7 @@ test("conversation gallery renders every declared state", async ({ page }) => {
 
 test("combined gallery mounts T10 content and T9 conversation previews", async ({ page }) => {
   await page.goto("/");
-await waitForContentPreviewSettings(page, ["DataTable · table", "MessageBody · message"], {
+  await waitForContentPreviewSettings(page, ["DataTable · table", "MessageBody · message"], {
     look: await page.getByLabel("Look").inputValue(),
     mode: await page.getByLabel("Mode").inputValue(),
     density: await page.getByLabel("Density").inputValue(),

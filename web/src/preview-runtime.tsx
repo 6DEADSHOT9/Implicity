@@ -1,7 +1,6 @@
 import { Component, useEffect, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import type { SkeletonEntry } from "./registry";
-import { WidgetPicker } from "./registry/WidgetPicker/WidgetPicker";
 import type { propsSchema } from "./registry/WidgetPicker/schema";
 import type { z } from "zod";
 import { ChangeNoticeToastHost } from "./components/change-notice-toast-host";
@@ -12,7 +11,12 @@ class PreviewBoundary extends Component<{ children: ReactNode; label: string }, 
   render() { return this.state.failed ? <p style={{ color: "var(--destructive)" }} role="alert">{this.props.label}: preview failed</p> : this.props.children; }
 }
 
-function WidgetPickerExample({ props }: { props: z.infer<typeof propsSchema> }) {
+function PreviewMounted({ children, onMounted, version }: { children: ReactNode; onMounted: (version: number) => void; version: number }) {
+  useEffect(() => onMounted(version), [onMounted, version]);
+  return children;
+}
+
+function WidgetPickerExample({ entry, props }: { entry: SkeletonEntry; props: z.infer<typeof propsSchema> }) {
   const [open, setOpen] = useState(props.open);
   const [widgets, setWidgets] = useState(props.widgets);
   const [availableWidgets, setAvailableWidgets] = useState(props.availableWidgets);
@@ -21,18 +25,20 @@ function WidgetPickerExample({ props }: { props: z.infer<typeof propsSchema> }) 
     else delete document.body.dataset.previewPicker;
     return () => { delete document.body.dataset.previewPicker; };
   }, [open]);
-  return <WidgetPicker open={open} title={props.title} widgets={widgets} availableWidgets={availableWidgets} onOpenChange={setOpen} suppressInitialFocus
-    onWidgetChange={(widgetId, enabled) => {
+  return <entry.Component props={{ open, title: props.title, widgets, availableWidgets }} slots={{}} interactions={{
+    onOpenChange: setOpen,
+    suppressInitialFocus: true,
+    onWidgetChange: (widgetId: string, enabled: boolean) => {
       setWidgets((current) => current.map((widget) => widget.widgetId === widgetId ? { ...widget, enabled } : widget));
       return true;
-    }}
-    onAdd={(widgetId) => {
+    },
+    onAdd: (widgetId: string) => {
       const added = availableWidgets.find((widget) => widget.widgetId === widgetId);
       if (!added) return;
       setWidgets((current) => [...current, { ...added, enabled: true }]);
       setAvailableWidgets((current) => current.filter((widget) => widget.widgetId !== widgetId));
-    }}
-  />;
+    },
+  }} />;
 }
 
 function PreviewExample({ entry, props, slots, label }: { entry: SkeletonEntry; props: Record<string, unknown>; slots: Record<string, ReactNode>; label: string }) {
@@ -50,13 +56,8 @@ function PreviewExample({ entry, props, slots, label }: { entry: SkeletonEntry; 
     ...(Object.hasOwn(exampleProps, "docked") ? { onDockChange: update("docked") } : {}),
   };
   return <PreviewBoundary label={label}>{entry.id === "WidgetPicker"
-    ? <WidgetPickerExample props={props as z.infer<typeof propsSchema>} />
+    ? <WidgetPickerExample entry={entry} props={props as z.infer<typeof propsSchema>} />
     : <entry.Component props={exampleProps} slots={slots} onAction={onAction} interactions={interactions} />}</PreviewBoundary>;
-}
-
-function PreviewMounted({ children, onMounted, version }: { children: ReactNode; onMounted: (version: number) => void; version: number }) {
-  useEffect(() => onMounted(version), [onMounted, version]);
-  return children;
 }
 
 export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | undefined>) {
@@ -100,7 +101,10 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
       heightReportPending = false;
       if (!mounted || !fontsLoaded) return;
       const height = readHeight();
-      if (height !== firstHeight) { reportHeight(); return; }
+      if (height !== firstHeight) {
+        reportHeight();
+        return;
+      }
       if (height === previousHeight) return;
       previousHeight = height;
       window.parent.postMessage({ type: "preview-height", height }, location.origin);
@@ -135,7 +139,10 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
     fontsLoaded = false;
     previousHeight = -1;
     document.documentElement.style.cssText = styles;
-    Object.assign(document.documentElement.dataset, { texture, look: config.look, mode: config.mode, density: config.density, textSize: config.textSize, deviceClass: config.deviceClass });
+    Object.assign(document.documentElement.dataset, {
+      texture, look: config.look, mode: config.mode, density: config.density,
+      textSize: config.textSize, deviceClass: config.deviceClass,
+    });
     document.body.className = "gallery-preview-root";
     document.body.dataset.previewState = state?.id;
     root.render(<PreviewMounted onMounted={onMounted} version={version}>{entry && state
@@ -154,5 +161,8 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
     state = entry?.meta.galleryStates.find(({ id }) => id === stateId);
     entrySettled = true;
     render();
-  }).catch(() => { entrySettled = true; render(); });
+  }).catch(() => {
+    entrySettled = true;
+    render();
+  });
 }
