@@ -13,23 +13,18 @@
     "DataChart",
     "DataTable",
     "Details",
-    "HomeGrid",
+    "DockedPanel",
     "List",
     "MediaPlayer",
     "MessageActions",
     "MessageBody",
     "Metric",
-    "NowPlayingWidget",
     "Nudge",
-    "ProjectsWidget",
+    "ProjectPanel",
     "ProposalCard",
-    "QuickPromptsWidget",
-    "ResumeWidget",
     "RunActivity",
-    "ScheduledWidget",
     "ShortcutChips",
-    "Tabs",
-    "WidgetFrame",
-    "WidgetPicker"
+    "SourcesPanel",
+    "Tabs"
   ]
 }

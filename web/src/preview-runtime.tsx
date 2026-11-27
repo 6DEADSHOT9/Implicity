@@ -21,13 +21,7 @@ function WidgetPickerExample({ props }: { props: z.infer<typeof propsSchema> }) 
     else delete document.body.dataset.previewPicker;
     return () => { delete document.body.dataset.previewPicker; };
   }, [open]);
-  return <WidgetPicker
-    open={open}
-    title={props.title}
-    widgets={widgets}
-    availableWidgets={availableWidgets}
-    onOpenChange={setOpen}
-    suppressInitialFocus
+  return <WidgetPicker open={open} title={props.title} widgets={widgets} availableWidgets={availableWidgets} onOpenChange={setOpen} suppressInitialFocus
     onWidgetChange={(widgetId, enabled) => {
       setWidgets((current) => current.map((widget) => widget.widgetId === widgetId ? { ...widget, enabled } : widget));
       return true;
@@ -44,14 +38,20 @@ function WidgetPickerExample({ props }: { props: z.infer<typeof propsSchema> }) 
 function PreviewExample({ entry, props, slots, label }: { entry: SkeletonEntry; props: Record<string, unknown>; slots: Record<string, ReactNode>; label: string }) {
   const [exampleProps, setExampleProps] = useState(props);
   useEffect(() => setExampleProps(props), [props]);
+  const update = (key: string) => (value: unknown) => setExampleProps((current) => ({ ...current, [key]: value }));
   const onAction = (action?: string, value?: string | number | boolean) => {
     if (action === "representation" && (value === "table" || value === "chart")) setExampleProps((current) => ({ ...current, form: value }));
     if (action === "tab_select" && typeof value === "string") setExampleProps((current) => ({ ...current, selected: value }));
     if (action === "checklist_toggle" && typeof value === "number") setExampleProps((current) => ({ ...current, items: (current.items as Array<{ label: string; checked: boolean }>).map((item, index) => index === value ? { ...item, checked: !item.checked } : item) }));
   };
+  const interactions = {
+    ...(Object.hasOwn(exampleProps, "activeTab") ? { onTabChange: update("activeTab") } : {}),
+    ...(Object.hasOwn(exampleProps, "open") ? { onOpenChange: update("open") } : {}),
+    ...(Object.hasOwn(exampleProps, "docked") ? { onDockChange: update("docked") } : {}),
+  };
   return <PreviewBoundary label={label}>{entry.id === "WidgetPicker"
     ? <WidgetPickerExample props={props as z.infer<typeof propsSchema>} />
-    : <entry.Component props={exampleProps} slots={slots} onAction={onAction} />}</PreviewBoundary>;
+    : <entry.Component props={exampleProps} slots={slots} onAction={onAction} interactions={interactions} />}</PreviewBoundary>;
 }
 
 function PreviewMounted({ children, onMounted, version }: { children: ReactNode; onMounted: (version: number) => void; version: number }) {
@@ -74,15 +74,37 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
   let fontsLoaded = false;
   let entrySettled = false;
   let renderVersion = 0;
+  let heightReportPending = false;
   const previewRoot = document.getElementById("root")!;
+  const readHeight = () => {
+    const sheetBody = document.querySelector<HTMLElement>("[data-panel-sheet-body]");
+    if (sheetBody) {
+      const body = sheetBody.getBoundingClientRect();
+      const content = sheetBody.lastElementChild?.getBoundingClientRect();
+      return content ? content.bottom - body.top + Number.parseFloat(getComputedStyle(sheetBody).paddingBottom) : body.height;
+    }
+    return document.body.dataset.previewPicker ? Math.max(previewRoot.getBoundingClientRect().height, document.body.scrollHeight) : previewRoot.getBoundingClientRect().height;
+  };
   const reportHeight = () => {
-    if (!mounted || !fontsLoaded) return;
-    const height = document.body.dataset.previewPicker
-      ? Math.max(previewRoot.getBoundingClientRect().height, document.body.scrollHeight)
-      : previewRoot.getBoundingClientRect().height;
-    if (height === previousHeight) return;
-    previousHeight = height;
-    window.parent.postMessage({ type: "preview-height", height }, location.origin);
+    if (!mounted || !fontsLoaded || heightReportPending) return;
+    if (!document.querySelector("[data-panel-sheet-body]")) {
+      const height = readHeight();
+      if (height === previousHeight) return;
+      previousHeight = height;
+      window.parent.postMessage({ type: "preview-height", height }, location.origin);
+      return;
+    }
+    heightReportPending = true;
+    const firstHeight = readHeight();
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      heightReportPending = false;
+      if (!mounted || !fontsLoaded) return;
+      const height = readHeight();
+      if (height !== firstHeight) { reportHeight(); return; }
+      if (height === previousHeight) return;
+      previousHeight = height;
+      window.parent.postMessage({ type: "preview-height", height }, location.origin);
+    }));
   };
   const onMounted = (version: number) => {
     mounted = true;
@@ -98,16 +120,22 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
   heightObserver.observe(document.documentElement);
   heightObserver.observe(document.body);
   heightObserver.observe(previewRoot);
+  const portalObserver = new MutationObserver(() => {
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
+    if (dialog) heightObserver.observe(dialog);
+    const sheetBody = document.querySelector<HTMLElement>("[data-panel-sheet-body]");
+    if (sheetBody) heightObserver.observe(sheetBody);
+    reportHeight();
+  });
+  portalObserver.observe(document.body, { childList: true, subtree: true });
   const render = () => {
     if (styles === undefined || texture === undefined || config === undefined || !entrySettled) return;
     const version = ++renderVersion;
     mounted = false;
     fontsLoaded = false;
+    previousHeight = -1;
     document.documentElement.style.cssText = styles;
-    Object.assign(document.documentElement.dataset, {
-      texture, look: config.look, mode: config.mode, density: config.density,
-      textSize: config.textSize, deviceClass: config.deviceClass,
-    });
+    Object.assign(document.documentElement.dataset, { texture, look: config.look, mode: config.mode, density: config.density, textSize: config.textSize, deviceClass: config.deviceClass });
     document.body.className = "gallery-preview-root";
     document.body.dataset.previewState = state?.id;
     root.render(<PreviewMounted onMounted={onMounted} version={version}>{entry && state
@@ -126,8 +154,5 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
     state = entry?.meta.galleryStates.find(({ id }) => id === stateId);
     entrySettled = true;
     render();
-  }).catch(() => {
-    entrySettled = true;
-    render();
-  });
+  }).catch(() => { entrySettled = true; render(); });
 }

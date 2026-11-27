@@ -1,11 +1,11 @@
 import type { ComponentType, ReactNode } from "react";
 import type { z } from "zod";
-import { defineSkeleton, defineSkeletonDefinition, type SkeletonEntry } from "./registry/define-skeleton";
+import { defineSkeleton, defineSkeletonDefinition, type SkeletonEntry, type SlotsSchema } from "./registry/define-skeleton";
 import { discoverRegistryFolders, registryFoldersFromPaths } from "./registry/discovery";
 import { validateRegistryDefinitions } from "./registry/validate";
 
 const components = import.meta.glob<Record<string, ComponentType<never>>>(["./registry/*/*.tsx", "!**/*.test.tsx"]);
-const schemas = import.meta.glob<{ propsSchema: z.ZodObject<z.ZodRawShape>; slotsSchema: z.ZodObject<z.ZodRawShape> }>("./registry/*/schema.ts");
+const schemas = import.meta.glob<{ propsSchema: z.ZodObject<z.ZodRawShape>; slotsSchema: SlotsSchema }>("./registry/*/schema.ts");
 const eventModules = import.meta.glob<{ events: readonly string[] }>("./registry/*/events.ts");
 const metaModules = import.meta.glob<{ meta: SkeletonEntry["meta"] }>("./registry/*/meta.ts");
 const testPaths = Object.keys(import.meta.glob("./registry/*/*.test.tsx"));
