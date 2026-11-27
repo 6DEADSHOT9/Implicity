@@ -5,6 +5,7 @@ import threading
 from datetime import date, datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
@@ -98,9 +99,19 @@ def run_saved_query(query, body, events):
 
 
 @pytest.fixture
-def event_store():
+def event_store(request):
     definitions, endpoints, events, runs = [], {}, [], []
     failures = {}
+    if getattr(request, "param", None) == "full_variable_page":
+        definitions.extend(
+            {
+                "id": str(UUID(int=index)),
+                "name": f"existing variable {index}",
+                "code_name": f"v_{index}",
+                "type": "String",
+            }
+            for index in range(1, 501)
+        )
 
     class Handler(BaseHTTPRequestHandler):
         def reply(self, status, payload, truncated=False):
@@ -115,8 +126,16 @@ def event_store():
         def do_GET(self):
             if self.path in failures:
                 return self.reply(*failures[self.path])
-            if self.path.endswith("/insight_variables/"):
-                return self.reply(200, {"results": definitions})
+            path = urlsplit(self.path)
+            if path.path.endswith("/insight_variables/"):
+                offset = int(parse_qs(path.query).get("offset", [0])[0])
+                end = offset + 500
+                next_page = None
+                if end < len(definitions):
+                    next_page = f"http://{self.headers['Host']}{path.path}?offset={end}"
+                return self.reply(
+                    200, {"results": definitions[offset:end], "next": next_page}
+                )
             name = self.path.rstrip("/").split("/")[-1]
             if name not in endpoints:
                 return self.reply(404, {"detail": "missing endpoint"})
@@ -131,6 +150,8 @@ def event_store():
             if self.path in failures:
                 return self.reply(*failures[self.path])
             if self.path.endswith("/insight_variables/"):
+                if any(item["name"] == body["name"] for item in definitions):
+                    return self.reply(400, {"detail": "duplicate variable code name"})
                 item = {
                     "id": str(UUID(int=len(definitions) + 1)),
                     "name": body["name"],
@@ -277,6 +298,25 @@ def test_reads_nonempty_session_summary(event_store, tmp_path):
     wire_properties = {**json.loads(properties), "$lib": "web", "distinct_id": "person"}
     events.append((name, timestamp, json.dumps(wire_properties), event_id))
     source = create_event_source(client, 1, tmp_path, "UTC")
+    assert source.session_summaries(START, END) == [decode_contract(row[2])]
+
+
+@pytest.mark.parametrize("event_store", ["full_variable_page"], indirect=True)
+def test_registration_reuses_bindings_on_later_page(event_store, tmp_path):
+    client, _, _, _ = event_store
+    assert register_features(client, 1, tmp_path) == (1, 0)
+    assert register_features(client, 1, tmp_path) == (0, 1)
+
+
+@pytest.mark.parametrize("event_store", ["full_variable_page"], indirect=True)
+def test_source_reads_with_bindings_on_later_page(event_store, tmp_path):
+    client, events, _, _ = event_store
+    register_features(client, 1, tmp_path)
+    row = summary("2026-11-26T01:00:00Z", 1)
+    events.append(row)
+
+    source = create_event_source(client, 1, tmp_path, "UTC")
+
     assert source.session_summaries(START, END) == [decode_contract(row[2])]
 
 

@@ -8,6 +8,7 @@ from datetime import date
 from http.client import IncompleteRead
 from pathlib import Path
 from typing import Sequence
+from urllib.parse import urljoin
 from zoneinfo import ZoneInfo
 
 from implicity_contracts.generated import SessionSummary
@@ -60,24 +61,27 @@ class PostHog:
             {"variables": variables, "limit": 100, "offset": offset},
         )
 
-    def list_projects(self):
-        page, results = "/api/projects/", []
-        while page:
+    def _list_all(self, page: str):
+        results = []
+        while True:
             response = self.request("GET", page)
             results.extend(response.get("results", []))
-            page = response.get("next") or ""
-            if page.startswith(self.base_url):
-                page = page[len(self.base_url) :]
-        return results
+            next_page = response.get("next")
+            if not next_page:
+                return results
+            url = urljoin(self.base_url + page, next_page)
+            if not url.startswith(self.base_url + "/"):
+                raise RuntimeError("PostHog pagination link points outside the API")
+            page = url[len(self.base_url) :]
+
+    def list_projects(self):
+        return self._list_all("/api/projects/")
 
     def create_project(self, name: str):
         return self.request("POST", "/api/projects/", {"name": name})
 
     def list_insight_variables(self, project_id: int):
-        response = self.request(
-            "GET", f"/api/environments/{project_id}/insight_variables/"
-        )
-        return response["results"]
+        return self._list_all(f"/api/environments/{project_id}/insight_variables/")
 
     def create_insight_variable(self, project_id: int, name: str, default: str):
         return self.request(
