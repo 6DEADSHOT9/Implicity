@@ -106,6 +106,13 @@ describe("token-only style guard", () => {
     expect(() => token("text-red-500")).toThrow(/Unknown design token/);
   });
 
+  it("checks both branches and spreads in conditional inline styles", () => {
+    expect(tokenStyleViolations('const View = ({ active }: { active: boolean }) => <div style={active ? { color: "var(--foreground)" } : undefined} />;', componentFile)).toEqual([]);
+    expect(tokenStyleViolations('const View = ({ active }: { active: boolean }) => <div style={active ? { color: "#f00" } : undefined} />;', componentFile)).toContain("color: #f00");
+    expect(tokenStyleViolations('const View = ({ active }: { active: boolean }) => <div style={active ? undefined : { color: "#f00" }} />;', componentFile)).toContain("color: #f00");
+    expect(tokenStyleViolations('const View = ({ active }: { active: boolean }) => <div style={active ? { color: "var(--foreground)" } : { ...{ color: "#f00" } }} />;', componentFile)).toContain("color: #f00");
+  });
+
   it("checks every static class in cn and cva variants", () => {
     const source = 'import { cn } from "cn"; import { cva } from "class-variance-authority"; const variants = cva("flex bg-primary", { variants: { tone: { danger: "text-destructive", bad: "bg-red-500" } } }); const View = ({ className }: { className?: string }) => <div className={cn(variants({ tone: "danger" }), "p-space-4", className)} />;';
     expect(tokenStyleViolations(source, componentFile)).toContain("unknown or non-token style utility: bg-red-500");
