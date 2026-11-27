@@ -107,6 +107,11 @@ def create_server(registry_file: Path = REGISTRY_FILE, store=app_store) -> MCPSe
             component = components.get(element["type"])
             if component is None:
                 raise ToolError(f"Unknown component: {element['type']}")
+            if component["role"] == "shell":
+                raise ToolError(
+                    "Shell component cannot be used in a message spec: "
+                    f"{element['type']}"
+                )
             try:
                 Draft202012Validator(component["props_schema"]).validate(
                     element["props"]
