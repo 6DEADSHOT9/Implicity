@@ -18,11 +18,13 @@ type Props = {
   widgets: readonly Widget[];
   availableWidgets: readonly AvailableWidget[];
   onOpenChange?: (open: boolean) => void;
-  onWidgetChange?: (id: string, enabled: boolean) => void;
+  onWidgetChange?: (id: string, enabled: boolean) => boolean | Promise<boolean>;
   onAdd?: (id: string) => void;
+  suppressInitialFocus?: boolean;
 };
+type WidgetChange = { componentId: string; enabled: boolean; accepted?: boolean; shown: boolean };
 
-function WidgetChoices({ widgets, availableWidgets, onWidgetChange, onAdd }: Pick<Props, "widgets" | "availableWidgets" | "onWidgetChange" | "onAdd">) {
+function WidgetChoices({ widgets, availableWidgets, onWidgetChange, onAdd }: Pick<Props, "widgets" | "availableWidgets" | "onAdd"> & { onWidgetChange?: (id: string, enabled: boolean) => void }) {
   return (
     <ScrollArea className="min-h-0 max-h-content-height min-w-0 w-full flex-1">
       <div className="min-w-0 w-full">
@@ -48,13 +50,14 @@ function WidgetChoices({ widgets, availableWidgets, onWidgetChange, onAdd }: Pic
   );
 }
 
-export function WidgetPicker({ open, title, widgets, availableWidgets, onOpenChange, onWidgetChange, onAdd }: Props) {
+export function WidgetPicker({ open, title, widgets, availableWidgets, onOpenChange, onWidgetChange, onAdd, suppressInitialFocus = false }: Props) {
   const { emit } = useCapture<(typeof events)[number]>();
   const emitRef = useRef(emit);
   const initialState = useRef(open ? "open" : "closed");
   const previousOpen = useRef(open);
   const previousWidgets = useRef(new Map(widgets.map(({ widgetId, enabled }) => [widgetId, enabled])));
-  const requestedChanges = useRef(new Map<string, { from: boolean; to: boolean }>());
+  const requestedChanges = useRef(new Map<string, WidgetChange[]>());
+  const suppressInitialFocusRef = useRef(suppressInitialFocus && open);
   const seenRef = useSeen({ component: "WidgetPicker", defaultState: initialState.current });
   emitRef.current = emit;
 
@@ -67,17 +70,22 @@ export function WidgetPicker({ open, title, widgets, availableWidgets, onOpenCha
 
   useEffect(() => {
     const previous = previousWidgets.current;
+    const finish = (widgetId: string, request: WidgetChange) => {
+      requestedChanges.current.set(widgetId, requestedChanges.current.get(widgetId)?.filter((change) => change !== request) ?? []);
+      if (!requestedChanges.current.get(widgetId)?.length) requestedChanges.current.delete(widgetId);
+      emitRef.current("setting_changed", { dimension: "home_widgets", value: request.enabled ? "on" : "off", component: request.componentId });
+    };
     for (const widget of widgets) {
       const wasEnabled = previous.get(widget.widgetId);
-      const request = requestedChanges.current.get(widget.widgetId);
-      if (wasEnabled !== undefined && wasEnabled !== widget.enabled) {
-        if (request?.from === wasEnabled && request.to === widget.enabled) {
-          emitRef.current("setting_changed", { dimension: "home_widgets", value: widget.enabled ? "on" : "off", component: widget.componentId });
-        }
-        requestedChanges.current.delete(widget.widgetId);
-      } else if (request) {
-        requestedChanges.current.delete(widget.widgetId);
+      if (wasEnabled === undefined || wasEnabled === widget.enabled) continue;
+      const request = requestedChanges.current.get(widget.widgetId)?.find((change) => change.enabled === widget.enabled && !change.shown && change.accepted !== false);
+      if (request) {
+        request.shown = true;
+        if (request.accepted) finish(widget.widgetId, request);
       }
+    }
+    for (const widgetId of requestedChanges.current.keys()) {
+      if (!widgets.some((widget) => widget.widgetId === widgetId)) requestedChanges.current.delete(widgetId);
     }
     previousWidgets.current = new Map(widgets.map(({ widgetId, enabled }) => [widgetId, enabled]));
   }, [widgets]);
@@ -85,12 +93,25 @@ export function WidgetPicker({ open, title, widgets, availableWidgets, onOpenCha
   const handleWidgetChange = (widgetId: string, enabled: boolean) => {
     const current = widgets.find((widget) => widget.widgetId === widgetId);
     if (!current || current.enabled === enabled) return;
-    const request = { from: current.enabled, to: enabled };
-    requestedChanges.current.set(widgetId, request);
-    onWidgetChange?.(widgetId, enabled);
-    window.setTimeout(() => {
-      if (requestedChanges.current.get(widgetId) === request) requestedChanges.current.delete(widgetId);
-    }, 0);
+    const request: WidgetChange = { componentId: current.componentId, enabled, shown: false };
+    requestedChanges.current.set(widgetId, [...(requestedChanges.current.get(widgetId) ?? []), request]);
+    const settle = (accepted: boolean) => {
+      request.accepted = accepted;
+      if (!accepted) {
+        const changes = requestedChanges.current.get(widgetId)?.filter((change) => change !== request) ?? [];
+        if (changes.length) requestedChanges.current.set(widgetId, changes);
+        else requestedChanges.current.delete(widgetId);
+      } else if (request.shown) {
+        const changes = requestedChanges.current.get(widgetId)?.filter((change) => change !== request) ?? [];
+        if (changes.length) requestedChanges.current.set(widgetId, changes);
+        else requestedChanges.current.delete(widgetId);
+        emitRef.current("setting_changed", { dimension: "home_widgets", value: enabled ? "on" : "off", component: request.componentId });
+      }
+    };
+    const result = onWidgetChange?.(widgetId, enabled);
+    if (typeof result === "boolean") settle(result);
+    else if (result) void result.then(settle, () => settle(false));
+    else settle(false);
   };
 
   useEffect(() => {
@@ -122,6 +143,12 @@ export function WidgetPicker({ open, title, widgets, availableWidgets, onOpenCha
       </DialogTrigger>
       <DialogContent
         ref={open ? seenRef : undefined}
+        onOpenAutoFocus={(event) => {
+          if (suppressInitialFocusRef.current) {
+            event.preventDefault();
+            suppressInitialFocusRef.current = false;
+          }
+        }}
         data-widget-picker-dialog
         className={cn("box-border flex max-h-viewport-content max-w-full flex-col overflow-hidden", widgets.length > 2 && "h-full top-0 translate-y-0")}
         showCloseButton={false}

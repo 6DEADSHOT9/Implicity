@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
@@ -43,7 +43,10 @@ describe("WidgetPicker", () => {
 
     function AcceptingPicker() {
       const [widgets, setWidgets] = useState(props.widgets);
-      return <WidgetPicker {...props} widgets={widgets} onWidgetChange={(id, enabled) => setWidgets((current) => current.map((widget) => widget.widgetId === id ? { ...widget, enabled } : widget))} />;
+      return <WidgetPicker {...props} widgets={widgets} onWidgetChange={(id, enabled) => {
+        setWidgets((current) => current.map((widget) => widget.widgetId === id ? { ...widget, enabled } : widget));
+        return true;
+      }} />;
     }
 
     render(<CaptureProvider sink={recorder.sink}><AcceptingPicker /></CaptureProvider>);
@@ -78,6 +81,7 @@ describe("WidgetPicker", () => {
         <WidgetPicker open title="Choose Home widgets" widgets={[...widgets]} availableWidgets={[]} onOpenChange={() => undefined} onWidgetChange={(id, enabled) => {
           onWidgetChange(id, enabled);
           setWidgets((current) => current.map((widget) => widget.widgetId === id ? { ...widget, enabled } : widget));
+          return true;
         }} />
       </>;
     }
@@ -115,7 +119,7 @@ describe("WidgetPicker", () => {
     function RefusingParent() {
       const [widgets, setWidgets] = useState(initial);
       appChange = () => setWidgets((current) => current.map((widget) => widget.widgetId === "home_resume" ? { ...widget, enabled: false } : widget));
-      return <WidgetPicker {...meta.galleryStates[1].props} widgets={widgets} onWidgetChange={() => undefined} />;
+      return <WidgetPicker {...meta.galleryStates[1].props} widgets={widgets} onWidgetChange={() => false} />;
     }
     render(<CaptureProvider sink={recorder.sink}><RefusingParent /></CaptureProvider>);
 
@@ -124,6 +128,96 @@ describe("WidgetPicker", () => {
     act(() => appChange());
     expect(screen.getByRole("switch", { name: "Resume" }).getAttribute("aria-checked")).toBe("false");
     expect(recorder.events.map(({ name }) => name)).toEqual(["component_shown"]);
+  });
+
+  it("records an accepted change when the parent shows it after a 50 ms save", async () => {
+    const recorder = recordingCapture();
+    const props = meta.galleryStates[1].props;
+    function Parent() {
+      const [widgets, setWidgets] = useState(props.widgets);
+      return <WidgetPicker {...props} widgets={widgets} onWidgetChange={(id, enabled) => {
+        window.setTimeout(() => setWidgets((current) => current.map((widget) => widget.widgetId === id ? { ...widget, enabled } : widget)), 50);
+        return true;
+      }} />;
+    }
+    const user = userEvent.setup();
+    render(<CaptureProvider sink={recorder.sink}><Parent /></CaptureProvider>);
+    await user.click(screen.getByRole("switch", { name: "Resume" }));
+    expect(recorder.events.filter(({ name }) => name === "setting_changed")).toEqual([]);
+    await waitFor(() => expect(recorder.events.filter(({ name }) => name === "setting_changed")).toEqual([
+      { name: "setting_changed", dimension: "home_widgets", value: "off", component: "ResumeWidget" },
+    ]));
+  });
+
+  it("records an accepted resolved promise after the prop update", async () => {
+    const recorder = recordingCapture();
+    const props = meta.galleryStates[1].props;
+    function Parent() {
+      const [widgets, setWidgets] = useState(props.widgets);
+      return <WidgetPicker {...props} widgets={widgets} onWidgetChange={async (id, enabled) => {
+        setWidgets((current) => current.map((widget) => widget.widgetId === id ? { ...widget, enabled } : widget));
+        return true;
+      }} />;
+    }
+    const user = userEvent.setup();
+    render(<CaptureProvider sink={recorder.sink}><Parent /></CaptureProvider>);
+    await user.click(screen.getByRole("switch", { name: "Resume" }));
+    await waitFor(() => expect(recorder.events.filter(({ name }) => name === "setting_changed")).toEqual([
+      { name: "setting_changed", dimension: "home_widgets", value: "off", component: "ResumeWidget" },
+    ]));
+  });
+
+  it("does not record an accepted change the parent never shows", async () => {
+    const recorder = recordingCapture();
+    const user = userEvent.setup();
+    render(<CaptureProvider sink={recorder.sink}><WidgetPicker {...meta.galleryStates[1].props} onWidgetChange={() => true} /></CaptureProvider>);
+    await user.click(screen.getByRole("switch", { name: "Resume" }));
+    expect(recorder.events.filter(({ name }) => name === "setting_changed")).toEqual([]);
+  });
+
+  it("keeps an accepted request through a parent re-render while it is pending", async () => {
+    const recorder = recordingCapture();
+    const props = meta.galleryStates[1].props;
+    function Parent() {
+      const [widgets, setWidgets] = useState(props.widgets);
+      const [, rerender] = useState(0);
+      return <WidgetPicker {...props} widgets={widgets} onWidgetChange={(id, enabled) => new Promise((resolve) => {
+        rerender((value) => value + 1);
+        window.setTimeout(() => {
+          setWidgets((current) => current.map((widget) => widget.widgetId === id ? { ...widget, enabled } : widget));
+          resolve(true);
+        }, 50);
+      })} />;
+    }
+    const user = userEvent.setup();
+    render(<CaptureProvider sink={recorder.sink}><Parent /></CaptureProvider>);
+    await user.click(screen.getByRole("switch", { name: "Resume" }));
+    await waitFor(() => expect(recorder.events.filter(({ name }) => name === "setting_changed")).toEqual([
+      { name: "setting_changed", dimension: "home_widgets", value: "off", component: "ResumeWidget" },
+    ]));
+  });
+
+  it("records two accepted quick moves on the same widget", async () => {
+    const recorder = recordingCapture();
+    const props = meta.galleryStates[1].props;
+    function Parent() {
+      const [widgets, setWidgets] = useState(props.widgets);
+      return <WidgetPicker {...props} widgets={widgets} onWidgetChange={(id, enabled) => new Promise((resolve) => {
+        window.setTimeout(() => setWidgets((current) => current.map((widget) => widget.widgetId === id ? { ...widget, enabled } : widget)), 10);
+        window.setTimeout(() => resolve(true), 60);
+      })} />;
+    }
+    const user = userEvent.setup();
+    render(<CaptureProvider sink={recorder.sink}><Parent /></CaptureProvider>);
+    const resume = screen.getByRole("switch", { name: "Resume" });
+    await user.click(resume);
+    await waitFor(() => expect(resume.getAttribute("aria-checked")).toBe("false"));
+    await user.click(resume);
+    await waitFor(() => expect(resume.getAttribute("aria-checked")).toBe("true"));
+    await waitFor(() => expect(recorder.events.filter(({ name }) => name === "setting_changed")).toEqual([
+      { name: "setting_changed", dimension: "home_widgets", value: "off", component: "ResumeWidget" },
+      { name: "setting_changed", dimension: "home_widgets", value: "on", component: "ResumeWidget" },
+    ]));
   });
 
   it("passes the selected available widget id to onAdd", async () => {

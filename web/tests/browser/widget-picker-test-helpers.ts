@@ -20,8 +20,7 @@ export async function openPickerPreview(page: Page, title: string) {
     return stablePolls >= 3;
   }).toBe(true);
 
-  const customize = iframe.contentFrame().getByRole("button", { name: "Customize" });
-  await customize.click();
-  await expect.poll(() => page.locator('iframe[title^="WidgetPicker · "]').evaluateAll((frames) => (frames as HTMLIFrameElement[]).filter((frame) => frame.contentDocument?.querySelector("[data-widget-picker-dialog]")).map((frame) => frame.title))).toEqual([title]);
-  await expect(iframe.contentFrame().locator("[data-widget-picker-dialog]")).toBeVisible();
+  const dialog = iframe.contentFrame().locator("[data-widget-picker-dialog]");
+  if (!(await dialog.count())) await iframe.contentFrame().getByRole("button", { name: "Customize" }).click();
+  await expect(dialog).toBeVisible();
 }

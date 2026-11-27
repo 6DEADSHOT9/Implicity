@@ -65,7 +65,7 @@ function HomeSkeletonHarness() {
     <WidgetFrame title={longTitle} lastUpdate="Updated today" source="scheduled_source" slots={{ content: [<ScheduledWidget key="scheduled" slots={{ content }} />] }} />
     <WidgetFrame title={longTitle} lastUpdate="Updated today" source="quick_prompts_source" slots={{ content: [<QuickPromptsWidget key="prompts" slots={{ content }} />] }} />
     <WidgetFrame title={longTitle} lastUpdate="Updated today" source="now_playing_source" slots={{ content: [<NowPlayingWidget key="now-playing" progress={35} slots={{ content }} />] }} />
-    <WidgetPicker open={open} title="Choose Home widgets" widgets={pickerWidgets} availableWidgets={availableWidgets} onOpenChange={setOpen} onWidgetChange={() => undefined} onAdd={() => undefined} />
+    <WidgetPicker open={open} title="Choose Home widgets" widgets={pickerWidgets} availableWidgets={availableWidgets} onOpenChange={setOpen} onWidgetChange={() => true} onAdd={() => undefined} />
   </main>;
 }
 

@@ -13,7 +13,7 @@ class PreviewBoundary extends Component<{ children: ReactNode; label: string }, 
 }
 
 function WidgetPickerExample({ props }: { props: z.infer<typeof propsSchema> }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(props.open);
   const [widgets, setWidgets] = useState(props.widgets);
   const [availableWidgets, setAvailableWidgets] = useState(props.availableWidgets);
   useEffect(() => {
@@ -27,7 +27,11 @@ function WidgetPickerExample({ props }: { props: z.infer<typeof propsSchema> }) 
     widgets={widgets}
     availableWidgets={availableWidgets}
     onOpenChange={setOpen}
-    onWidgetChange={(widgetId, enabled) => setWidgets((current) => current.map((widget) => widget.widgetId === widgetId ? { ...widget, enabled } : widget))}
+    suppressInitialFocus
+    onWidgetChange={(widgetId, enabled) => {
+      setWidgets((current) => current.map((widget) => widget.widgetId === widgetId ? { ...widget, enabled } : widget));
+      return true;
+    }}
     onAdd={(widgetId) => {
       const added = availableWidgets.find((widget) => widget.widgetId === widgetId);
       if (!added) return;

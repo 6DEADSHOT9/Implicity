@@ -238,6 +238,28 @@ test("WidgetPicker caps a dialog with two widgets and thirty Add rows", async ({
   expect(bounds.closeBottom).toBeLessThanOrEqual(390);
 });
 
+test("WidgetPicker records async accepted changes in the browser", async ({ page }) => {
+  const expectedOff = [{ name: "setting_changed", dimension: "home_widgets", value: "off", component: "ResumeWidget" }];
+  const expectedOn = [{ name: "setting_changed", dimension: "home_widgets", value: "on", component: "ResumeWidget" }];
+  const events = () => page.evaluate(() => (window as Window & { widgetPickerEvents: Array<{ name: string }> }).widgetPickerEvents.filter(({ name }) => name === "setting_changed"));
+  for (const scenario of ["delayed", "promise", "pending-rerender"]) {
+    await page.goto(`/tests/browser/widget-picker-acceptance.html?scenario=${scenario}`);
+    const resume = page.getByRole("switch", { name: "Resume" });
+    await resume.click();
+    if (scenario === "pending-rerender") await expect(page.locator("[data-revision]")).toHaveText("1");
+    await expect(resume).toHaveAttribute("aria-checked", "false");
+    await expect.poll(events).toEqual(expectedOff);
+  }
+
+  await page.goto("/tests/browser/widget-picker-acceptance.html?scenario=quick");
+  const resume = page.getByRole("switch", { name: "Resume" });
+  await resume.click();
+  await expect(resume).toHaveAttribute("aria-checked", "false");
+  await resume.click();
+  await expect(resume).toHaveAttribute("aria-checked", "true");
+  await expect.poll(events).toEqual([...expectedOff, ...expectedOn]);
+});
+
 test("Home titles and widget content wrap 150-character unbroken text", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 900 });
   await page.goto("/tests/browser/home-skeletons.html");

@@ -886,6 +886,26 @@ for (const look of ["default", "focused", "notebook"] as const) {
   });
 }
 
+test("open WidgetPicker gallery states show dialogs without moving focus on page load", async ({ page }) => {
+  await page.goto("/");
+  for (const state of ["open", "long-content"]) {
+    await page.locator(`iframe[title="WidgetPicker · ${state}"]`).contentFrame().locator("#root > *").first().waitFor({ state: "attached" });
+    const frame = page.frameLocator(`iframe[title="WidgetPicker · ${state}"]`);
+    const dialog = frame.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("switch")).toHaveCount(5);
+  }
+  await expect.poll(() => page.evaluate(() => {
+    const pickerFrames = Array.from(document.querySelectorAll<HTMLIFrameElement>('iframe[title^="WidgetPicker · "]'));
+    return document.activeElement === document.body && pickerFrames
+      .filter(({ title }) => /WidgetPicker · (open|long-content)$/.test(title))
+      .every((frame) => {
+        const frameDocument = frame.contentDocument;
+        return !!frameDocument && frameDocument.activeElement === frameDocument.body;
+      });
+  })).toBe(true);
+});
+
 test("conversation gallery renders every declared state", async ({ page }) => {
   await page.goto("/tests/browser/conversation-gallery.html");
   const states = await page.locator(".gallery-card[data-skeleton]").evaluateAll((elements) => elements.map((element) => `${element.getAttribute("data-skeleton")} · ${element.getAttribute("data-gallery-state")}`));
