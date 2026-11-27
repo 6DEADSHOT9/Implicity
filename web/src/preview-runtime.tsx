@@ -16,7 +16,6 @@ function PreviewMounted({ children, onMounted, version }: { children: ReactNode;
 
 function PreviewExample({ entry, props, slots, label }: { entry: SkeletonEntry; props: Record<string, unknown>; slots: Record<string, ReactNode>; label: string }) {
   const [exampleProps, setExampleProps] = useState(props);
-  useEffect(() => setExampleProps(props), [props]);
   const update = (key: string) => (value: unknown) => setExampleProps((current) => ({ ...current, [key]: value }));
   const onAction = (action?: string, value?: string | number | boolean) => {
     if (action === "representation" && (value === "table" || value === "chart")) setExampleProps((current) => ({ ...current, form: value }));

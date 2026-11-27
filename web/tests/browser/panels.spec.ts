@@ -311,8 +311,11 @@ async function assertFocusedProjectLabels(page: Page, viewportWidth: 288 | 1440,
   await page.getByLabel("Look").selectOption("focused");
   await page.getByLabel("Density").selectOption("spacious");
   if (viewportWidth === 1440 && panelWidth) {
-    await frame.evaluate((element, width) => { (element as HTMLIFrameElement).width = String(width); }, panelWidth);
-    await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentWindow?.innerWidth), { timeout: 15000 }).toBe(panelWidth);
+    await frame.evaluate((element, width) => {
+      const document = (element as HTMLIFrameElement).contentDocument!;
+      document.querySelector<HTMLElement>('section[aria-label="Project"]')!.parentElement!.style.width = `${width}px`;
+    }, panelWidth);
+    await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentWindow?.innerWidth), { timeout: 15000 }).toBe(1440);
   }
   const previewHtml = frame.contentFrame().locator("html");
   await expect(previewHtml).toHaveAttribute("data-look", "focused");
@@ -352,8 +355,12 @@ test("ProjectPanel keeps content readable beside a long tab label", async ({ pag
   await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentDocument?.fonts.status), { timeout: 15000 }).toBe("loaded");
 
   for (const width of [288, 384]) {
-    await frame.evaluate((element, value) => { (element as HTMLIFrameElement).width = String(value); }, width);
-    await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentWindow?.innerWidth), { timeout: 15000 }).toBe(width);
+    await frame.evaluate((element, value) => {
+      const document = (element as HTMLIFrameElement).contentDocument!;
+      document.querySelector<HTMLElement>('section[aria-label="Project"]')!.parentElement!.style.width = `${value}px`;
+    }, width);
+    await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentWindow?.innerWidth), { timeout: 15000 }).toBe(1440);
+    await expect(frame.contentFrame().getByRole("tablist")).toHaveAttribute("aria-orientation", width === 288 ? "horizontal" : "vertical");
     const contentWidth = await frame.evaluate((element) => {
       const panel = (element as HTMLIFrameElement).contentDocument!.querySelector<HTMLElement>('section[aria-label="Project"]')!;
       return panel.querySelector<HTMLElement>("[role=tabpanel]")!.getBoundingClientRect().width;
@@ -362,13 +369,64 @@ test("ProjectPanel keeps content readable beside a long tab label", async ({ pag
   }
 });
 
-test("ProjectPanel stacks tabs above content when its own width is 288px", async ({ page }) => {
+test("ProjectPanel stacks tabs above content at 288px for short and long labels", async ({ page }) => {
+  await page.goto("/");
+  for (const state of ["decisions", "labels"] as const) {
+    const frame = page.locator(`iframe[title="ProjectPanel · ${state}"]`);
+    await expect(frame.contentFrame().getByRole("tablist")).toBeVisible({ timeout: 15000 });
+    await frame.evaluate((element) => {
+      const document = (element as HTMLIFrameElement).contentDocument!;
+      document.querySelector<HTMLElement>('section[aria-label="Project"]')!.parentElement!.style.width = "288px";
+    });
+    await expect(frame.contentFrame().getByRole("tablist")).toHaveAttribute("aria-orientation", "horizontal");
+    const geometry = await frame.evaluate((element) => {
+      const document = (element as HTMLIFrameElement).contentDocument!;
+      const list = document.querySelector<HTMLElement>('[role="tablist"]')!;
+      const content = document.querySelector<HTMLElement>("[role=tabpanel]")!;
+      const listBottom = list.getBoundingClientRect().bottom;
+      const contentTop = content.getBoundingClientRect().top;
+      return [...list.querySelectorAll<HTMLElement>("[role=tab]")].map((tab) => ({
+        label: tab.textContent,
+        bottom: tab.getBoundingClientRect().bottom,
+        listBottom,
+        contentTop,
+      }));
+    });
+    expect(geometry.length, state).toBeGreaterThan(0);
+    for (const tab of geometry) {
+      expect(tab.bottom, `${state} tab ${tab.label} inside tab list`).toBeLessThanOrEqual(tab.listBottom);
+      expect(tab.bottom, `${state} tab ${tab.label} above content`).toBeLessThanOrEqual(tab.contentTop);
+    }
+  }
+});
+
+test("ProjectPanel switches at its own width in a 1440px viewport", async ({ page }) => {
   await page.goto("/");
   const frame = page.locator('iframe[title="ProjectPanel · decisions"]');
   await expect(frame.contentFrame().getByRole("tablist")).toBeVisible({ timeout: 15000 });
-  await frame.evaluate((element) => { (element as HTMLIFrameElement).width = "288"; });
-  await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentWindow?.innerWidth), { timeout: 15000 }).toBe(288);
-  await expect(frame.contentFrame().getByRole("tablist")).toHaveAttribute("aria-orientation", "horizontal");
+  for (const [width, orientation] of [[383, "horizontal"], [384, "vertical"]] as const) {
+    await frame.evaluate((element, value) => {
+      const document = (element as HTMLIFrameElement).contentDocument!;
+      document.querySelector<HTMLElement>('section[aria-label="Project"]')!.parentElement!.style.width = `${value}px`;
+    }, width);
+    await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentWindow?.innerWidth), { timeout: 15000 }).toBe(1440);
+    await expect(frame.contentFrame().getByRole("tablist")).toHaveAttribute("aria-orientation", orientation);
+  }
+});
+
+test("ProjectPanel fills a flex-row parent", async ({ page }) => {
+  await page.goto("/");
+  const frame = page.locator('iframe[title="ProjectPanel · decisions"]');
+  await expect(frame.contentFrame().getByRole("tablist")).toBeVisible({ timeout: 15000 });
+  const width = await frame.evaluate((element) => {
+    const document = (element as HTMLIFrameElement).contentDocument!;
+    const root = document.querySelector<HTMLElement>("#root")!;
+    root.style.display = "flex";
+    root.style.flexDirection = "row";
+    root.style.width = "100%";
+    return document.querySelector<HTMLElement>('section[aria-label="Project"]')!.parentElement!.getBoundingClientRect().width;
+  });
+  expect(width).toBeGreaterThan(1000);
 });
 
 test("ProjectPanel keeps Constraints whole in Focused spacious at every size", async ({ page }) => {

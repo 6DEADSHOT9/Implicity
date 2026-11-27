@@ -200,6 +200,8 @@ function classViolations(node, tokenBindings, allowedClasses) {
 
 function styleObject(node, vars, seen, tokenBindings, allowedClasses, strict = false) {
   node = unwrap(node);
+  if (ts.isConditionalExpression(node)) return [...styleObject(node.whenTrue, vars, new Set(seen), tokenBindings, allowedClasses, strict), ...styleObject(node.whenFalse, vars, new Set(seen), tokenBindings, allowedClasses, strict)];
+  if (ts.isIdentifier(node) && node.text === "undefined") return [];
   if (ts.isIdentifier(node)) {
     const alias = variable(node, vars, seen);
     return alias ? styleObject(alias.value, vars, alias.seen, tokenBindings, allowedClasses, strict) : ["unsupported dynamic style object"];
