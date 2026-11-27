@@ -14,8 +14,9 @@ function builtPreviewUrl(path: string) {
   return `http://127.0.0.1:${port}${path}`;
 }
 
-function contentGalleryUrl(previews: readonly string[] = []) {
+function contentGalleryUrl(previews: readonly string[] = [], device?: "desktop" | "tablet") {
   const search = new URLSearchParams(previews.map((title) => ["preview", title]));
+  if (device) search.set("device", device);
   return builtPreviewUrl(`/tests/browser/content-gallery.html${search.size ? `?${search}` : ""}`);
 }
 
@@ -1007,8 +1008,7 @@ test("compact tablet conversation controls meet the 44px target in both dimensio
 
 async function assertGalleryMatrix(page: Page, device: "desktop" | "tablet", fixture: string, skeletonNames: string[], styleNames: string[]) {
   await page.goto(fixture, { waitUntil: "domcontentloaded" });
-  await expect(page.locator("[data-gallery-root]")).toBeAttached();
-  await selectGallerySettings(page, { "Screen size": device });
+  await expect(page.locator("[data-gallery-root]"), `initial gallery device is ${device}`).toHaveAttribute("data-device-class", device);
   await expect.poll(() => page.locator("iframe.gallery-preview-frame").evaluateAll((frames, { names, device }) => {
     const previews = (frames as HTMLIFrameElement[]).filter((frame) => names.some((name) => frame.title.startsWith(`${name} · `)));
     return names.every((name) => previews.some((frame) => frame.title.startsWith(`${name} · `))) && previews.every((frame) => {
@@ -1108,11 +1108,11 @@ const contentMatrixStyles = ["DataChart", "Tabs", "CodeBlock", "Card"];
 const conversationMatrixNames = ["MessageBody", "Details", "RunActivity", "MessageActions", "AttachmentTray", "Citation", "ContextChip", "ShortcutChips", "ApprovalRequest"];
 
 test("content skeletons survive every desktop gallery setting", async ({ page }) => {
-  await assertGalleryMatrix(page, "desktop", "/tests/browser/content-gallery.html", contentMatrixNames, contentMatrixStyles);
+  await assertGalleryMatrix(page, "desktop", contentGalleryUrl(), contentMatrixNames, contentMatrixStyles);
 });
 
 test("content skeletons survive every tablet gallery setting", async ({ page }) => {
-  await assertGalleryMatrix(page, "tablet", "/tests/browser/content-gallery.html", contentMatrixNames, contentMatrixStyles);
+  await assertGalleryMatrix(page, "tablet", contentGalleryUrl([], "tablet"), contentMatrixNames, contentMatrixStyles);
 });
 
 test("conversation skeletons survive every desktop gallery setting", async ({ page }) => {
