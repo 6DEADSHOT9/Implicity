@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { SEEN_VISIBLE_SECONDS } from "../../src/registry/use-seen";
 
+const shellGallery = "/tests/browser/shell-gallery.html";
+
 const previews = [
   ["AppShell", "default"], ["AppShell", "docked"],
   ["ConversationNavigation", "populated"], ["ConversationNavigation", "empty"],
@@ -13,8 +15,15 @@ const previews = [
 test("shell skeletons render usable, contained content across gallery settings", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto("/");
+  await page.goto(shellGallery);
   const initialSearch = page.frameLocator("iframe[title='Search · open']");
+  await expect(initialSearch.getByRole("dialog", { name: "Search" })).toBeVisible();
+  // The gallery's own primitive Command scrolls the page on mount, so measure what the preview does from the top.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.locator("iframe[title='Search · open']").evaluate((element) => new Promise((resolve) => {
+    element.addEventListener("load", resolve, { once: true });
+    (element as HTMLIFrameElement).contentWindow!.location.reload();
+  }));
   await expect(initialSearch.getByRole("dialog", { name: "Search" })).toBeVisible();
   const initialViewport = await page.evaluate(() => ({ scrollY, active: document.activeElement?.tagName, title: (document.activeElement as HTMLIFrameElement | null)?.title }));
   const searchFocus = await initialSearch.locator("body").evaluate((body) => ({ className: body.className, active: body.ownerDocument.activeElement?.outerHTML.slice(0, 160) }));
@@ -88,7 +97,7 @@ test("shell skeletons render usable, contained content across gallery settings",
 
 test("shell skeletons fit a 375px viewport", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 900 });
-  await page.goto("/");
+  await page.goto(shellGallery);
   const galleryFrame = page.frameLocator("iframe[title='AppShell · default']");
   await expect(galleryFrame.locator("html")).toHaveAttribute("data-mode", "light");
   const styles = await galleryFrame.locator("html").evaluate((element) => element.style.cssText);
@@ -102,7 +111,7 @@ test("shell skeletons fit a 375px viewport", async ({ page }) => {
     else await expect(page.locator("main[data-slot=sidebar-inset]")).toBeVisible();
     if (entry === "Composer") {
       const textarea = page.getByRole("textbox", { name: "Message" });
-      expect(await textarea.evaluate((element) => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+      expect(await textarea.evaluate((element) => ({ min: getComputedStyle(element).minHeight, height: element.getBoundingClientRect().height >= 44 }))).toEqual({ min: "44px", height: true });
       const shortcut = page.getByRole("button", { name: "Summarize" });
       await shortcut.evaluate((element) => { element.textContent = "unbroken".repeat(100); });
       const composer = page.getByRole("region", { name: "Message composer" });
@@ -119,11 +128,11 @@ test("shell skeletons fit a 375px viewport", async ({ page }) => {
 
 test("AppShell stacks panes at tablet widths and keeps the shrinking pane usable", async ({ page }) => {
   await page.setViewportSize({ width: 800, height: 900 });
-  await page.goto("/");
+  await page.goto(shellGallery);
   await page.getByLabel("Screen size").selectOption("tablet");
   const app = page.frameLocator("iframe[title='AppShell · docked']");
   const handle = app.locator("[data-slot=resizable-handle]");
-  await expect(handle, await app.locator("body").innerText()).toHaveAttribute("aria-orientation", "horizontal");
+  await expect(handle).toHaveAttribute("aria-orientation", "horizontal");
   const group = app.locator("[data-slot=resizable-panel-group]");
   const panels = app.locator("[data-slot=resizable-panel]");
   const measure = () => panels.evaluateAll((elements) => elements.map((element) => {
@@ -139,23 +148,27 @@ test("AppShell stacks panes at tablet widths and keeps the shrinking pane usable
   expect((await measure())[0].height).toBeGreaterThanOrEqual(Math.floor(groupHeight * 0.52));
 });
 
-test("AppShell preview heights settle on tablet", async ({ page }) => {
-  await page.goto("/");
+test("AppShell preview heights settle at a usable size on tablet", async ({ page }) => {
+  await page.goto(shellGallery);
   await page.getByLabel("Screen size").selectOption("tablet");
   for (const state of ["default", "docked"]) {
     const frame = page.locator(`iframe[title='AppShell · ${state}']`);
-    await expect(frame.contentFrame().locator("main[data-slot=sidebar-inset]")).toBeVisible();
-    const heights: number[][] = [];
-    for (let sample = 0; sample < 3; sample++) {
-      heights.push(await frame.evaluate((element) => [Number((element as HTMLIFrameElement).height)]));
-      await page.waitForTimeout(350);
-    }
-    expect(Math.max(...heights.map(([height]) => height)) - Math.min(...heights.map(([height]) => height)), state).toBeLessThanOrEqual(1);
+    await expect(frame).toHaveAttribute("data-device-class", "tablet");
+    // A fixed point: the content is exactly as tall as the frame it is in, so the next height report cannot change it.
+    await expect.poll(() => frame.evaluate((element) => {
+      const preview = element as HTMLIFrameElement;
+      const root = preview.contentDocument?.querySelector("#root")?.getBoundingClientRect().height;
+      const style = preview.contentDocument && getComputedStyle(preview.contentDocument.documentElement);
+      const token = style && parseFloat(style.getPropertyValue("--content-max-height")) * parseFloat(style.fontSize); // a rem token
+      return { frame: Number(preview.height) === token, root: root === token, viewport: preview.contentWindow?.innerHeight === token };
+    }), { message: state }).toEqual({ frame: true, root: true, viewport: true });
+    const paneHeights = await frame.contentFrame().locator("[data-slot=resizable-panel]").evaluateAll((panes) => panes.map((pane) => pane.getBoundingClientRect().height));
+    expect(Math.min(...paneHeights), state).toBeGreaterThanOrEqual(44);
   }
 });
 
 test("AppShell keeps usable slot minima at the docked threshold in each density", async ({ page }) => {
-  await page.goto("/");
+  await page.goto(shellGallery);
   await page.getByLabel("Screen size").selectOption("desktop");
   const frame = page.locator("iframe[title='AppShell · docked']");
   const app = page.frameLocator("iframe[title='AppShell · docked']");
@@ -206,9 +219,53 @@ test("AppShell keeps usable slot minima at the docked threshold in each density"
   }
 });
 
+test("AppShell measures its own width and keeps the draft and slot minima as it changes", async ({ page }) => {
+  await page.goto(shellGallery);
+  await page.evaluate(async () => {
+    const fixtureUrl = "/tests/browser/shell-layout-entry.tsx";
+    await import(/* @vite-ignore */ fixtureUrl) as typeof import("./shell-layout-entry");
+    window.mountShellLayout();
+  });
+  const host = page.getByTestId("shell-host");
+  const handle = host.locator("[data-slot=resizable-handle]");
+  const draft = host.getByRole("textbox", { name: "Draft" });
+  const resize = (width: number) => host.evaluate((element, value) => { element.style.width = `${value}px`; }, width);
+  await draft.fill("unsent words");
+  const original = await draft.elementHandle();
+  // The panel opens after mount, in a host just wide enough to dock: both padded slots must still get their minimum.
+  const paddedMinimums = await host.evaluate((element) => {
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
+    const space = (name: string) => parseFloat(getComputedStyle(element).getPropertyValue(name)) * rem; // rem tokens
+    return 320 + 288 + 44 + 2 * space("--space-4") + 2 * space("--space-3");
+  });
+  const chrome = await host.evaluate((element) => element.getBoundingClientRect().width - element.querySelector("[data-slot=resizable-panel-group]")!.getBoundingClientRect().width);
+  await resize(Math.ceil(chrome + paddedMinimums) + 2);
+  await page.getByRole("button", { name: "Open panel" }).click();
+  await expect(handle).toHaveAttribute("aria-orientation", "vertical");
+  const usableWidths = () => host.locator("[data-slot=resizable-panel]").evaluateAll((panes) => panes.map((pane) => {
+    const slot = pane.querySelector<HTMLElement>("[class*='p-space-']")!;
+    const style = getComputedStyle(slot);
+    return slot.getBoundingClientRect().width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+  }));
+  await handle.focus();
+  for (const key of ["Home", "End"]) {
+    await page.keyboard.press(key);
+    const [main, panel] = await usableWidths();
+    expect(main, key).toBeGreaterThanOrEqual(320);
+    expect(panel, key).toBeGreaterThanOrEqual(288);
+  }
+  // A narrow host inside a wide window stacks.
+  await resize(800);
+  await expect(handle).toHaveAttribute("aria-orientation", "horizontal");
+  await resize(1201);
+  await expect(handle).toHaveAttribute("aria-orientation", "vertical");
+  await expect(draft).toHaveValue("unsent words");
+  expect(await original!.evaluate((element) => element.isConnected)).toBe(true);
+});
+
 test("Search and Settings fit, filter, and return keyboard focus in a short viewport", async ({ page }) => {
   await page.setViewportSize({ width: 800, height: 375 });
-  await page.goto("/");
+  await page.goto(shellGallery);
   await page.evaluate(async () => {
     const fixtureUrl = "/tests/browser/shell-interactions-entry.tsx";
     await import(/* @vite-ignore */ fixtureUrl) as typeof import("./shell-interactions-entry");
@@ -244,11 +301,12 @@ test("Search and Settings fit, filter, and return keyboard focus in a short view
   await expect(input).toHaveValue("planning");
   await expect(page.getByRole("option", { name: "Filtered result" })).toBeVisible();
   expect(await page.evaluate(() => window.shellSearchQueries)).toEqual(["planning", "", "planning"]);
-  await page.waitForTimeout(SEEN_VISIBLE_SECONDS * 1000 + 1500);
-  expect(await page.evaluate(() => ({ events: window.shellInteractionEvents, bounds: document.querySelector("[role=dialog]")?.getBoundingClientRect().toJSON(), visible: document.querySelector<HTMLElement>("[role=dialog]")?.checkVisibility({ opacityProperty: true, visibilityProperty: true }) }))).toMatchObject({ events: expect.arrayContaining([expect.objectContaining({ name: "component_seen", component: "Search" })]), visible: true });
+  // The app opened Search and its launcher is below the fold, so only the dialog itself is on screen.
+  await expect(page.getByRole("button", { name: "Search", exact: true, includeHidden: true })).not.toBeInViewport();
+  await expect.poll(() => page.evaluate(() => window.shellInteractionEvents.filter((event) => event.name === "component_seen" && event.component === "Search").length)).toBe(1);
   await page.keyboard.press("Escape");
 
-  await page.waitForTimeout(3200);
+  // Settings has been mounted and closed for longer than the seen delay that Search just waited out.
   expect(await page.evaluate(() => window.shellInteractionEvents.filter((event) => event.name === "component_seen" && event.component === "Settings"))).toEqual([]);
   const settingsOpener = page.getByRole("button", { name: "Open app settings" });
   await settingsOpener.click();
@@ -270,17 +328,18 @@ test("Search and Settings fit, filter, and return keyboard focus in a short view
 });
 
 test("native visibility reports the correct seen state for each shell", async ({ page }) => {
-  await page.goto("/");
+  await page.goto(shellGallery);
   await page.evaluate(async () => {
     const fixtureUrl = "/tests/browser/shell-seen-entry.tsx";
     await import(/* @vite-ignore */ fixtureUrl) as typeof import("./shell-seen-entry");
     window.mountShellSeen();
   });
-  await page.waitForTimeout((SEEN_VISIBLE_SECONDS - 0.5) * 1000);
-  expect(await page.evaluate(() => window.shellSeenEvents.filter((event) => event.name === "component_seen"))).toEqual([]);
   await expect.poll(() => page.evaluate(() => window.shellSeenEvents.filter((event) => event.name === "component_seen").length)).toBe(6);
   const seenEvents = await page.evaluate(() => window.shellSeenEvents.filter((event) => event.name === "component_seen"));
-  expect(seenEvents.every((event) => event.seconds_visible >= SEEN_VISIBLE_SECONDS)).toBe(true);
+  const elapsed = await page.evaluate(() => window.shellSeenAt.map((at) => (at - window.shellMountedAt) / 1000));
+  expect(elapsed).toHaveLength(6);
+  expect(Math.min(...elapsed), "no component_seen before the seen delay").toBeGreaterThanOrEqual(SEEN_VISIBLE_SECONDS);
+  for (const event of seenEvents) expect(event.seconds_visible, String(event.component)).toBeGreaterThanOrEqual(SEEN_VISIBLE_SECONDS);
   const states = await page.evaluate(() => window.shellSeenEvents.filter((event) => event.name === "component_seen").map(({ component, default_state }) => [component, default_state]).sort(([left], [right]) => left.localeCompare(right)));
   expect(states).toEqual([
     ["AppShell", "default"],
@@ -290,4 +349,19 @@ test("native visibility reports the correct seen state for each shell", async ({
     ["Search", "open"],
     ["Settings", "preferences"],
   ]);
+});
+
+test("a ChatHeader preview leaves the host page's focus and scroll alone", async ({ page }) => {
+  await page.goto(shellGallery);
+  const frame = page.locator("iframe[title='ChatHeader · with-settings']");
+  const menu = frame.contentFrame().getByRole("menuitem", { name: "Conversation settings" });
+  await expect(menu).toBeVisible();
+  const look = page.getByLabel("Look");
+  await look.focus();
+  await frame.evaluate((element) => new Promise((resolve) => {
+    element.addEventListener("load", resolve, { once: true });
+    (element as HTMLIFrameElement).contentWindow!.location.reload();
+  }));
+  await expect(menu).toBeVisible();
+  await expect(look).toBeFocused();
 });

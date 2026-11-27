@@ -34,7 +34,7 @@ window.mountShellInteractions = () => {
   window.shellInteractionEvents = [];
   window.shellSearchQueries = [];
   const host = document.createElement("div");
-  host.style.cssText = "position: fixed; inset: 0; z-index: 1000; overflow: auto; background: var(--background)";
+  host.style.cssText = "position: fixed; inset: 0; z-index: 40; overflow: auto; background: var(--background)";
   document.body.append(host);
   createRoot(host).render(<CaptureProvider sink={(event) => window.shellInteractionEvents.push(event)}><ShellInteractions /></CaptureProvider>);
 };

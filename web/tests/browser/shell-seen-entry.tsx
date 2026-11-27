@@ -10,6 +10,8 @@ import { CaptureProvider, type CapturedEvent } from "../../src/registry";
 declare global {
   interface Window {
     shellSeenEvents: CapturedEvent[];
+    shellSeenAt: number[];
+    shellMountedAt: number;
     mountShellSeen(): void;
   }
 }
@@ -25,8 +27,10 @@ const entries = [
 
 window.mountShellSeen = () => {
   window.shellSeenEvents = [];
+  window.shellSeenAt = [];
+  window.shellMountedAt = performance.now();
   const host = document.createElement("div");
-  host.style.cssText = "position: fixed; inset: 0; z-index: 1000; overflow: auto; background: var(--background)";
+  host.style.cssText = "position: fixed; inset: 0; z-index: 40; overflow: auto; background: var(--background)";
   document.body.append(host);
-  createRoot(host).render(<CaptureProvider sink={(event) => window.shellSeenEvents.push(event)}><div style={{ display: "grid", gridTemplateColumns: "repeat(3, 400px)", gridTemplateRows: "repeat(2, 450px)" }}>{entries.map((entry) => <div key={entry.key} style={{ position: "relative", height: 450, overflow: "hidden" }}>{entry}</div>)}</div></CaptureProvider>);
+  createRoot(host).render(<CaptureProvider sink={(event) => { window.shellSeenEvents.push(event); if (event.name === "component_seen") window.shellSeenAt.push(performance.now()); }}><div style={{ display: "grid", gridTemplateColumns: "repeat(3, 400px)", gridTemplateRows: "repeat(2, 450px)" }}>{entries.map((entry) => <div key={entry.key} style={{ position: "relative", height: 450, overflow: "hidden" }}>{entry}</div>)}</div></CaptureProvider>);
 };

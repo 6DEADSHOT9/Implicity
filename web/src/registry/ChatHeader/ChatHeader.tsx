@@ -15,8 +15,10 @@ export function ChatHeader({ title, kind, settingsOpen = false, onSettingsOpenCh
   const preventPreviewFocus = (event: Event) => {
     if (!preview) return;
     event.preventDefault();
-    (window.parent.document.activeElement as HTMLElement | null)?.blur();
-    window.parent.scrollTo(0, 0);
+    if (window.parent.document.activeElement === window.frameElement) {
+      (window.frameElement as HTMLElement | null)?.blur();
+      window.parent.scrollTo(0, 0);
+    }
   };
   return (
     <header ref={seenRef} aria-labelledby={titleId} className="flex min-w-0 flex-wrap items-center justify-between gap-space-2 border-b-token border-border p-space-3">
