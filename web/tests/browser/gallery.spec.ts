@@ -863,7 +863,7 @@ test("conversation gallery renders every declared state", async ({ page }) => {
 });
 
 test("combined gallery mounts T10 content and T9 conversation previews", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/tests/browser/combined-gallery.html");
   const table = page.frameLocator('iframe[title="DataTable · table"]');
   await expect(table.getByRole("table")).toBeVisible();
   const message = page.frameLocator('iframe[title="MessageBody · message"]');
