@@ -4,6 +4,7 @@ import logging
 import os
 import uuid
 from contextlib import AsyncExitStack, asynccontextmanager
+from dataclasses import asdict
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
@@ -81,6 +82,10 @@ def create_app(
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.get("/api/quota")
+    def quota() -> dict:
+        return asdict(agent.quota())
 
     @app.post("/api/conversations")
     def new_conversation() -> dict:

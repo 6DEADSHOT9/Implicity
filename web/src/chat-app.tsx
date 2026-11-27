@@ -12,6 +12,15 @@ import { MessageBody } from "./registry/MessageBody/MessageBody";
 type ConversationSummary = { id: string; title: string };
 type StoredMessage = { id: string; role: "user" | "assistant"; content: string };
 type Conversation = ConversationSummary & { messages: StoredMessage[] };
+type Quota = { state: "ok" | "near_limit" | "limited" | "unknown"; windows: { label: string; used_percent: number }[] };
+
+function quotaLabel(quota: Quota) {
+  if (quota.state === "unknown") return "Unknown";
+  const windows = quota.windows.map(({ label, used_percent }) => `${label}: ${Math.round(100 - used_percent)}% remaining`).join(" · ");
+  if (quota.state === "limited") return windows ? `Limit reached · ${windows}` : "Limit reached";
+  if (!windows) return quota.state === "near_limit" ? "Near limit" : "Available";
+  return quota.state === "near_limit" ? `Near limit · ${windows}` : windows;
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, init);
@@ -55,6 +64,7 @@ function ConversationChat({ conversation, onNewChat }: { conversation: Conversat
 export function ChatApp() {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [conversation, setConversation] = useState<Conversation>();
+  const [quota, setQuota] = useState("Unknown");
   const [error, setError] = useState(false);
 
   const openConversation = useCallback(async (id: string) => {
@@ -84,11 +94,14 @@ export function ChatApp() {
       setConversations(items);
       if (items[0]) await openConversation(items[0].id);
     }).catch(() => { if (current) setError(true); });
+    void request<Quota>("/api/quota").then((value) => {
+      if (current) setQuota(quotaLabel(value));
+    }).catch(() => { if (current) setQuota("Unknown"); });
     return () => { current = false; };
   }, [openConversation]);
 
   return <AppShell panelOpen={false} slots={{
-    navigation: [<ConversationNavigation key="navigation" items={conversations.map(({ id, title }) => ({ id, label: title }))} recent={[]} projects={[]} quota="Unknown" onNewChat={() => void newChat()} onSelect={(id) => void openConversation(id)} />],
+    navigation: [<ConversationNavigation key="navigation" items={conversations.map(({ id, title }) => ({ id, label: title }))} recent={[]} projects={[]} quota={quota} onNewChat={() => void newChat()} onSelect={(id) => void openConversation(id)} />],
     main: [conversation
       ? <ConversationChat key={conversation.id} conversation={conversation} onNewChat={() => void newChat()} />
       : <main key="empty" className="flex min-h-svh flex-col items-center justify-center gap-space-3 p-space-4"><h1 className="text-heading-2 font-semibold">Implicity</h1><p>Start a conversation.</p><Button onClick={() => void newChat()}>New chat</Button>{error && <p role="alert">The chat service could not be reached.</p>}</main>],

@@ -1,6 +1,28 @@
 import { expect, test } from "@playwright/test";
 import { createServer } from "node:http";
 
+async function stubQuota(page: import("@playwright/test").Page) {
+  await page.route("**/api/quota", (route) => route.fulfill({ json: {
+    state: "ok",
+    windows: [{ label: "Weekly", used_percent: 28, resets_at: "2026-12-01T00:00:00Z" }],
+    resets_at: null,
+    checked_at: "2026-11-28T00:00:00Z",
+  } }));
+}
+
+test("chat page applies the default look to the document root", async ({ page }) => {
+  await stubQuota(page);
+  await page.goto("/chat.html");
+  const look = await page.locator("body").evaluate((body) => ({
+    id: document.documentElement.dataset.look,
+    token: getComputedStyle(document.documentElement).getPropertyValue("--font-body").replaceAll('"', "").trim(),
+    font: getComputedStyle(body).fontFamily,
+  }));
+  expect(look.id).toBe("default");
+  expect(look.token).not.toBe("");
+  expect(look.font).toBe(look.token);
+});
+
 test("chat streams rendered content and reloads stored turns", async ({ page }) => {
   const id = "550e8400-e29b-41d4-a716-446655440000";
   let messages: Array<{ id: string; role: "user" | "assistant"; content: string }> = [];
@@ -12,6 +34,7 @@ test("chat streams rendered content and reloads stored turns", async ({ page }) 
     await route.fulfill({ json: messages.length ? [{ id, title: "New chat" }] : [] });
   });
   await page.route(`**/api/conversations/${id}`, (route) => route.fulfill({ json: { id, title: "New chat", messages } }));
+  await stubQuota(page);
   await page.route("**/api/chat", async (route) => {
     const request = route.request().postDataJSON();
     const userText = request.messages.at(-1).parts[0].text as string;
@@ -37,6 +60,7 @@ test("chat streams rendered content and reloads stored turns", async ({ page }) 
   await expect(page.getByText('print("hello")')).toBeVisible();
   await expect(page.getByRole("table")).toBeVisible();
   await expect(page.getByText("Chat", { exact: true })).toBeVisible();
+  await expect(page.getByText("Quota: Weekly: 72% remaining")).toBeVisible();
 
   await page.reload();
   await expect(page.getByText("Show me a table", { exact: true })).toBeVisible();
@@ -63,6 +87,7 @@ test("Stop closes the streaming request and leaves only the received answer", as
 
   await page.route("**/api/conversations", (route) => route.fulfill({ json: route.request().method() === "POST" ? { id, title: "New chat" } : [] }));
   await page.route(`**/api/conversations/${id}`, (route) => route.fulfill({ json: { id, title: "New chat", messages: [] } }));
+  await stubQuota(page);
   await page.route("**/api/chat", (route) => route.continue({ url: `http://127.0.0.1:${address.port}/api/chat` }));
   try {
     await page.goto("/chat.html");

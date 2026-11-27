@@ -3,6 +3,7 @@ import json
 from fastapi.testclient import TestClient
 from implicity_api.app import create_app
 from implicity_api.models import METADATA
+from implicity_api.modules.agent import Quota, QuotaWindow
 from implicity_api.persistence import create_store
 from sqlalchemy import create_engine
 
@@ -27,6 +28,36 @@ class FakeAgent:
 
     def cancel(self, _conversation_id):
         pass
+
+    def quota(self):
+        return Quota(
+            "near_limit",
+            (QuotaWindow("Weekly", 94, "2026-12-01T00:00:00Z"),),
+            None,
+            "2026-11-28T00:00:00Z",
+        )
+
+
+def test_quota_route_returns_agent_module_quota(tmp_path):
+    bind = create_engine(f"sqlite:///{tmp_path / 'chat-quota.db'}")
+    for metadata in METADATA.values():
+        metadata.create_all(bind)
+
+    with TestClient(
+        create_app(chat_agent=FakeAgent(), app_store_override=create_store("app", bind))
+    ) as client:
+        assert client.get("/api/quota").json() == {
+            "state": "near_limit",
+            "windows": [
+                {
+                    "label": "Weekly",
+                    "used_percent": 94,
+                    "resets_at": "2026-12-01T00:00:00Z",
+                }
+            ],
+            "resets_at": None,
+            "checked_at": "2026-11-28T00:00:00Z",
+        }
 
 
 def test_chat_streams_and_conversation_reloads(tmp_path):

@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import looks from "../../contracts/looks/default.json" with { type: "json" };
 import focused from "../../contracts/looks/focused.json" with { type: "json" };
 import notebook from "../../contracts/looks/notebook.json" with { type: "json" };
-import tokens from "../../contracts/looks/tokens.json" with { type: "json" };
 import { registry as defaultRegistry, type SkeletonEntry } from "./registry";
 import { PrimitiveGallery } from "./components/primitive-gallery";
 import { ChangeNoticeToastHost } from "./components/change-notice-toast-host";
+import { applyLookTokens, lookTokenValues } from "./look-tokens";
 import "./gallery.css";
 
 const availableLooks = [looks, focused, notebook];
@@ -87,32 +87,16 @@ export function Gallery({ registry = defaultRegistry, previewPath = "/preview.ht
   const [deviceClass, setDeviceClass] = useState<string>(initialDeviceClass);
   const root = useRef<HTMLElement>(null);
   const look = availableLooks.find(({ id }) => id === lookId) ?? availableLooks[0];
-  const scale = tokens.derivedTokens.textSize[textSize as keyof typeof tokens.derivedTokens.textSize];
-  const styles = { ...look[mode as "light" | "dark"], ...Object.fromEntries(Object.entries(tokens.sharedPalette[mode as "light" | "dark"]).map(([name, value]) => [`--${name}`, value])), ...tokens.derivedTokens.radius[look.radius as keyof typeof tokens.derivedTokens.radius], ...tokens.derivedTokens.density[density as keyof typeof tokens.derivedTokens.density], "--text-scale": scale["--text-scale"], ...scale.sizes, ...scale.headings, ...tokens.derivedTokens.dimensions, ...tokens.derivedTokens.motionDurations, ...tokens.derivedTokens.motionEasing, ...tokens.derivedTokens.motionAnimations, ...tokens.derivedTokens.fontWeights, ...tokens.derivedTokens.lineHeights };
-  const typeStyles = {
-    "--font-body": JSON.stringify(tokens.typefaces[look.typeface.body as keyof typeof tokens.typefaces].family),
-    "--font-heading": JSON.stringify(tokens.typefaces[look.typeface.heading as keyof typeof tokens.typefaces].family),
-    "--font-serif": JSON.stringify(tokens.typefaces.serif.family),
-    "--font-informal": JSON.stringify(tokens.typefaces.informal.family),
-    "--font-mono": JSON.stringify(tokens.typefaces.mono.family),
-  };
-  const tokenValues = { ...styles, ...typeStyles };
+  const tokenValues = useMemo(() => lookTokenValues(look, mode as "light" | "dark", density as typeof looks.density, textSize), [look, mode, density, textSize]);
   const tokenStyles = Object.entries(tokenValues).map(([name, value]) => `${name.startsWith("--") ? name : `--${name}`}: ${value}`).join("; ");
 
   useEffect(() => {
     const element = root.current;
     if (!element) return;
     const documentRoot = document.documentElement;
-    for (const [name, value] of Object.entries(tokenValues)) {
-      element.style.setProperty(name.startsWith("--") ? name : `--${name}`, value);
-      documentRoot.style.setProperty(name.startsWith("--") ? name : `--${name}`, value);
-    }
-    documentRoot.dataset.mode = mode;
-    documentRoot.dataset.look = look.id;
-    documentRoot.dataset.density = density;
-    documentRoot.dataset.textSize = textSize;
-    documentRoot.dataset.texture = look.texture;
-  }, [look, mode, density, textSize, deviceClass]);
+    applyLookTokens(element, look, mode as "light" | "dark", density as typeof looks.density, textSize);
+    applyLookTokens(documentRoot, look, mode as "light" | "dark", density as typeof looks.density, textSize);
+  }, [look, mode, density, textSize, tokenValues, deviceClass]);
 
   return <main ref={root} className="gallery" data-gallery-root data-look={look.id} data-mode={mode} data-density={density} data-text-size={textSize} data-texture={look.texture} data-device-class={deviceClass}>
     <ChangeNoticeToastHost mode={mode === "dark" ? "dark" : "light"} />
