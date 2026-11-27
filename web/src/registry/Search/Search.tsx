@@ -25,6 +25,7 @@ export function Search({ open, results, onOpenChange, onSearch, onSelect }: Prop
   const { emit } = useCapture<(typeof events)[number]>(); const emitRef = useRef(emit); emitRef.current = emit;
   const used = useRef(false); const seenRef = useSeen({ component: "Search", defaultState: open ? "open" : "closed" });
   const inputRef = useRef<HTMLInputElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
   const [query, setQuery] = useState("");
   useEffect(() => { if (!open) used.current = false; }, [open]);
   useEffect(() => { emitRef.current("component_shown", { component: "Search", default_state: open ? "open" : "closed" }); }, []);
@@ -37,7 +38,14 @@ export function Search({ open, results, onOpenChange, onSearch, onSelect }: Prop
       }
       return;
     }
+    openerRef.current = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null;
     requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }));
+  };
+  // Without a usable opener, Radix falls back to focusing the launcher.
+  const restoreFocus = (event: Event) => {
+    if (!openerRef.current?.isConnected) return;
+    event.preventDefault();
+    openerRef.current.focus();
   };
   const searchValueChanged = (query: string) => {
     setQuery(query);
@@ -49,7 +57,7 @@ export function Search({ open, results, onOpenChange, onSearch, onSelect }: Prop
     <div className="w-full min-w-0">
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogTrigger asChild><Button type="button" variant="outline">Search</Button></DialogTrigger>
-        <DialogContent data-shell-dialog ref={seenRef} showCloseButton={false} className="flex max-h-dvh min-w-0 max-w-full flex-col overflow-hidden" onOpenAutoFocus={focusSearch}>
+        <DialogContent data-shell-dialog ref={seenRef} showCloseButton={false} className="flex max-h-dvh min-w-0 max-w-full flex-col overflow-hidden" onOpenAutoFocus={focusSearch} onCloseAutoFocus={restoreFocus}>
           <DialogClose asChild><Button type="button" variant="ghost" size="icon" aria-label="Close search" className="absolute right-space-2 top-space-2"><XIcon /></Button></DialogClose>
           <DialogHeader><DialogTitle>Search</DialogTitle><DialogDescription>Search across conversations and work.</DialogDescription></DialogHeader>
           <Command label="Search conversations" shouldFilter={false} className="min-h-0 min-w-0 flex-1">

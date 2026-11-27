@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { SEEN_VISIBLE_SECONDS } from "../../src/registry/use-seen";
 
 const shellGallery = "/tests/browser/shell-gallery.html";
+const galleryOf = (...shells: string[]) => `${shellGallery}?only=${shells.join(",")}`;
 
 const previews = [
   ["AppShell", "default"], ["AppShell", "docked"],
@@ -12,10 +13,8 @@ const previews = [
   ["Settings", "preferences"], ["Settings", "locks"], ["Settings", "notices"], ["Settings", "history"], ["Settings", "quota"],
 ] as const;
 
-test("shell skeletons render usable, contained content across gallery settings", async ({ page }) => {
-  const errors: string[] = [];
-  page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto(shellGallery);
+test("the open Search preview leaves the host page's focus and scroll alone", async ({ page }) => {
+  await page.goto(galleryOf("Search"));
   const initialSearch = page.frameLocator("iframe[title='Search · open']");
   await expect(initialSearch.getByRole("dialog", { name: "Search" })).toBeVisible();
   // The gallery's own primitive Command scrolls the page on mount, so measure what the preview does from the top.
@@ -29,6 +28,12 @@ test("shell skeletons render usable, contained content across gallery settings",
   const searchFocus = await initialSearch.locator("body").evaluate((body) => ({ className: body.className, active: body.ownerDocument.activeElement?.outerHTML.slice(0, 160) }));
   expect(initialViewport.scrollY, JSON.stringify({ initialViewport, searchFocus })).toBe(0);
   expect(initialViewport.active).not.toBe("IFRAME");
+});
+
+test("shell skeletons render usable, contained content across gallery settings", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto(shellGallery);
   const root = page.locator("[data-gallery-root]");
   for (const device of ["desktop", "tablet"]) {
     await page.getByLabel("Screen size").selectOption(device);
@@ -97,7 +102,7 @@ test("shell skeletons render usable, contained content across gallery settings",
 
 test("shell skeletons fit a 375px viewport", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 900 });
-  await page.goto(shellGallery);
+  await page.goto(galleryOf("AppShell"));
   const galleryFrame = page.frameLocator("iframe[title='AppShell · default']");
   await expect(galleryFrame.locator("html")).toHaveAttribute("data-mode", "light");
   const styles = await galleryFrame.locator("html").evaluate((element) => element.style.cssText);
@@ -128,7 +133,7 @@ test("shell skeletons fit a 375px viewport", async ({ page }) => {
 
 test("AppShell stacks panes at tablet widths and keeps the shrinking pane usable", async ({ page }) => {
   await page.setViewportSize({ width: 800, height: 900 });
-  await page.goto(shellGallery);
+  await page.goto(galleryOf("AppShell"));
   await page.getByLabel("Screen size").selectOption("tablet");
   const app = page.frameLocator("iframe[title='AppShell · docked']");
   const handle = app.locator("[data-slot=resizable-handle]");
@@ -149,7 +154,7 @@ test("AppShell stacks panes at tablet widths and keeps the shrinking pane usable
 });
 
 test("AppShell preview heights settle at a usable size on tablet", async ({ page }) => {
-  await page.goto(shellGallery);
+  await page.goto(galleryOf("AppShell"));
   await page.getByLabel("Screen size").selectOption("tablet");
   for (const state of ["default", "docked"]) {
     const frame = page.locator(`iframe[title='AppShell · ${state}']`);
@@ -157,9 +162,11 @@ test("AppShell preview heights settle at a usable size on tablet", async ({ page
     // A fixed point: the content is exactly as tall as the frame it is in, so the next height report cannot change it.
     await expect.poll(() => frame.evaluate((element) => {
       const preview = element as HTMLIFrameElement;
-      const root = preview.contentDocument?.querySelector("#root")?.getBoundingClientRect().height;
-      const style = preview.contentDocument && getComputedStyle(preview.contentDocument.documentElement);
-      const token = style && parseFloat(style.getPropertyValue("--content-max-height")) * parseFloat(style.fontSize); // a rem token
+      const content = preview.contentDocument?.querySelector("#root");
+      if (!content) return null;
+      const root = content.getBoundingClientRect().height;
+      const style = getComputedStyle(content.ownerDocument.documentElement);
+      const token = parseFloat(style.getPropertyValue("--content-max-height")) * parseFloat(style.fontSize); // a rem token
       return { frame: Number(preview.height) === token, root: root === token, viewport: preview.contentWindow?.innerHeight === token };
     }), { message: state }).toEqual({ frame: true, root: true, viewport: true });
     const paneHeights = await frame.contentFrame().locator("[data-slot=resizable-panel]").evaluateAll((panes) => panes.map((pane) => pane.getBoundingClientRect().height));
@@ -168,7 +175,7 @@ test("AppShell preview heights settle at a usable size on tablet", async ({ page
 });
 
 test("AppShell keeps usable slot minima at the docked threshold in each density", async ({ page }) => {
-  await page.goto(shellGallery);
+  await page.goto(galleryOf("AppShell"));
   await page.getByLabel("Screen size").selectOption("desktop");
   const frame = page.locator("iframe[title='AppShell · docked']");
   const app = page.frameLocator("iframe[title='AppShell · docked']");
@@ -220,7 +227,7 @@ test("AppShell keeps usable slot minima at the docked threshold in each density"
 });
 
 test("AppShell measures its own width and keeps the draft and slot minima as it changes", async ({ page }) => {
-  await page.goto(shellGallery);
+  await page.goto(galleryOf());
   await page.evaluate(async () => {
     const fixtureUrl = "/tests/browser/shell-layout-entry.tsx";
     await import(/* @vite-ignore */ fixtureUrl) as typeof import("./shell-layout-entry");
@@ -265,7 +272,7 @@ test("AppShell measures its own width and keeps the draft and slot minima as it 
 
 test("Search and Settings fit, filter, and return keyboard focus in a short viewport", async ({ page }) => {
   await page.setViewportSize({ width: 800, height: 375 });
-  await page.goto(shellGallery);
+  await page.goto(galleryOf());
   await page.evaluate(async () => {
     const fixtureUrl = "/tests/browser/shell-interactions-entry.tsx";
     await import(/* @vite-ignore */ fixtureUrl) as typeof import("./shell-interactions-entry");
@@ -328,7 +335,7 @@ test("Search and Settings fit, filter, and return keyboard focus in a short view
 });
 
 test("native visibility reports the correct seen state for each shell", async ({ page }) => {
-  await page.goto(shellGallery);
+  await page.goto(galleryOf());
   await page.evaluate(async () => {
     const fixtureUrl = "/tests/browser/shell-seen-entry.tsx";
     await import(/* @vite-ignore */ fixtureUrl) as typeof import("./shell-seen-entry");
@@ -352,7 +359,7 @@ test("native visibility reports the correct seen state for each shell", async ({
 });
 
 test("a ChatHeader preview leaves the host page's focus and scroll alone", async ({ page }) => {
-  await page.goto(shellGallery);
+  await page.goto(galleryOf("ChatHeader"));
   const frame = page.locator("iframe[title='ChatHeader · with-settings']");
   const menu = frame.contentFrame().getByRole("menuitem", { name: "Conversation settings" });
   await expect(menu).toBeVisible();
@@ -364,4 +371,61 @@ test("a ChatHeader preview leaves the host page's focus and scroll alone", async
   }));
   await expect(menu).toBeVisible();
   await expect(look).toBeFocused();
+});
+
+test("the open ChatHeader menu fits its settled preview and takes a pointer hit", async ({ page }) => {
+  await page.goto(galleryOf("ChatHeader"));
+  const frame = page.locator("iframe[title='ChatHeader · with-settings']");
+  const item = frame.contentFrame().getByRole("menuitem", { name: "Conversation settings" });
+  for (const device of ["desktop", "tablet"]) {
+    await page.getByLabel("Screen size").selectOption(device);
+    await expect(frame).toHaveAttribute("data-device-class", device);
+    await expect(item).toBeVisible();
+    await expect.poll(() => item.evaluate((element) => {
+      const bounds = element.getBoundingClientRect();
+      const hit = element.ownerDocument.elementFromPoint(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+      const root = element.ownerDocument.querySelector("#root")!.getBoundingClientRect().height;
+      return {
+        inside: bounds.top >= 0 && bounds.bottom <= element.ownerDocument.defaultView!.innerHeight,
+        hit: element.contains(hit),
+        settled: Math.abs(element.ownerDocument.defaultView!.innerHeight - Math.ceil(root)) <= 1,
+      };
+    }), { message: device }).toEqual({ inside: true, hit: true, settled: true });
+  }
+});
+
+test("the Composer file picker action meets the touch target in every density", async ({ page }) => {
+  await page.goto(galleryOf("Composer"));
+  await page.getByLabel("Screen size").selectOption("tablet");
+  const composer = page.frameLocator("iframe[title='Composer · empty']");
+  for (const density of ["compact", "comfortable", "spacious"]) {
+    await page.getByLabel("Density").selectOption(density);
+    await expect(composer.locator("html")).toHaveAttribute("data-density", density);
+    await composer.getByRole("button", { name: "Add attachment" }).press("Enter");
+    const item = composer.getByRole("menuitem", { name: "Add photos or files" });
+    await expect(item).toBeVisible();
+    // offset sizes ignore the menu's opening zoom.
+    const size = await item.evaluate((element) => ({ width: (element as HTMLElement).offsetWidth, height: (element as HTMLElement).offsetHeight }));
+    expect(size.width, `${density} width`).toBeGreaterThanOrEqual(44);
+    expect(size.height, `${density} height`).toBeGreaterThanOrEqual(44);
+    await item.press("Escape");
+    await expect(item).toHaveCount(0);
+  }
+});
+
+test("Search returns focus to whatever opened it", async ({ page }) => {
+  await page.goto(galleryOf());
+  await page.evaluate(async () => {
+    const fixtureUrl = "/tests/browser/shell-interactions-entry.tsx";
+    await import(/* @vite-ignore */ fixtureUrl) as typeof import("./shell-interactions-entry");
+    window.mountShellInteractions();
+  });
+  const input = page.getByRole("combobox", { name: "Search conversations" });
+  for (const opener of [page.getByRole("button", { name: "Open app search" }), page.getByRole("button", { name: "Search", exact: true })]) {
+    await opener.press("Enter");
+    await expect(input).toBeFocused();
+    await input.press("Escape");
+    await expect(page.getByRole("dialog", { name: "Search" })).toHaveCount(0);
+    await expect(opener).toBeFocused();
+  }
 });

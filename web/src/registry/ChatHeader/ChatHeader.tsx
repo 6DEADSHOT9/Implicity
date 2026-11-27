@@ -26,7 +26,7 @@ export function ChatHeader({ title, kind, settingsOpen = false, onSettingsOpenCh
       <Badge variant="secondary" className="max-w-full break-words">{kind}</Badge>
       <DropdownMenu open={settingsOpen} onOpenChange={onSettingsOpenChange}>
         <DropdownMenuTrigger asChild><Button type="button" variant="outline" aria-label="Conversation settings">Settings</Button></DropdownMenuTrigger>
-        <DropdownMenuContent align="end" onOpenAutoFocus={preventPreviewFocus}>
+        <DropdownMenuContent data-shell-menu align="end" onOpenAutoFocus={preventPreviewFocus}>
           <DropdownMenuItem className="min-h-control" onSelect={onOpenSettings}>Conversation settings</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
