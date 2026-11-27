@@ -831,20 +831,19 @@ async function waitForContentPreviewSettings(page: Page, titles: string[], setti
 test("content skeletons render every declared gallery state across gallery settings", async ({ page }) => {
   await page.goto(contentGalleryUrl(), { waitUntil: "domcontentloaded" });
   await expect(page.locator("[data-gallery-root]")).toBeAttached();
-  const cards = await page.locator(".gallery-card[data-skeleton]").evaluateAll((elements) => elements.map((element) => ({
-    name: element.getAttribute("data-skeleton")!,
-    state: element.getAttribute("data-gallery-state")!,
-  })));
+  const { cards, settings } = await page.locator("[data-gallery-root]").evaluate((gallery) => {
+    const value = (label: string) => gallery.querySelector<HTMLSelectElement>(`select[aria-label="${label}"]`)!.value;
+    const cards = [...gallery.querySelectorAll<HTMLElement>(".gallery-card[data-skeleton]")].map(({ dataset }) => ({
+      name: dataset.skeleton!,
+      state: dataset.galleryState!,
+    }));
+    const settings = { look: value("Look"), mode: value("Mode"), density: value("Density"), textSize: value("Text size"), deviceClass: value("Screen size") };
+    return { cards, settings };
+  });
   const names = new Set(cards.map(({ name }) => name));
   const titles = cards.map(({ name, state }) => `${name} · ${state}`);
   expect(names).toEqual(new Set(["DataTable", "DataChart", "CodeBlock", "MediaPlayer", "ArtifactWorkspace", "Checklist", "List", "Metric", "Tabs", "Card", "ChangeNotice", "ProposalCard", "Nudge"]));
-  await waitForContentPreviewSettings(page, titles, {
-    look: await page.getByLabel("Look").inputValue(),
-    mode: await page.getByLabel("Mode").inputValue(),
-    density: await page.getByLabel("Density").inputValue(),
-    textSize: await page.getByLabel("Text size").inputValue(),
-    deviceClass: await page.getByLabel("Screen size").inputValue(),
-  }, true);
+  await waitForContentPreviewSettings(page, titles, settings, true);
   const cardEmpty = page.frameLocator('iframe[title="Card · empty"]').locator("[data-slot='empty']");
   const emptyBorder = await cardEmpty.evaluate((element) => ({
     width: getComputedStyle(element).borderTopWidth,
@@ -879,7 +878,7 @@ test("content skeletons render every declared gallery state across gallery setti
   await expect(tabs.getByRole("tab", { name: "Details" })).toHaveAttribute("aria-selected", "true");
   await expect(tabs.getByRole("tabpanel").getByText("additional-details")).toBeVisible();
   for (const device of ["desktop", "tablet"] as const) {
-    await page.getByLabel("Screen size").selectOption(device);
+    await selectGallerySettings(page, { "Screen size": device });
     await waitForContentPreviewSettings(page, titles, { ...selectedSettings, deviceClass: device }, true);
   }
 });
