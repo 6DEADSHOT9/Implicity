@@ -1,11 +1,38 @@
-import { useEffect, useRef, useState } from "react";
+import { Children, isValidElement, useEffect, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import { defaultRemarkPlugins, defaultUrlTransform, Streamdown } from "streamdown";
+import type { Components } from "streamdown";
 import { Message, MessageContent } from "../../components/ai-elements/message";
+import { CodeBlock } from "../CodeBlock/CodeBlock";
+import { DataTable } from "../DataTable/DataTable";
 import { useCapture } from "../capture";
 import { useSeen } from "../use-seen";
 import { events } from "./events";
 
 type MarkdownNode = { type: string; value?: string; lang?: string | null; children?: MarkdownNode[] };
+type ElementWithChildren = { children?: ReactNode; className?: string };
+
+function textContent(node: ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(textContent).join("");
+  if (isValidElement<ElementWithChildren>(node)) return textContent(node.props.children);
+  return "";
+}
+
+function tableData(children: ReactNode) {
+  const rows = Children.toArray(children).flatMap((section) => {
+    if (!isValidElement<ElementWithChildren>(section)) return [];
+    return Children.toArray(section.props.children).filter(isValidElement<ElementWithChildren>);
+  });
+  const values = rows.map((row) => Children.toArray(row.props.children)
+    .filter(isValidElement<ElementWithChildren>)
+    .map((cell) => textContent(cell.props.children)));
+  return { columns: values[0] ?? [], rows: values.slice(1) };
+}
+
+function MarkdownTable({ children }: ComponentProps<"table">) {
+  const { columns, rows } = tableData(children ?? null);
+  return <DataTable columns={columns} rows={rows} chartValues={undefined} form="table" state="default" />;
+}
 
 function rawHtmlAsText() {
   return (tree: MarkdownNode) => {
@@ -55,9 +82,14 @@ export function MessageBody({ content }: { content: string }) {
             code: ({ children, className }) => <code className={className ? "font-mono text-sm" : "rounded-md bg-muted px-space-2 py-space-1 font-mono text-sm"}>{children}</code>,
             blockquote: ({ children }) => <blockquote className="my-space-4 token-border-s ps-space-3 text-muted-foreground">{children}</blockquote>,
             hr: () => <hr className="my-space-4 token-border-b border-border" />,
-            pre: ({ children }) => <pre className="max-w-full overflow-x-auto whitespace-pre-wrap break-words rounded-md token-border bg-muted p-space-3 font-mono text-sm">{children}</pre>,
-            table: ({ children }) => <div className="max-w-full overflow-x-auto rounded-md token-border"><table className="min-w-full text-sm">{children}</table></div>,
-            th: ({ children }) => <th className="token-border px-space-3 py-space-2 text-start font-medium">{children}</th>,
+            pre: ({ children }) => {
+              const code = Children.only(children);
+              const props = isValidElement<ElementWithChildren>(code) ? code.props : {};
+              const language = props.className?.match(/language-([^\s]+)/)?.[1] ?? "text";
+              return <CodeBlock code={textContent(props.children)} language={language} variant="code" state="default" />;
+            },
+            table: MarkdownTable as Components["table"],
+            th: ({ children }) => <th scope="col" className="token-border px-space-3 py-space-2 text-start font-medium">{children}</th>,
             td: ({ children }) => <td className="token-border px-space-3 py-space-2 align-top">{children}</td>,
             img: ({ src, alt }) => <RemoteImage src={typeof src === "string" ? src : undefined} alt={alt} />,
           }}

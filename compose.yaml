@@ -41,6 +41,7 @@ services:
     build: *web-build
     environment:
       VITE_POSTHOG_API_KEY: ${VITE_POSTHOG_API_KEY:-}
+      VITE_API_TARGET: http://api-development:8000
     networks: [app]
     healthcheck:
       <<: *app-healthcheck

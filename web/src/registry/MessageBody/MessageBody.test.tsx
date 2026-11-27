@@ -14,4 +14,11 @@ describe("MessageBody", () => {
     expect(screen.getByText("useful detail")).toBeTruthy();
     expect(propsSchema.safeParse({ content: "" }).success).toBe(false);
   });
+
+  it("renders fenced code and markdown tables with their registry skeletons", () => {
+    render(<MessageBody content={'```python\nprint("hello")\n```\n\n| Item | State |\n| --- | --- |\n| Chat | Ready |'} />);
+    expect(screen.getByText(/python · code/)).toBeTruthy();
+    expect(screen.getByRole("table")).toBeTruthy();
+    expect(screen.getByText("Chat")).toBeTruthy();
+  });
 });

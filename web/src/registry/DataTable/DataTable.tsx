@@ -33,10 +33,10 @@ export function DataTable({ columns, rows, chartValues, form, state, onAction }:
   const switchView = (to: "table" | "chart") => onAction?.("representation", to);
 
   return <section ref={root} className="space-y-space-3">
-    <ButtonGroup aria-label="Data representation">
+    {chartValues?.length ? <ButtonGroup aria-label="Data representation">
       <Button variant={form === "table" ? "default" : "outline"} aria-pressed={form === "table"} onClick={() => switchView("table")}>Table</Button>
-      <Button variant={form === "chart" ? "default" : "outline"} aria-pressed={form === "chart"} disabled={!chartValues?.length} onClick={() => switchView("chart")}>Chart</Button>
-    </ButtonGroup>
+      <Button variant={form === "chart" ? "default" : "outline"} aria-pressed={form === "chart"} onClick={() => switchView("chart")}>Chart</Button>
+    </ButtonGroup> : null}
     {state === "loading" ? <p aria-busy="true">Loading data</p>
       : state === "error" ? <p role="alert">Data could not be loaded</p>
         : state === "empty" || !rows.length ? <p>No data</p>

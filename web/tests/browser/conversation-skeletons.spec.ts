@@ -66,6 +66,7 @@ test("conversation skeletons wrap at 375px and MessageBody keeps links safe and 
   const message = page.locator("[data-skeleton='MessageBody']");
   const link = message.getByRole("link", { name: "Long link" });
   await expect(page.locator("main")).toHaveAttribute("data-look", "default");
+  await expect(message.getByText("text · code").first()).toBeVisible();
   await expect(link).toHaveAttribute("href", /^https:\/\/tracker\.invalid\//);
   await expect(link).toHaveAttribute("target", "_blank");
   await expect(message.locator("button")).toHaveCount(0);
@@ -83,7 +84,7 @@ test("conversation skeletons wrap at 375px and MessageBody keeps links safe and 
   await expect(message.locator("p code")).toHaveClass(/rounded-md/);
   await expect(message.locator("table")).toBeVisible();
   const unlabeledFence = message.locator("pre").filter({ hasText: "unlabeled code block" });
-  await expect(unlabeledFence).toHaveClass(/bg-muted/);
+  await expect(unlabeledFence).toHaveClass(/bg-code-background/);
   await expect(unlabeledFence.locator("code")).not.toHaveClass(/rounded-md/);
   await expect(message.locator("blockquote")).toHaveClass(/token-border-s/);
   await expect(message.locator("hr")).toHaveClass(/token-border-b/);
