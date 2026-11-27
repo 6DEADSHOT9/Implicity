@@ -36,7 +36,7 @@ export function Settings({ open, tab, onTabChange, onClose, slots = {} }: Props)
   };
   return <div className="w-full min-w-0">
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onClose?.(); }}>
-      <DialogContent ref={seenRef} showCloseButton={false} className="flex max-h-dvh min-w-0 max-w-full flex-col overflow-hidden" onOpenAutoFocus={focusSettings} onCloseAutoFocus={restoreFocus}>
+      <DialogContent data-shell-dialog ref={seenRef} showCloseButton={false} className="flex max-h-dvh min-w-0 max-w-full flex-col overflow-hidden" onOpenAutoFocus={focusSettings} onCloseAutoFocus={restoreFocus}>
         <DialogClose asChild><Button type="button" variant="ghost" size="icon" aria-label="Close settings" className="absolute right-space-2 top-space-2"><XIcon /></Button></DialogClose>
         <DialogHeader><DialogTitle>Settings</DialogTitle><DialogDescription>Manage workspace settings.</DialogDescription></DialogHeader>
         <Tabs value={tab} onValueChange={(value) => onTabChange?.(value as View)} className="flex min-h-0 min-w-0 flex-1 flex-col">

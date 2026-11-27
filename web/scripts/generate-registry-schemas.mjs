@@ -69,7 +69,7 @@ if (!check && registryVersion === highestVersion + 1) {
   snapshots = [...snapshots, snapshot];
 }
 checkRegistrySnapshots(snapshots, snapshot);
-const artifacts = new Map(entries.map((entry) => [`${entry.id}.schema.json`, `${JSON.stringify(entry.schema.toJSONSchema(), null, 2)}\n`]));
+const artifacts = new Map(entries.map((entry) => [`${entry.id}.schema.json`, `${JSON.stringify(entry.schema.toJSONSchema({ unrepresentable: "any" }), null, 2)}\n`]));
 for (const historical of snapshots) artifacts.set(`registry-v${historical.registry_version}.json`, `${JSON.stringify(historical, null, 2)}\n`);
 artifacts.set("registry.json", `${JSON.stringify(currentRegistry, null, 2)}\n`);
 const typeCheckPath = resolve(sourceDirectory, "registry-props-typecheck.ts");

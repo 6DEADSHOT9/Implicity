@@ -29,7 +29,7 @@ const fixedSlotPanel = defineSkeleton(defineSkeletonDefinition({
 }), ({ slots }: { tabs: { id: string; label: string }[]; slots?: { main?: ReactNode[] } }) => <section>{slots?.main}</section>);
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-Object.defineProperty(window, "matchMedia", { configurable: true, value: () => ({ matches: true }) });
+Object.defineProperty(window, "matchMedia", { configurable: true, value: () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }) });
 
 const panelRegistry = createRegistry([ReviewPanelEntry], 1);
 const goodLayout = {
@@ -270,6 +270,81 @@ describe("registry and renderer", () => {
       },
     };
     expect(await markup(renderMessage(spec, "fallback", panelRegistry))).toContain("<strong>7</strong><section class=\"review-panel\" data-count=\"3\"><strong>3</strong>");
+  });
+
+  it("renders DockedPanel slots named by custom tab ids", async () => {
+    vi.spyOn(window, "matchMedia").mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as MediaQueryList);
+    const panel = registry.getSkeleton("DockedPanel")!;
+    const current = createRegistry([panel, ReviewPanelEntry], registry.version);
+    const spec = {
+      registry_version: registry.version,
+      root: "panel",
+      elements: {
+        panel: { type: "DockedPanel", props: { title: "Workspace", tabs: [{ id: "notes", label: "Notes" }], activeTab: "notes", open: true, docked: true }, slots: { notes: ["note"] } },
+        note: { type: "ReviewPanel", props: { count: 1 }, slots: { main: [] } },
+      },
+    };
+    expect(await markup(renderMessage(spec, "fallback", current))).toContain("<strong>1</strong>");
+    const invalidSlot = {
+      ...spec,
+      elements: {
+        ...spec.elements,
+        panel: { ...spec.elements.panel, slots: { orphan: ["note"] } },
+      },
+    };
+    expect(panel.schema.safeParse({ props: spec.elements.panel.props, slots: invalidSlot.elements.panel.slots }).success).toBe(false);
+    expect(await markup(renderMessage(invalidSlot, "fallback", current))).toContain("fallback");
+    expect(panel.slotsSchema.safeParse({ WrongSlot: ["note"] }).success).toBe(false);
+    const slotSchema = panel.slotsSchema.toJSONSchema();
+    expect(new Ajv2020({ strict: false }).compile(slotSchema)({ WrongSlot: ["note"] })).toBe(false);
+  });
+
+  it("reports inherited static slot names as gallery validation errors", () => {
+    const card = registry.getSkeleton("Card")!;
+    const invalid = {
+      ...card,
+      meta: {
+        ...card.meta,
+        defaultStates: ["bad"],
+        galleryStates: [{ id: "bad", props: { title: "Card" }, slots: { constructor: ["child"] } }],
+      },
+    };
+    expect(() => createRegistry([invalid], registry.version)).toThrow(/Card gallery state bad slot constructor example does not match its slot schema/);
+  });
+
+  it("rejects ProjectPanel slots that do not match a declared tab", async () => {
+    const project = registry.getSkeleton("ProjectPanel")!;
+    const props = { title: "Project", tabs: [{ id: "decisions", label: "Decisions" }], activeTab: "decisions" };
+    const slots = { files: ["card"] };
+    expect(project.schema.safeParse({ props, slots }).success).toBe(false);
+    const spec = {
+      registry_version: registry.version,
+      root: "project",
+      elements: {
+        project: { type: "ProjectPanel", props, slots },
+        card: { type: "Card", props: { title: "File card", content: "Must not disappear" }, slots: { content: [] } },
+      },
+    };
+    expect(await markup(renderMessage(spec, "plain answer", registry))).toContain("plain answer");
+  });
+
+  it("keeps shared registry props strict in runtime and JSON Schema", () => {
+    const entry = defineSkeletonDefinition({ id: "ReviewPanel", props: z.object({ count: z.number() }), slots: z.object({ main: z.array(z.string()) }), events, meta });
+    const input = { props: { count: 1, unexpected: true }, slots: { main: [] } };
+    expect(entry.schema.safeParse(input).success).toBe(false);
+    expect(new Ajv2020({ strict: false }).compile(entry.schema.toJSONSchema())(input)).toBe(false);
+  });
+
+  it("rejects undeclared fixed slots through layout and message interfaces", async () => {
+    const definition = defineSkeletonDefinition({ id: "LoosePanel", props: z.object({ count: z.number() }), slots: z.object({ main: z.array(z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/)) }), events, meta: { ...meta, galleryStates: [{ id: "plain", props: { count: 1 }, slots: { main: [] } }] } });
+    const LoosePanel = defineSkeleton(definition, ({ count }: { count: number }) => <strong>{count}</strong>);
+    const current = createRegistry([LoosePanel], 1);
+    const valid = { registry_version: 1, root: "panel", elements: { panel: { type: "LoosePanel", props: { count: 7 }, slots: { main: [] } } } };
+    const invalid = { ...valid, elements: { panel: { ...valid.elements.panel, slots: { main: [], wrong: ["child"] } } } };
+
+    expect(definition.slotsSchema.safeParse(invalid.elements.panel.slots).success).toBe(false);
+    expect(resolveLayout(invalid, valid, current)).toEqual(valid);
+    expect(await markup(renderMessage(invalid, "plain answer", current))).toContain("plain answer");
   });
 
   it("falls back for inherited, unknown and missing-root component ids", async () => {

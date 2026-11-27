@@ -72,12 +72,16 @@ export function validateRegistryDefinitions(entries: readonly SkeletonDefinition
       }
       throw new Error(`${entry.id} metadata is incomplete: ${meta.error.issues.map((issue) => issue.path.join(".")).join(", ")}`);
     }
-    const declaredSlots = Object.keys(entry.slotsSchema.shape).sort();
+    const objectSlotSchema = entry.slotsSchema instanceof z.ZodObject ? entry.slotsSchema : undefined;
+    const catchall = objectSlotSchema?._def.catchall;
+    const dynamicSlots = !objectSlotSchema || (!!catchall && !(catchall instanceof z.ZodNever));
+    const staticSlotSchema = dynamicSlots ? undefined : objectSlotSchema;
+    const declaredSlots = staticSlotSchema ? Object.keys(staticSlotSchema.shape).sort() : [];
     const metadataSlots = [...meta.data.slots].sort();
-    if (declaredSlots.join("\0") !== metadataSlots.join("\0")) throw new Error(`${entry.id} slot metadata does not match its schema`);
+    if (dynamicSlots ? metadataSlots.length !== 0 : declaredSlots.join("\0") !== metadataSlots.join("\0")) throw new Error(`${entry.id} slot metadata does not match its schema`);
     if (meta.data.slots.some((slot) => !slotIdValid(slot))) throw new Error(`${entry.id} declares a slot id not in T3`);
-    if (declaredSlots.length) {
-      const invalidChildren = Object.fromEntries(declaredSlots.map((slot) => [slot, ["Upper"]]));
+    if (declaredSlots.length || dynamicSlots) {
+      const invalidChildren = Object.fromEntries((dynamicSlots ? ["main"] : declaredSlots).map((slot) => [slot, ["Upper"]]));
       if (entry.slotsSchema.safeParse(invalidChildren).success) throw new Error(`${entry.id} slot schema does not enforce T3 child ids`);
     }
     if (meta.data.defaultStates.some((state) => !stateIdValid(state))) throw new Error(`${entry.id} declares a default state id not in T3`);
@@ -87,12 +91,14 @@ export function validateRegistryDefinitions(entries: readonly SkeletonDefinition
       if (!entry.propsSchema.safeParse(state.props).success) {
         throw new Error(`${entry.id} gallery state ${state.id} example props do not match its props schema`);
       }
-      if (Object.keys(entry.slotsSchema.shape).length && state.slots === undefined) {
+      if (declaredSlots.length && state.slots === undefined) {
         throw new Error(`${entry.id} gallery state ${state.id} is missing example slots`);
       }
       for (const [slot, example] of Object.entries(state.slots ?? {})) {
-        const slotSchema = Object.hasOwn(entry.slotsSchema.shape, slot) ? entry.slotsSchema.shape[slot] : entry.slotsSchema._def.catchall;
-        const validSlot = slotSchema && z.object({ [slot]: slotSchema }).strict().safeParse({ [slot]: example }).success;
+        const slotSchema = staticSlotSchema && Object.hasOwn(staticSlotSchema.shape, slot) ? staticSlotSchema.shape[slot] : undefined;
+        const validSlot = staticSlotSchema
+          ? slotSchema && z.object({ [slot]: slotSchema }).strict().safeParse({ [slot]: example }).success
+          : entry.slotsSchema.safeParse({ [slot]: example }).success;
         if (!validSlot || (example as string[]).some((child) => !slotIdValid(child))) {
           throw new Error(`${entry.id} gallery state ${state.id} slot ${slot} example does not match its slot schema`);
         }

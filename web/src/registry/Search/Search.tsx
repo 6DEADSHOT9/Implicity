@@ -49,7 +49,7 @@ export function Search({ open, results, onOpenChange, onSearch, onSelect }: Prop
     <div className="w-full min-w-0">
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogTrigger asChild><Button type="button" variant="outline">Search</Button></DialogTrigger>
-        <DialogContent ref={seenRef} showCloseButton={false} className="flex max-h-dvh min-w-0 max-w-full flex-col overflow-hidden" onOpenAutoFocus={focusSearch}>
+        <DialogContent data-shell-dialog ref={seenRef} showCloseButton={false} className="flex max-h-dvh min-w-0 max-w-full flex-col overflow-hidden" onOpenAutoFocus={focusSearch}>
           <DialogClose asChild><Button type="button" variant="ghost" size="icon" aria-label="Close search" className="absolute right-space-2 top-space-2"><XIcon /></Button></DialogClose>
           <DialogHeader><DialogTitle>Search</DialogTitle><DialogDescription>Search across conversations and work.</DialogDescription></DialogHeader>
           <Command label="Search conversations" shouldFilter={false} className="min-h-0 min-w-0 flex-1">

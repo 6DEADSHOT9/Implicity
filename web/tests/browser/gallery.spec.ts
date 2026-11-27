@@ -1,4 +1,4 @@
-import { expect, test, type Locator } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import tokens from "../../../contracts/looks/tokens.json" with { type: "json" };
 import defaultLook from "../../../contracts/looks/default.json" with { type: "json" };
 import focusedLook from "../../../contracts/looks/focused.json" with { type: "json" };
@@ -784,6 +784,15 @@ test("Notebook applies its bundled body font, paper texture, and both mode palet
 });
 
 
+async function waitForContentPreviewSettings(page: Page, titles: string[], settings: { look: string; mode: string; density: string; textSize: string; deviceClass: string }) {
+  await expect.poll(() => page.locator("iframe").evaluateAll((frames, args) => args.titles.every((title) => {
+    const frame = frames.find((element) => element.getAttribute("title") === title) as HTMLIFrameElement | undefined;
+    const document = frame?.contentDocument;
+    const root = document?.querySelector("#root");
+    return !!document && !!root?.children.length && !/Preview unavailable|preview failed/.test(root.textContent ?? "") && document.documentElement.dataset.look === args.settings.look && document.documentElement.dataset.mode === args.settings.mode && document.documentElement.dataset.density === args.settings.density && document.documentElement.dataset.textSize === args.settings.textSize && document.documentElement.dataset.deviceClass === args.settings.deviceClass && document.fonts.status === "loaded";
+  }), { titles, settings }), { timeout: 15000 }).toBe(true);
+}
+
 test("content skeletons render every declared gallery state across gallery settings", async ({ page }) => {
   await page.goto("/tests/browser/content-gallery.html");
   const cards = await page.locator(".gallery-card[data-skeleton]").evaluateAll((elements) => elements.map((element) => ({
@@ -792,15 +801,15 @@ test("content skeletons render every declared gallery state across gallery setti
   })));
   const names = new Set(cards.map(({ name }) => name));
   const legacyCards = cards;
+  const titles = legacyCards.map(({ name, state }) => `${name} · ${state}`);
   expect(names).toEqual(new Set(["DataTable", "DataChart", "CodeBlock", "MediaPlayer", "ArtifactWorkspace", "Checklist", "List", "Metric", "Tabs", "Card", "ChangeNotice", "ProposalCard", "Nudge"]));
-  await expect.poll(() => page.locator("iframe").evaluateAll((frames, expectedTitles) => {
-    for (const title of expectedTitles) {
-      const frame = (frames as HTMLIFrameElement[]).find(({ title: frameTitle }) => frameTitle === title);
-      const root = frame?.contentDocument?.querySelector("#root");
-      if (!root?.children.length || /Preview unavailable|preview failed/.test(root.textContent ?? "")) return `${title}: loading`;
-    }
-    return "ready";
-  }, legacyCards.map(({ name, state }) => `${name} · ${state}`)), { timeout: 10000 }).toBe("ready");
+  await waitForContentPreviewSettings(page, titles, {
+    look: await page.getByLabel("Look").inputValue(),
+    mode: await page.getByLabel("Mode").inputValue(),
+    density: await page.getByLabel("Density").inputValue(),
+    textSize: await page.getByLabel("Text size").inputValue(),
+    deviceClass: await page.getByLabel("Screen size").inputValue(),
+  });
   const cardEmpty = page.frameLocator('iframe[title="Card · empty"]').locator("[data-slot='empty']");
   const emptyBorder = await cardEmpty.evaluate((element) => ({
     width: getComputedStyle(element).borderTopWidth,
@@ -818,6 +827,8 @@ test("content skeletons render every declared gallery state across gallery setti
   await expect(page.locator("[data-gallery-root]")).toHaveAttribute("data-look", "notebook");
   await expect(page.locator("[data-gallery-root]")).toHaveAttribute("data-mode", "dark");
   await expect(page.locator("[data-gallery-root]")).toHaveAttribute("data-device-class", "tablet");
+  const selectedSettings = { look: "notebook", mode: "dark", density: "spacious", textSize: "5", deviceClass: "tablet" };
+  await waitForContentPreviewSettings(page, titles, selectedSettings);
   await expect(page.frameLocator('iframe[title="DataTable · table"]').locator("html")).toHaveAttribute("data-mode", "dark");
   await expect(page.frameLocator('iframe[title="DataTable · table"]').locator("table")).toBeVisible();
   await expect(page.frameLocator('iframe[title="Tabs · default"]').getByRole("tablist")).toBeVisible();
@@ -838,6 +849,7 @@ test("content skeletons render every declared gallery state across gallery setti
   await expect(tabs.getByRole("tabpanel").getByText("additional-details")).toBeVisible();
   for (const device of ["desktop", "tablet"] as const) {
     await page.getByLabel("Screen size").selectOption(device);
+    await waitForContentPreviewSettings(page, titles, { ...selectedSettings, deviceClass: device });
     await expect.poll(() => page.locator("iframe").evaluateAll((frames, args) => {
       const legacyFrames = (frames as HTMLIFrameElement[]).filter((frame) => args.names.some((name) => frame.title.startsWith(`${name} · `)));
       return legacyFrames.length === args.count && legacyFrames.every((frame) => frame.getAttribute("data-device-class") === args.device && !!frame.contentDocument?.querySelector("#root")?.children.length);
@@ -863,7 +875,14 @@ test("conversation gallery renders every declared state", async ({ page }) => {
 });
 
 test("combined gallery mounts T10 content and T9 conversation previews", async ({ page }) => {
-  await page.goto("/tests/browser/combined-gallery.html");
+  await page.goto("/");
+  await waitForContentPreviewSettings(page, ["DataTable · table", "MessageBody · message"], {
+    look: await page.getByLabel("Look").inputValue(),
+    mode: await page.getByLabel("Mode").inputValue(),
+    density: await page.getByLabel("Density").inputValue(),
+    textSize: await page.getByLabel("Text size").inputValue(),
+    deviceClass: await page.getByLabel("Screen size").inputValue(),
+  });
   const table = page.frameLocator('iframe[title="DataTable · table"]');
   await expect(table.getByRole("table")).toBeVisible();
   const message = page.frameLocator('iframe[title="MessageBody · message"]');

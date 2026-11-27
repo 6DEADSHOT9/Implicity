@@ -1,5 +1,5 @@
 {
-  "registry_version": 6,
+  "registry_version": 7,
   "components": [
     "AppShell",
     "ApprovalRequest",
@@ -17,17 +17,20 @@
     "DataChart",
     "DataTable",
     "Details",
+    "DockedPanel",
     "List",
     "MediaPlayer",
     "MessageActions",
     "MessageBody",
     "Metric",
     "Nudge",
+    "ProjectPanel",
     "ProposalCard",
     "RunActivity",
     "Search",
     "Settings",
     "ShortcutChips",
+    "SourcesPanel",
     "Tabs"
   ],
   "catalogue": [
@@ -932,6 +935,79 @@
       }
     },
     {
+      "name": "DockedPanel",
+      "role": "panel",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "tabs": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "label"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "activeTab": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          },
+          "open": {
+            "type": "boolean"
+          },
+          "docked": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "title",
+          "tabs",
+          "activeTab",
+          "open",
+          "docked"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "propertyNames": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "additionalProperties": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          }
+        }
+      },
+      "limits": {
+        "minWidth": 384,
+        "minHeight": 160,
+        "minContrast": 4.5
+      }
+    },
+    {
       "name": "List",
       "role": "content",
       "props_schema": {
@@ -1218,6 +1294,96 @@
       "limits": {
         "minWidth": 320,
         "minHeight": 88,
+        "minContrast": 4.5
+      }
+    },
+    {
+      "name": "ProjectPanel",
+      "role": "panel",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "tabs": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "enum": [
+                    "decisions",
+                    "constraints",
+                    "files"
+                  ]
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "label"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "activeTab": {
+            "type": "string",
+            "enum": [
+              "decisions",
+              "constraints",
+              "files"
+            ]
+          }
+        },
+        "required": [
+          "title",
+          "tabs",
+          "activeTab"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [
+        "decisions",
+        "constraints",
+        "files"
+      ],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "decisions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            }
+          },
+          "constraints": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            }
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 288,
+        "minHeight": 180,
         "minContrast": 4.5
       }
     },
@@ -1541,6 +1707,59 @@
       "limits": {
         "minWidth": 320,
         "minHeight": 48,
+        "minContrast": 4.5
+      }
+    },
+    {
+      "name": "SourcesPanel",
+      "role": "panel",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "docked": {
+            "type": "boolean"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "web",
+                    "document",
+                    "other"
+                  ]
+                }
+              },
+              "required": [
+                "title",
+                "type"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "docked"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 240,
+        "minHeight": 120,
         "minContrast": 4.5
       }
     },

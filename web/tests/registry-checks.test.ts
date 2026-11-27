@@ -11,6 +11,7 @@ import { events } from "./fixtures/ReviewPanel/events";
 import { meta } from "./fixtures/ReviewPanel/meta";
 import { definition, propsSchema, slotsSchema } from "./fixtures/ReviewPanel/schema";
 import catalogueFixture from "./fixtures/catalogue.json";
+import registryV3 from "../../contracts/generated/components/registry-v3.json";
 import registryV2 from "../../contracts/generated/components/registry-v2.json";
 import { registryVersion } from "../src/registry/version";
 
@@ -39,18 +40,19 @@ describe("registry generation guards", () => {
     const snapshots = [
       { registry_version: 1, components: [] },
       registryV2,
+      registryV3,
     ];
     const before = JSON.stringify(snapshots);
     expect(() => checkRegistrySnapshots(snapshots, {
-      registry_version: registryV2.registry_version,
+      registry_version: registryV3.registry_version,
       components: ["Ghost"],
     })).toThrow(/roster differs/);
     expect(JSON.stringify(snapshots)).toBe(before);
-    expect(Object.keys(registryV2).sort()).toEqual(["components", "registry_version"]);
+    expect(Object.keys(registryV3).sort()).toEqual(["components", "registry_version"]);
     expect(() => checkRegistrySnapshots([
       snapshots[0],
-      { ...registryV2, catalogue: [] } as unknown as { registry_version: number; components: string[] },
-    ], registryV2 as unknown as { registry_version: number; components: string[] })).toThrow(/only registry_version and components/);
+      { ...registryV3, catalogue: [] } as unknown as { registry_version: number; components: string[] },
+    ], registryV3 as unknown as { registry_version: number; components: string[] })).toThrow(/only registry_version and components/);
   });
 
   it("refuses to rewrite a changed snapshot in registry-generate mode", () => {
