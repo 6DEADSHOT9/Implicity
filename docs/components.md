@@ -22,7 +22,7 @@ These never move. Only additions, such as a new shortcut chip, are allowed.
 
 | Component | What it is | shadcn/ui base | Build |
 | --- | --- | --- | --- |
-| AppShell | The frame: sidebar, main area, optional docked panel | Sidebar, Resizable | Composed |
+| AppShell | The frame: sidebar, main area, optional docked panel. It always fills the window, and its layout follows the window's width through the breakpoint tokens. It is never placed inside a narrower container, so a container narrower than the window is not a case it handles | Sidebar, Resizable | Composed |
 | ConversationNavigation | Sidebar with Home, New chat, Search, chat list, recent work, projects, and the quota indicator in its footer | Sidebar, Item, Kbd, Avatar | Composed |
 | Composer | Input with attachments and shortcut chips | Prompt Input | Direct |
 | ChatHeader | Title, kind-of-chat badge, settings | Badge, Button, Dropdown Menu | Composed |
