@@ -3,7 +3,7 @@ import json
 import socket
 import threading
 import time
-from contextlib import contextmanager
+from contextlib import aclosing, contextmanager
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
@@ -281,14 +281,10 @@ def test_cancel_ends_the_agent_stream(fake_hermes, tmp_path):
     agent.start_conversation(conversation_id)
 
     async def cancel():
-        stream = agent.send(conversation_id, UserMessage("slow"))
-        task = asyncio.create_task(anext(stream))
-        await asyncio.sleep(0.1)
-        agent.cancel(conversation_id)
-        assert (await task)["type"] == "start"
-        parts = [part async for part in stream]
-        await stream.aclose()
-        return parts
+        async with aclosing(agent.send(conversation_id, UserMessage("slow"))) as stream:
+            assert (await anext(stream))["type"] == "start"
+            agent.cancel(conversation_id)
+            return [part async for part in stream]
 
     parts = asyncio.run(cancel())
     assert [part["type"] for part in parts] == ["abort", "finish"]
