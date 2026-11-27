@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { z } from "zod";
-import { createHighlighter, type BundledLanguage } from "shiki";
+import { getSingletonHighlighter, type BundledLanguage, type ThemeRegistration } from "shiki";
 import { CodeBlock as CodeBlockPrimitive, CodeBlockContent, CodeBlockHeader, CodeBlockTitle } from "@/components/ai-elements/code-block";
 import { StackTrace, StackTraceContent, StackTraceError, StackTraceErrorMessage, StackTraceErrorType, StackTraceFrames, StackTraceHeader } from "@/components/ai-elements/stack-trace";
 import { Terminal, TerminalContent, TerminalHeader, TerminalTitle } from "@/components/ai-elements/terminal";
@@ -10,26 +10,23 @@ import { useSkeletonCapture } from "../capture-lifecycle";
 import { events } from "./events";
 import { propsSchema } from "./schema";
 type Props = z.infer<typeof propsSchema>;
-const highlighter = createHighlighter({
-  themes: [{
-    name: "registry-tokens",
-    type: "dark",
-    fg: token("--code-foreground"),
-    bg: token("--code-background"),
-    settings: [
-      { scope: ["comment", "punctuation.definition.comment"], settings: { foreground: token("--code-comment") } },
-      { scope: ["keyword", "storage"], settings: { foreground: token("--code-keyword") } },
-      { scope: ["string", "constant.character"], settings: { foreground: token("--code-string") } },
-      { scope: ["constant.numeric"], settings: { foreground: token("--code-number") } },
-      { scope: ["entity.name.function"], settings: { foreground: token("--code-function") } },
-      { scope: ["entity.name.type", "support.type"], settings: { foreground: token("--code-type") } },
-      { scope: ["keyword.operator"], settings: { foreground: token("--code-operator") } },
-      { scope: ["markup.inserted"], settings: { foreground: token("--code-string") } },
-      { scope: ["markup.deleted"], settings: { foreground: token("--code-keyword") } },
-    ],
-  }],
-  langs: ["text", "javascript", "typescript", "python", "json", "bash", "html", "css", "diff"],
-});
+const highlightTheme = {
+  name: "registry-tokens",
+  type: "dark",
+  fg: token("--code-foreground"),
+  bg: token("--code-background"),
+  settings: [
+    { scope: ["comment", "punctuation.definition.comment"], settings: { foreground: token("--code-comment") } },
+    { scope: ["keyword", "storage"], settings: { foreground: token("--code-keyword") } },
+    { scope: ["string", "constant.character"], settings: { foreground: token("--code-string") } },
+    { scope: ["constant.numeric"], settings: { foreground: token("--code-number") } },
+    { scope: ["entity.name.function"], settings: { foreground: token("--code-function") } },
+    { scope: ["entity.name.type", "support.type"], settings: { foreground: token("--code-type") } },
+    { scope: ["keyword.operator"], settings: { foreground: token("--code-operator") } },
+    { scope: ["markup.inserted"], settings: { foreground: token("--code-string") } },
+    { scope: ["markup.deleted"], settings: { foreground: token("--code-keyword") } },
+  ],
+} satisfies ThemeRegistration;
 const languages = ["text", "javascript", "typescript", "python", "json", "bash", "html", "css", "diff"];
 const syntaxClasses = new Map([
   [token("--code-comment"), "text-code-comment"],
@@ -43,11 +40,20 @@ const syntaxClasses = new Map([
 export function CodeBlock({ code, language, variant, state }: Props) {
   const capture = useCapture<(typeof events)[number]>();
   const root = useSkeletonCapture(capture, "CodeBlock", state === "default" ? variant ?? "code" : state);
-  const [tokens, setTokens] = useState<Array<Array<{ content: string; color?: string }>>>([]);
+  const [highlighted, setHighlighted] = useState<{ code: string; language: string; tokens: Array<Array<{ content: string; color?: string }>> }>();
+  const lang = languages.includes(language) ? language as BundledLanguage : "text";
+  const tokens = highlighted?.code === code && highlighted.language === lang ? highlighted.tokens : [];
   useEffect(() => {
-    if (state === "empty") { setTokens([]); return; }
-    void highlighter.then((instance) => setTokens(instance.codeToTokens(code, { lang: languages.includes(language) ? language as BundledLanguage : "text", theme: "registry-tokens" }).tokens.map((line) => line.map((part) => ({ content: part.content, color: part.color })))));
-  }, [code, language, state]);
+    if (state === "empty" || state === "error" || variant === "terminal" || variant === "stack_trace") return;
+
+    let current = true;
+    void getSingletonHighlighter({ langs: [lang], themes: [highlightTheme] }).then((highlighter) => {
+      if (!current) return;
+      const { tokens } = highlighter.codeToTokens(code, { lang, theme: highlightTheme.name });
+      setHighlighted({ code, language: lang, tokens });
+    });
+    return () => { current = false; };
+  }, [code, lang, state, variant]);
   if (state === "error") return <CodeBlockPrimitive ref={root} language={language}><CodeBlockContent role="alert">Code could not be loaded</CodeBlockContent></CodeBlockPrimitive>;
   if (variant === "terminal") return <div ref={root}>
     <Terminal output={state === "empty" ? "" : code} role="region" aria-label="Terminal output">
@@ -72,9 +78,9 @@ export function CodeBlock({ code, language, variant, state }: Props) {
   return <CodeBlockPrimitive ref={root} language={language}>
     <CodeBlockHeader><CodeBlockTitle>{language} · {variant}</CodeBlockTitle></CodeBlockHeader>
     <CodeBlockContent aria-label={`${language} ${variant}`} tabIndex={0}>
-        {tokens.length ? tokens.map((line, lineIndex) => <span className="block" key={lineIndex}>
+        {state === "empty" ? "" : tokens.length ? tokens.map((line, lineIndex) => <span className="block" key={lineIndex}>
           {line.map((part, partIndex) => <span key={partIndex} className={syntaxClasses.get(part.color ?? "") ?? "text-code-foreground"}>{part.content}</span>)}
-        </span>) : state === "empty" ? "" : code}
+        </span>) : code}
     </CodeBlockContent>
   </CodeBlockPrimitive>;
 }

@@ -16,7 +16,14 @@ try {
     const source = await readFile(resolve(fixture, file), "utf8");
     await writeFile(resolve(target, file), source.replace("../../../src/registry/define-skeleton.ts", "../define-skeleton.ts"));
   }
-  await build({ configFile: resolve(web, "vite.config.ts"), root: web });
+  await build({
+    configFile: resolve(web, "vite.config.ts"),
+    root: web,
+    build: { rollupOptions: { input: {
+      contentFixture: resolve(web, "tests/browser/content-gallery.html"),
+      conversationFixture: resolve(web, "tests/browser/conversation-gallery.html"),
+    } } },
+  });
 
   const html = await readFile(resolve(web, "dist/preview.html"), "utf8");
   const entry = html.match(/src="(?:\.\/|\/)assets\/(preview-[^"]+\.js)"/)?.[1];

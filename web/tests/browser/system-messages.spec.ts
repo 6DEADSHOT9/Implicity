@@ -271,8 +271,13 @@ test("Keep reports an opacity-revealed toast shown before the action", async ({ 
   expect(await page.evaluate(() => window.noticeActions)).toEqual(["opacity:keep"]);
 });
 
+async function openSystemMessageFixture(page: import("@playwright/test").Page) {
+  await page.goto("/tests/browser/content-gallery.html?preview=");
+  await expect(page.locator("html")).toHaveAttribute("data-look", "default");
+}
+
 test("shown inline actions work when only 38% of the notice remains visible", async ({ page }) => {
-  await page.goto("/");
+  await openSystemMessageFixture(page);
   await page.evaluate(async () => {
     const fixtureUrl = "/tests/browser/system-messages-entry.tsx";
     const { mountPartialInlineNotice } = await import(/* @vite-ignore */ fixtureUrl) as typeof import("./system-messages-entry");
@@ -315,7 +320,7 @@ test("shown inline actions work when only 38% of the notice remains visible", as
 });
 
 test("concurrent Decision toasts stack and route each pointer action to its own Decision", async ({ page }) => {
-  await page.goto("/");
+  await openSystemMessageFixture(page);
   await page.evaluate(async () => {
     const fixtureUrl = "/tests/browser/system-messages-entry.tsx";
     const { mountConcurrentNotices } = await import(/* @vite-ignore */ fixtureUrl) as typeof import("./system-messages-entry");
