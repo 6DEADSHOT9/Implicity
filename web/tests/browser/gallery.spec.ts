@@ -917,10 +917,14 @@ test("combined gallery mounts T10 content and T9 conversation previews", async (
 });
 
 test("compact tablet conversation controls meet the 44px target in both dimensions", async ({ page }) => {
-  await page.goto("/tests/browser/conversation-gallery.html");
-  await page.getByLabel("Screen size").selectOption("tablet");
-  await page.getByLabel("Density").selectOption("compact");
-  await page.getByLabel("Text size").selectOption("1");
+  const titles = ["RunActivity · folded", "MessageActions · prose"];
+  const search = new URLSearchParams(titles.map((title) => ["preview", title]));
+  search.set("device", "tablet");
+  await page.goto(builtPreviewUrl(`/tests/browser/conversation-gallery.html?${search}`));
+  await selectGallerySettings(page, { Density: "compact", "Text size": "1" });
+  await waitForContentPreviewSettings(page, titles, {
+    look: "default", mode: "light", density: "compact", textSize: "1", deviceClass: "tablet",
+  }, true);
   const activity = page.frameLocator('iframe[title="RunActivity · folded"]');
   const disclosure = activity.getByRole("button");
   await expect.poll(() => disclosure.boundingBox()).toMatchObject({ width: expect.any(Number), height: expect.any(Number) });
@@ -942,43 +946,96 @@ async function assertGalleryMatrix(page: Page, device: "desktop" | "tablet", fix
   await page.goto(fixture, { waitUntil: "domcontentloaded" });
   await expect(page.locator("[data-gallery-root]")).toBeAttached();
   await selectGallerySettings(page, { "Screen size": device });
-  await expect.poll(() => page.locator("iframe").evaluateAll((frames, names) => frames.some((frame) => frame.getAttribute("title")?.startsWith(`${names[0]} · `)) && names.every((name) => frames.some((frame) => frame.getAttribute("title")?.startsWith(`${name} · `))) && frames.filter((frame) => names.some((name) => frame.getAttribute("title")?.startsWith(`${name} · `))).every((frame) => {
-    const root = (frame as HTMLIFrameElement).contentDocument?.querySelector("#root");
-    return !!root && !/Preview unavailable|preview failed/.test(root.textContent ?? "");
-  }), skeletonNames), { timeout: 10000 }).toBe(true);
+  await expect.poll(() => page.locator("iframe.gallery-preview-frame").evaluateAll((frames, { names, device }) => {
+    const previews = (frames as HTMLIFrameElement[]).filter((frame) => names.some((name) => frame.title.startsWith(`${name} · `)));
+    return names.every((name) => previews.some((frame) => frame.title.startsWith(`${name} · `))) && previews.every((frame) => {
+      const root = frame.contentDocument?.getElementById("root");
+      return frame.dataset.deviceClass === device && !!root && !/Preview unavailable|preview failed/.test(root.textContent ?? "");
+    });
+  }, { names: skeletonNames, device }), { timeout: 10000 }).toBe(true);
   const looks = ["default", "focused", "notebook"] as const;
   const densities = ["compact", "comfortable", "spacious"] as const;
   const sizes = ["1", "2", "3", "4", "5"] as const;
   const modes = ["light", "dark"] as const;
   let combinations = 0;
-  for (const look of looks) for (const mode of modes) for (const density of densities) for (const textSize of sizes) {
-    await selectGallerySettings(page, { Look: look, Mode: mode, Density: density, "Text size": textSize });
-    const lookConfig = lookById[look as keyof typeof lookById];
-    const expected = { names: skeletonNames, styleNames, look, mode, density, densitySpace: tokens.derivedTokens.density[density]["--space-1"], background: lookConfig[mode as "light" | "dark"].background, font: tokens.typefaces[lookConfig.typeface.body as keyof typeof tokens.typefaces].family, checkStyles: textSize === "1", checkHeight: textSize === "1" && density === "compact", textSize, width: device === "tablet" ? 800 : 1440 };
-    await expect.poll(() => page.evaluate(async ({ names, styleNames, density, densitySpace, background, font, checkStyles, checkHeight, ...settings }) => {
-      const gallery = document.querySelector("[data-gallery-root]");
-      if (!gallery || Object.entries(settings).some(([key, value]) => gallery.getAttribute(`data-${key === "textSize" ? "text-size" : key === "width" ? "device-class" : key}`) !== (key === "width" ? (value === 800 ? "tablet" : "desktop") : value))) return "gallery settings";
-      const frames = [...document.querySelectorAll<HTMLIFrameElement>("iframe")].filter((frame) => names.some((name) => frame.title.startsWith(`${name} · `)));
-      if (frames.length < names.length) return "missing frames";
-      if (checkHeight) await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-      for (const frame of frames) {
-        const doc = frame.contentDocument;
-        const root = doc?.querySelector<HTMLElement>("#root");
-        const html = doc?.documentElement;
-        if (!doc || !root?.children.length || !root.textContent?.trim() || !html) return `${frame.title}: content`;
-        if (/Preview unavailable|preview failed/.test(root.textContent)) return `${frame.title}: preview fallback`;
-        if (html.dataset.look !== settings.look || html.dataset.mode !== settings.mode || html.dataset.density !== density || html.dataset.textSize !== settings.textSize || frame.contentWindow?.innerWidth !== settings.width) return `${frame.title}: settings ${JSON.stringify({look:html.dataset.look,mode:html.dataset.mode,density:html.dataset.density,textSize:html.dataset.textSize,width:frame.contentWindow?.innerWidth})}`;
-        if (checkStyles && styleNames.some((name) => frame.title.startsWith(`${name} · `))) {
-          const style = getComputedStyle(html);
-          if (style.getPropertyValue("--space-1").trim() !== densitySpace) return `${frame.title}: density token`;
-          if (style.getPropertyValue("--background").trim() !== background) return `${frame.title}: mode palette`;
-          if (doc.fonts.status !== "loaded" || !getComputedStyle(root).fontFamily.includes(font)) return `${frame.title}: font not ready`;
-          if (checkHeight && Math.abs(Number(frame.height) - root.getBoundingClientRect().height) > 1) return `${frame.title}: unstable frame height`;
+  for (const look of looks) for (const mode of modes) {
+    const lookConfig = lookById[look];
+    const variants = densities.flatMap((density) => sizes.map((textSize) => ({
+      density,
+      textSize,
+      densitySpace: tokens.derivedTokens.density[density]["--space-1"],
+      checkStyles: textSize === "1",
+      checkHeight: textSize === "1" && density === "compact",
+    })));
+    const expected = {
+      skeletonNames, styleNames, variants, look, mode, device,
+      width: device === "tablet" ? 800 : 1440,
+      background: lookConfig[mode].background,
+      font: tokens.typefaces[lookConfig.typeface.body as keyof typeof tokens.typefaces].family,
+    };
+    const result = await test.step(`${look}/${mode}/${device}`, () => page.evaluate(async ({
+      skeletonNames, styleNames, variants, look, mode, device, width, background, font,
+    }) => {
+      const gallery = document.querySelector<HTMLElement>("[data-gallery-root]")!;
+      const controls = new Map([...gallery.querySelectorAll("select[aria-label]")].map((select) => [select.getAttribute("aria-label"), select as HTMLSelectElement]));
+      const frames = [...gallery.querySelectorAll<HTMLIFrameElement>("iframe")].filter((frame) => skeletonNames.some((name) => frame.title.startsWith(`${name} · `)));
+      const styledFrames = new Set(frames.filter((frame) => styleNames.some((name) => frame.title.startsWith(`${name} · `))));
+      const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+      function checkPreviews({ density, textSize, densitySpace, checkStyles, checkHeight }: typeof variants[number]) {
+        const settings = { look, mode, density, textSize, deviceClass: device };
+        if (Object.entries(settings).some(([key, value]) => gallery.dataset[key] !== value)) return "gallery settings";
+        if (frames.length < skeletonNames.length) return "missing frames";
+        for (const frame of frames) {
+          const doc = frame.contentDocument;
+          const root = doc?.getElementById("root");
+          if (!doc || !root?.children.length || !root.textContent?.trim()) return `${frame.title}: content`;
+          if (/Preview unavailable|preview failed/.test(root.textContent)) return `${frame.title}: preview fallback`;
+          const html = doc.documentElement;
+          for (const [key, value] of Object.entries(settings)) {
+            if (html.dataset[key] !== value) return `${frame.title}: ${key} ${html.dataset[key]}, expected ${value}`;
+          }
+          if (frame.contentWindow?.innerWidth !== width) return `${frame.title}: viewport width`;
+          if (checkStyles && styledFrames.has(frame)) {
+            const style = getComputedStyle(html);
+            if (style.getPropertyValue("--space-1").trim() !== densitySpace) return `${frame.title}: density token`;
+            if (style.getPropertyValue("--background").trim() !== background) return `${frame.title}: mode palette`;
+            if (doc.fonts.status !== "loaded" || !getComputedStyle(root).fontFamily.includes(font)) return `${frame.title}: font not ready`;
+            if (checkHeight && Math.abs(Number(frame.height) - root.getBoundingClientRect().height) > 1) return `${frame.title}: unstable frame height`;
+          }
         }
+        return "ready";
       }
-      return "ready";
-    }, expected), { timeout: 10000, intervals: [25, 50, 100], message: `${look}/${mode}/${density}/${textSize}/${device}` }).toBe("ready");
-    combinations++;
+
+      let count = 0;
+      for (const variant of variants) {
+        const deadline = performance.now() + 10000;
+        for (const [label, value] of Object.entries({ Look: look, Mode: mode, Density: variant.density, "Text size": variant.textSize })) {
+          const select = controls.get(label);
+          if (!select || ![...select.options].some((option) => option.value === value)) {
+            throw new Error(`Gallery setting ${label} has no option ${value}`);
+          }
+          if (select.value === value) continue;
+          select.value = value;
+          select.dispatchEvent(new Event("input", { bubbles: true }));
+          select.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+        if (variant.checkHeight) {
+          await nextFrame();
+          await nextFrame();
+        }
+        let status = checkPreviews(variant);
+        while (status !== "ready" && performance.now() < deadline) {
+          await nextFrame();
+          status = checkPreviews(variant);
+        }
+        if (status !== "ready") return { count, failure: `${variant.density}/${variant.textSize}: ${status}` };
+        count++;
+      }
+      return { count, failure: undefined };
+    }, expected));
+    expect(result.failure, `${look}/${mode}/${device}`).toBeUndefined();
+    combinations += result.count;
   }
   expect(combinations).toBe(90);
 }
