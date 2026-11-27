@@ -1,4 +1,4 @@
-import { expect, test, type Locator } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import tokens from "../../../contracts/looks/tokens.json" with { type: "json" };
 import defaultLook from "../../../contracts/looks/default.json" with { type: "json" };
 import focusedLook from "../../../contracts/looks/focused.json" with { type: "json" };
@@ -7,6 +7,16 @@ import { tokenNames } from "../../src/registry/token-values.mjs";
 import { measureContrast } from "./contrast";
 
 const lookById = { default: defaultLook, focused: focusedLook, notebook: notebookLook };
+
+function builtPreviewUrl(path: string) {
+  const port = Number((globalThis as typeof globalThis & { process?: { env?: Record<string, string | undefined> } }).process?.env?.GALLERY_PREVIEW_PORT ?? 4174);
+  return `http://127.0.0.1:${port}${path}`;
+}
+
+function contentGalleryUrl(previews: readonly string[] = []) {
+  const search = new URLSearchParams(previews.map((title) => ["preview", title]));
+  return builtPreviewUrl(`/tests/browser/content-gallery.html${search.size ? `?${search}` : ""}`);
+}
 
 async function sampleHeightAcrossFrames(frame: Locator, changeHeightOnFirstFrame = false) {
   return frame.evaluate((element, changeHeight) => {
@@ -708,8 +718,7 @@ test("ignores forged preview height messages from the parent window", async ({ p
 });
 
 test("production build includes and serves the preview page", async ({ page }) => {
-  const port = Number((globalThis as typeof globalThis & { process?: { env?: Record<string, string | undefined> } }).process?.env?.GALLERY_PREVIEW_PORT ?? 4174);
-  const response = await page.goto(`http://127.0.0.1:${port}/preview.html?entry=missing&state=plain`);
+  const response = await page.goto(builtPreviewUrl("/preview.html?entry=missing&state=plain"));
   expect(response?.status()).toBe(200);
   await page.evaluate(() => window.postMessage({ styles: "", texture: "none", look: "default", mode: "light", density: "comfortable", textSize: "3", deviceClass: "desktop" }, location.origin));
   await expect(page.getByRole("alert")).toHaveText("Preview unavailable");
@@ -784,23 +793,32 @@ test("Notebook applies its bundled body font, paper texture, and both mode palet
 });
 
 
+async function expectGalleryPreviews(page: Page, titles: string[], device: "desktop" | "tablet") {
+  await expect.poll(() => page.locator("iframe.gallery-preview-frame").evaluateAll((frames, expected) => {
+    if (frames.length !== expected.titles.length) return `frames: ${frames.length}/${expected.titles.length}`;
+    const remaining = new Set(expected.titles);
+    for (const frame of frames as HTMLIFrameElement[]) {
+      if (!remaining.delete(frame.title)) return `${frame.title}: unexpected preview`;
+      const doc = frame.contentDocument;
+      const root = doc?.getElementById("root");
+      if (doc?.documentElement.dataset.deviceClass !== expected.device || !root?.children.length) return `${frame.title}: loading ${expected.device} preview`;
+      if (/Preview unavailable|preview failed/.test(root.textContent ?? "")) return `${frame.title}: ${root.textContent}`;
+    }
+    return "ready";
+  }, { titles, device }), { timeout: 10000 }).toBe("ready");
+}
+
 test("content skeletons render every declared gallery state across gallery settings", async ({ page }) => {
-  await page.goto("/tests/browser/content-gallery.html");
+  await page.goto(contentGalleryUrl());
+  await expect(page.locator("[data-gallery-root]")).toBeAttached();
   const cards = await page.locator(".gallery-card[data-skeleton]").evaluateAll((elements) => elements.map((element) => ({
     name: element.getAttribute("data-skeleton")!,
     state: element.getAttribute("data-gallery-state")!,
   })));
   const names = new Set(cards.map(({ name }) => name));
-  const legacyCards = cards;
   expect(names).toEqual(new Set(["DataTable", "DataChart", "CodeBlock", "MediaPlayer", "ArtifactWorkspace", "Checklist", "List", "Metric", "Tabs", "Card", "ChangeNotice", "ProposalCard", "Nudge"]));
-  await expect.poll(() => page.locator("iframe").evaluateAll((frames, expectedTitles) => {
-    for (const title of expectedTitles) {
-      const frame = (frames as HTMLIFrameElement[]).find(({ title: frameTitle }) => frameTitle === title);
-      const root = frame?.contentDocument?.querySelector("#root");
-      if (!root?.children.length || /Preview unavailable|preview failed/.test(root.textContent ?? "")) return `${title}: loading`;
-    }
-    return "ready";
-  }, legacyCards.map(({ name, state }) => `${name} · ${state}`)), { timeout: 10000 }).toBe("ready");
+  const titles = cards.map(({ name, state }) => `${name} · ${state}`);
+  await expectGalleryPreviews(page, titles, "desktop");
   const cardEmpty = page.frameLocator('iframe[title="Card · empty"]').locator("[data-slot='empty']");
   const emptyBorder = await cardEmpty.evaluate((element) => ({
     width: getComputedStyle(element).borderTopWidth,
@@ -818,6 +836,7 @@ test("content skeletons render every declared gallery state across gallery setti
   await expect(page.locator("[data-gallery-root]")).toHaveAttribute("data-look", "notebook");
   await expect(page.locator("[data-gallery-root]")).toHaveAttribute("data-mode", "dark");
   await expect(page.locator("[data-gallery-root]")).toHaveAttribute("data-device-class", "tablet");
+  await expectGalleryPreviews(page, titles, "tablet");
   await expect(page.frameLocator('iframe[title="DataTable · table"]').locator("html")).toHaveAttribute("data-mode", "dark");
   await expect(page.frameLocator('iframe[title="DataTable · table"]').locator("table")).toBeVisible();
   await expect(page.frameLocator('iframe[title="Tabs · default"]').getByRole("tablist")).toBeVisible();
@@ -836,13 +855,8 @@ test("content skeletons render every declared gallery state across gallery setti
   await tabs.getByRole("tab", { name: "Details" }).click();
   await expect(tabs.getByRole("tab", { name: "Details" })).toHaveAttribute("aria-selected", "true");
   await expect(tabs.getByRole("tabpanel").getByText("additional-details")).toBeVisible();
-  for (const device of ["desktop", "tablet"] as const) {
-    await page.getByLabel("Screen size").selectOption(device);
-    await expect.poll(() => page.locator("iframe").evaluateAll((frames, args) => {
-      const legacyFrames = (frames as HTMLIFrameElement[]).filter((frame) => args.names.some((name) => frame.title.startsWith(`${name} · `)));
-      return legacyFrames.length === args.count && legacyFrames.every((frame) => frame.getAttribute("data-device-class") === args.device && !!frame.contentDocument?.querySelector("#root")?.children.length);
-  }, { device, names: [...names], count: legacyCards.length }), { timeout: 10000 }).toBe(true);
-  }
+  await page.getByLabel("Screen size").selectOption("desktop");
+  await expectGalleryPreviews(page, titles, "desktop");
 });
 
 test("conversation gallery renders every declared state", async ({ page }) => {
@@ -918,6 +932,7 @@ async function assertGalleryMatrix(page: import("@playwright/test").Page, device
       if (!gallery || Object.entries(settings).some(([key, value]) => gallery.getAttribute(`data-${key === "textSize" ? "text-size" : key === "width" ? "device-class" : key}`) !== (key === "width" ? (value === 800 ? "tablet" : "desktop") : value))) return "gallery settings";
       const frames = [...document.querySelectorAll<HTMLIFrameElement>("iframe")].filter((frame) => names.some((name) => frame.title.startsWith(`${name} · `)));
       if (frames.length < names.length) return "missing frames";
+      if (checkHeight) await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       for (const frame of frames) {
         const doc = frame.contentDocument;
         const root = doc?.querySelector<HTMLElement>("#root");
@@ -930,10 +945,7 @@ async function assertGalleryMatrix(page: import("@playwright/test").Page, device
           if (style.getPropertyValue("--space-1").trim() !== densitySpace) return `${frame.title}: density token`;
           if (style.getPropertyValue("--background").trim() !== background) return `${frame.title}: mode palette`;
           if (doc.fonts.status !== "loaded" || !getComputedStyle(root).fontFamily.includes(font)) return `${frame.title}: font not ready`;
-          if (checkHeight) {
-            await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-            if (Math.abs(Number(frame.height) - root.getBoundingClientRect().height) > 1) return `${frame.title}: unstable frame height`;
-          }
+          if (checkHeight && Math.abs(Number(frame.height) - root.getBoundingClientRect().height) > 1) return `${frame.title}: unstable frame height`;
         }
       }
       return "ready";
@@ -960,7 +972,7 @@ test("conversation skeletons survive every desktop gallery setting", async ({ pa
 });
 
 test("conversation skeletons survive every tablet gallery setting", async ({ page }) => {
-  await assertGalleryMatrix(page, "tablet", "/tests/browser/conversation-gallery.html", conversationMatrixNames, conversationMatrixNames);
+  await assertGalleryMatrix(page, "tablet", builtPreviewUrl("/tests/browser/conversation-gallery.html"), conversationMatrixNames, conversationMatrixNames);
 });
 
 test("content controls use their host, show focus rings, preserve list markers, and apply chart tokens", async ({ page }) => {
@@ -1016,7 +1028,7 @@ test("content controls use their host, show focus rings, preserve list markers, 
 });
 
 test("DataChart reads the live chart axis token when the host updates styles", async ({ page }) => {
-  await page.goto("/tests/browser/content-gallery.html");
+  await page.goto(contentGalleryUrl(["DataChart · line"]));
   const frame = page.locator('iframe[title="DataChart · line"]');
   await expect(frame.contentFrame().locator(".recharts-dot").first()).toBeVisible();
   await page.evaluate(() => {
@@ -1037,7 +1049,9 @@ test("DataChart reads the live chart axis token when the host updates styles", a
 });
 
 test("rendered code, diff, stack trace and terminal text stay readable in every look and mode", async ({ page }) => {
-  await page.goto("/tests/browser/content-gallery.html");
+  const titles = ["CodeBlock · code", "CodeBlock · diff", "CodeBlock · stack_trace", "CodeBlock · terminal", "DataChart · long_content"];
+  await page.goto(contentGalleryUrl(titles));
+  const frames = titles.map((title) => page.frameLocator(`iframe[title="${title}"]`));
   const ratio = (foreground: string, background: string) => {
     const luminance = (input: string) => {
       const rgb = input.match(/[\d.]+/g)?.slice(0, 3).map(Number);
@@ -1052,10 +1066,13 @@ test("rendered code, diff, stack trace and terminal text stay readable in every 
     await page.getByLabel("Look").selectOption(look);
     for (const mode of ["light", "dark"]) {
       await page.getByLabel("Mode").selectOption(mode);
+      await Promise.all(frames.map((frame) => expect(frame.locator(`html[data-look="${look}"][data-mode="${mode}"]`)).toBeAttached()));
       for (const state of ["code", "diff"] as const) {
         const frame = page.frameLocator(`iframe[title="CodeBlock · ${state}"]`);
         const code = frame.locator("pre code");
         await expect(code).toBeVisible();
+        const syntax = code.locator("span[class*='text-code-']");
+        await expect(syntax.first()).toBeAttached();
         if (state === "diff") {
           await expect(code).toContainText("const old");
           await expect(code).toContainText("const current");
@@ -1063,7 +1080,7 @@ test("rendered code, diff, stack trace and terminal text stay readable in every 
           expect(colors).toHaveLength(2);
           expect(colors[0]).not.toBe(colors[1]);
         }
-        const colors = await frame.locator("pre code span[class*='text-code-']").evaluateAll((nodes) => nodes.filter((node) => node.textContent?.trim()).map((node) => ({ color: getComputedStyle(node).color, background: getComputedStyle(node.closest("pre")!).backgroundColor })));
+        const colors = await syntax.evaluateAll((nodes) => nodes.filter((node) => node.textContent?.trim()).map((node) => ({ color: getComputedStyle(node).color, background: getComputedStyle(node.closest("pre")!).backgroundColor })));
         expect(colors.length, `${look}/${mode}/${state} rendered syntax`).toBeGreaterThan(0);
         for (const { color, background } of colors) expect(ratio(color, background), `${look}/${mode}/${state}: ${color} on ${background}`).toBeGreaterThanOrEqual(4.5);
       }
@@ -1119,7 +1136,7 @@ test("rendered code, diff, stack trace and terminal text stay readable in every 
 });
 
 test("long terminal logs stay inside the token-bounded scroll region", async ({ page }) => {
-  await page.goto("/tests/browser/content-gallery.html");
+  await page.goto(contentGalleryUrl(["CodeBlock · terminal_long"]));
   const frame = page.frameLocator('iframe[title="CodeBlock · terminal_long"]');
   const content = frame.getByRole("region", { name: "Terminal output" }).locator('[tabindex="0"]');
   await expect(content).toContainText("Info: log line 200");
