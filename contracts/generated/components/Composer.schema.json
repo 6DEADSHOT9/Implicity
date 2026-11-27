@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "props": {
+      "type": "object",
+      "properties": {
+        "attachments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "shortcuts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "search",
+                      "go_home",
+                      "new_chat",
+                      "open_chat",
+                      "open_project",
+                      "open_recent",
+                      "toggle_panel",
+                      "open_settings"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^cmd_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                  }
+                ]
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "label"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "attachments",
+        "shortcuts"
+      ],
+      "additionalProperties": false
+    },
+    "slots": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "props",
+    "slots"
+  ],
+  "additionalProperties": false
+}
