@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
 import { SEEN_VISIBLE_SECONDS } from "../../src/registry/use-seen";
 
 const shellGallery = "/tests/browser/shell-gallery.html";
@@ -12,6 +12,21 @@ const previews = [
   ["Search", "closed"], ["Search", "open"],
   ["Settings", "preferences"], ["Settings", "locks"], ["Settings", "notices"], ["Settings", "history"], ["Settings", "quota"],
 ] as const;
+
+// The library applies new pixel minima after a resize notification; until then Home and End use the old percentages.
+const expectCurrentLimits = (handle: Locator, message: string) => expect.poll(() => handle.evaluate((separator) => {
+  const group = separator.parentElement!;
+  const [mainPadding, panelPadding] = [...group.querySelectorAll<HTMLElement>("[data-slot=resizable-panel] [class*='p-space-']")].map((slot) => {
+    const style = getComputedStyle(slot);
+    return parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+  });
+  const area = group.getBoundingClientRect().width - separator.getBoundingClientRect().width;
+  const off = (attribute: string, percent: number) => Math.abs(Number(separator.getAttribute(attribute)) - percent) > 0.01;
+  return [
+    off("aria-valuemin", (320 + mainPadding) / area * 100) && `min ${separator.getAttribute("aria-valuemin")}, want ${(320 + mainPadding) / area * 100}`,
+    off("aria-valuemax", 100 - (288 + panelPadding) / area * 100) && `max ${separator.getAttribute("aria-valuemax")}, want ${100 - (288 + panelPadding) / area * 100}`,
+  ].filter(Boolean);
+}), { message }).toEqual([]);
 
 test("the open Search preview leaves the host page's focus and scroll alone", async ({ page }) => {
   await page.goto(galleryOf("Search"));
@@ -55,7 +70,10 @@ for (const device of ["desktop", "tablet"]) test(`shell skeletons render usable,
         // The gallery's controls change first; wait for the preview's own document to apply them.
         const applied = `html[data-device-class='${device}'][data-look='${look}'][data-mode='${mode}']`;
         await frame.locator(`${applied} ${selector}`).first().waitFor({ state: "visible" });
-        return frame.locator("html").evaluate((element, { id, selector }) => {
+        // The frame takes its height from the preview's report, which can arrive after the content is visible.
+        const previewFrame = await (await page.locator(`iframe[title='${id} · ${state}']`).elementHandle())!.contentFrame();
+        await test.step(`${id} · ${state}: frame takes the content height`, () => previewFrame!.waitForFunction(() => window.innerHeight === Math.ceil(document.querySelector("#root")!.getBoundingClientRect().height)));
+        return frame.locator("html").evaluate((element, { id, state, selector }) => {
           const rootElement = element.querySelector("#root");
           const dialog = element.querySelector<HTMLElement>("[role=dialog]");
           const bounds = dialog?.getBoundingClientRect();
@@ -63,6 +81,9 @@ for (const device of ["desktop", "tablet"]) test(`shell skeletons render usable,
           const contentStyle = content && getComputedStyle(content);
           const rowsFit = [...(dialog?.querySelectorAll<HTMLElement>("[role=option]") ?? [])].every((row) => row.scrollWidth <= row.clientWidth);
           return {
+            preview: `${id} · ${state}`,
+            viewport: [element.clientWidth, element.clientHeight],
+            dialogBounds: bounds && { left: bounds.left, top: bounds.top, right: bounds.right, bottom: bounds.bottom },
             contained: element.scrollWidth <= element.clientWidth,
             rendered: !!rootElement?.childElementCount,
             alert: !!element.querySelector("[role=alert]"),
@@ -71,7 +92,7 @@ for (const device of ["desktop", "tablet"]) test(`shell skeletons render usable,
             dialogVisible: !dialog || !!(bounds?.width && bounds.height && getComputedStyle(dialog).visibility !== "hidden"),
             rowsFit,
           };
-        }, { id, selector });
+        }, { id, state, selector });
       }));
       expect(results.filter((result) => !result.contained || !result.rendered || result.alert || !result.contentVisible || !result.dialogFits || !result.dialogVisible || !result.rowsFit), `${device} ${look} ${mode}`).toEqual([]);
     }
@@ -221,6 +242,7 @@ test("AppShell keeps usable slot minima at the docked threshold in each density"
       expect(widths[0]).toBeGreaterThanOrEqual(320);
       expect(widths[1]).toBeGreaterThanOrEqual(288);
     };
+    await expectCurrentLimits(handle, `${density} limits at threshold ${threshold}`);
     await handle.focus();
     await page.keyboard.press("Home");
     await assertMinimums();
@@ -257,6 +279,7 @@ test("AppShell measures its own width and keeps the draft and slot minima as it 
     const style = getComputedStyle(slot);
     return slot.getBoundingClientRect().width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
   }));
+  await expectCurrentLimits(handle, "limits after the panel opens");
   await handle.focus();
   for (const key of ["Home", "End"]) {
     await page.keyboard.press(key);
