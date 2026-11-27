@@ -47,7 +47,9 @@ async function sampleHeightAcrossFrames(frame: Locator, changeHeightOnFirstFrame
       requestAnimationFrame(() => {
         const second = read();
         resolve({
-          stable: first.height === second.height && Math.abs(first.height - first.contentHeight) <= 1 && Math.abs(second.height - second.contentHeight) <= 1,
+          // The initial 1 px iframe is within rounding tolerance of an empty preview.
+          stable: first.height > 1 && first.height === second.height &&
+            Math.abs(first.height - first.contentHeight) <= 1 && Math.abs(second.height - second.contentHeight) <= 1,
           height: second.height,
           contentHeight: second.contentHeight,
           firstHeight: first.height,
@@ -559,16 +561,17 @@ test("desktop preview scales into its card while keeping a 1440 px viewport", as
   await page.setViewportSize({ width: 1201, height: 900 });
   await page.goto("/tests/browser/gallery.html");
   const card = page.locator("[data-skeleton='ReviewPanel'][data-gallery-state='plain'] .gallery-preview");
-  const frame = page.locator("iframe[title='ReviewPanel · plain']");
+  const frame = card.locator("iframe[title='ReviewPanel · plain']");
   await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentWindow?.innerWidth)).toBe(1440);
   await waitForStableHeight(frame);
-  const [cardBounds, frameBounds] = await Promise.all([card.boundingBox(), frame.boundingBox()]);
-  expect(cardBounds).not.toBeNull();
-  expect(frameBounds).not.toBeNull();
-  expect(frameBounds!.x).toBeGreaterThanOrEqual(cardBounds!.x);
-  expect(frameBounds!.y).toBeGreaterThanOrEqual(cardBounds!.y);
-  expect(frameBounds!.x + frameBounds!.width).toBeLessThanOrEqual(cardBounds!.x + cardBounds!.width + 1);
-  expect(frameBounds!.y + frameBounds!.height).toBeLessThanOrEqual(cardBounds!.y + cardBounds!.height + 1);
+  const { cardBounds, frameBounds } = await frame.evaluate((element) => ({
+    cardBounds: element.closest(".gallery-preview")!.getBoundingClientRect().toJSON(),
+    frameBounds: element.getBoundingClientRect().toJSON(),
+  }));
+  expect(frameBounds.left).toBeGreaterThanOrEqual(cardBounds.left);
+  expect(frameBounds.top).toBeGreaterThanOrEqual(cardBounds.top);
+  expect(frameBounds.right).toBeLessThanOrEqual(cardBounds.right + 1);
+  expect(frameBounds.bottom).toBeLessThanOrEqual(cardBounds.bottom + 1);
 });
 
 test("renders examples and contains a failed Skeleton state to its card", async ({ page }) => {
@@ -602,9 +605,9 @@ test("waits for the requested fixture before sending its first height", async ({
   const frame = page.locator("iframe[title='ReviewPanel · plain']");
   await expect(frame).toBeAttached();
   await importStarted;
-  await frame.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
-  expect(await frame.getAttribute("height")).toBe("1");
+  const placeholder = await sampleHeightAcrossFrames(frame);
   releaseImport();
+  expect(placeholder).toMatchObject({ firstHeight: 1, height: 1, stable: false });
   await expect(frame.contentFrame().locator(".review-panel")).toBeVisible();
   await expect.poll(() => frame.getAttribute("height").then(Number)).toBeGreaterThan(1);
   const sample = await waitForStableHeight(frame);
