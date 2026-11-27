@@ -186,7 +186,7 @@ A dimension on a scale adds `scale: true`, which makes the engine move one value
 | Dimension | Values | An occasion is | Evidence toward a value |
 | --- | --- | --- | --- |
 | `reasoning` | folded, expanded | An answer with reasoning, seen | Expanding or collapsing the reasoning |
-| `long_answers` | folded, open | A long answer, seen | Expanding or collapsing it |
+| `long_answers` | folded, open | A long answer, seen: an answer in the `long` length bucket, whose MessageBody `long_answer` slot was seen. Events report what is displayed (ADR 0025), so a live answer seen open counts as open | Expanding or collapsing it |
 | `data_form` | table, chart | A data result, seen | Switching form, and time spent on each |
 | `sources_panel` | closed, docked | An answer with sources, seen | Opening or closing the sources panel |
 | `project_panel` | closed, docked | A conversation inside a project | Opening or closing the project panel |

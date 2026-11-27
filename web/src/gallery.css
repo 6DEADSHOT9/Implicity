@@ -8,6 +8,7 @@
 
 .gallery-preview-root { margin: 0; color: var(--foreground); background-color: var(--background); font-size: var(--text-base); font-family: var(--font-body); }
 body[data-preview-state="toast"] #root { min-height: var(--panel-min-width); }
+body[data-preview-picker="open"] { min-height: var(--content-max-height); }
 /* A full-height shell or a shell dialog follows its frame, so its preview needs a height of its own. */
 body.gallery-preview-root:has([data-shell-dialog], [data-slot="sidebar-wrapper"]) #root { min-height: var(--content-max-height); }
 /* The open menu is portaled outside #root, so the preview reserves room for it below the header. */

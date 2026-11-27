@@ -287,6 +287,11 @@ def test_independent_action_requirements_reject_each_missing_field():
             and definition["properties"]["dimension"]["const"] == "shortcut_chips"
         ):
             expected.add("command")
+        if (
+            name == "setting_changed"
+            and definition["properties"]["dimension"]["const"] == "home_widgets"
+        ):
+            expected.add("component")
         assert required == EVENT_ENVELOPE_FIELDS | expected, name
         event = valid_event(definition)
         VALIDATOR.validate(event)
@@ -442,6 +447,8 @@ def test_every_setting_dimension_value_round_trips(reference):
         fields = {"dimension": dimension, "value": value}
         if dimension == "shortcut_chips":
             fields["command"] = "copy_answer"
+        elif dimension == "home_widgets":
+            fields["component"] = "ResumeWidget"
         event = action("setting_changed", **fields)
         assert json.loads(encode_contract(decode_contract(json.dumps(event)))) == event
 

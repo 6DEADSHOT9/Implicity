@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "props": {
+      "type": "object",
+      "properties": {
+        "open": {
+          "type": "boolean"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "widgets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "widgetId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "componentId": {
+                "type": "string",
+                "pattern": "^[A-Z][A-Za-z0-9_-]{0,63}$"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "enabled": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "widgetId",
+              "componentId",
+              "label",
+              "enabled"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "availableWidgets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "widgetId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "componentId": {
+                "type": "string",
+                "pattern": "^[A-Z][A-Za-z0-9_-]{0,63}$"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "widgetId",
+              "componentId",
+              "label"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "open",
+        "title",
+        "widgets",
+        "availableWidgets"
+      ],
+      "additionalProperties": false
+    },
+    "slots": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "props",
+    "slots"
+  ],
+  "additionalProperties": false
+}

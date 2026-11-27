@@ -5,6 +5,7 @@ import focusedLook from "../../../contracts/looks/focused.json" with { type: "js
 import notebookLook from "../../../contracts/looks/notebook.json" with { type: "json" };
 import { tokenNames } from "../../src/registry/token-values.mjs";
 import { measureContrast } from "./contrast";
+import { openPickerPreview } from "./widget-picker-test-helpers";
 
 const lookById = { default: defaultLook, focused: focusedLook, notebook: notebookLook };
 
@@ -46,7 +47,9 @@ async function sampleHeightAcrossFrames(frame: Locator, changeHeightOnFirstFrame
       requestAnimationFrame(() => {
         const second = read();
         resolve({
-          stable: first.height === second.height && Math.abs(first.height - first.contentHeight) <= 1 && Math.abs(second.height - second.contentHeight) <= 1,
+          // The initial 1 px iframe is within rounding tolerance of an empty preview.
+          stable: first.height > 1 && first.height === second.height &&
+            Math.abs(first.height - first.contentHeight) <= 1 && Math.abs(second.height - second.contentHeight) <= 1,
           height: second.height,
           contentHeight: second.contentHeight,
           firstHeight: first.height,
@@ -558,16 +561,17 @@ test("desktop preview scales into its card while keeping a 1440 px viewport", as
   await page.setViewportSize({ width: 1201, height: 900 });
   await page.goto("/tests/browser/gallery.html");
   const card = page.locator("[data-skeleton='ReviewPanel'][data-gallery-state='plain'] .gallery-preview");
-  const frame = page.locator("iframe[title='ReviewPanel · plain']");
+  const frame = card.locator("iframe[title='ReviewPanel · plain']");
   await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentWindow?.innerWidth)).toBe(1440);
   await waitForStableHeight(frame);
-  const [cardBounds, frameBounds] = await Promise.all([card.boundingBox(), frame.boundingBox()]);
-  expect(cardBounds).not.toBeNull();
-  expect(frameBounds).not.toBeNull();
-  expect(frameBounds!.x).toBeGreaterThanOrEqual(cardBounds!.x);
-  expect(frameBounds!.y).toBeGreaterThanOrEqual(cardBounds!.y);
-  expect(frameBounds!.x + frameBounds!.width).toBeLessThanOrEqual(cardBounds!.x + cardBounds!.width + 1);
-  expect(frameBounds!.y + frameBounds!.height).toBeLessThanOrEqual(cardBounds!.y + cardBounds!.height + 1);
+  const { cardBounds, frameBounds } = await frame.evaluate((element) => ({
+    cardBounds: element.closest(".gallery-preview")!.getBoundingClientRect().toJSON(),
+    frameBounds: element.getBoundingClientRect().toJSON(),
+  }));
+  expect(frameBounds.left).toBeGreaterThanOrEqual(cardBounds.left);
+  expect(frameBounds.top).toBeGreaterThanOrEqual(cardBounds.top);
+  expect(frameBounds.right).toBeLessThanOrEqual(cardBounds.right + 1);
+  expect(frameBounds.bottom).toBeLessThanOrEqual(cardBounds.bottom + 1);
 });
 
 test("renders examples and contains a failed Skeleton state to its card", async ({ page }) => {
@@ -601,9 +605,9 @@ test("waits for the requested fixture before sending its first height", async ({
   const frame = page.locator("iframe[title='ReviewPanel · plain']");
   await expect(frame).toBeAttached();
   await importStarted;
-  await frame.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
-  expect(await frame.getAttribute("height")).toBe("1");
+  const placeholder = await sampleHeightAcrossFrames(frame);
   releaseImport();
+  expect(placeholder).toMatchObject({ firstHeight: 1, height: 1, stable: false });
   await expect(frame.contentFrame().locator(".review-panel")).toBeVisible();
   await expect.poll(() => frame.getAttribute("height").then(Number)).toBeGreaterThan(1);
   const sample = await waitForStableHeight(frame);
@@ -881,6 +885,66 @@ test("content skeletons render every declared gallery state across gallery setti
     await selectGallerySettings(page, { "Screen size": device });
     await waitForContentPreviewSettings(page, titles, { ...selectedSettings, deviceClass: device }, true);
   }
+});
+
+for (const look of ["default", "focused", "notebook"] as const) {
+  test(`WidgetPicker gallery dialog Close meets the target size across modes and screens in ${look}`, async ({ page }) => {
+    await page.goto("/tests/browser/widget-picker-gallery.html");
+    const frame = page.locator('iframe[title="WidgetPicker · open"]');
+    const preview = frame.contentFrame();
+    const waitForDialog = () => page.waitForFunction(() => {
+      const dialog = document.querySelector<HTMLIFrameElement>('iframe[title="WidgetPicker · open"]')?.contentDocument?.querySelector("[data-widget-picker-dialog]");
+      return !!dialog && dialog.getBoundingClientRect().width > 0;
+    });
+    await openPickerPreview(page, "WidgetPicker · open");
+    const dialog = preview.locator("[data-widget-picker-dialog]");
+    const close = dialog.getByRole("button", { name: "Close widget picker" });
+    await waitForDialog();
+    await page.getByLabel("Look").selectOption(look);
+    for (const mode of ["light", "dark"]) {
+      await page.getByLabel("Mode").selectOption(mode);
+      for (const device of ["desktop", "tablet"]) {
+        await page.getByLabel("Screen size").selectOption(device);
+        await expect(frame).toHaveAttribute("data-device-class", device);
+        await page.waitForFunction((expectedDevice) => {
+          const preview = document.querySelector<HTMLIFrameElement>('iframe[title="WidgetPicker · open"]')?.contentDocument;
+          return preview?.documentElement?.dataset.deviceClass === expectedDevice && !!preview.querySelector("#root")?.childElementCount;
+        }, device);
+        if (!(await dialog.count())) {
+          await openPickerPreview(page, "WidgetPicker · open");
+          await waitForDialog();
+        }
+        const bounds = await close.evaluate((element) => {
+          const control = getComputedStyle(element);
+          const style = getComputedStyle(element.ownerDocument.documentElement);
+          const target = parseFloat(style.getPropertyValue("--control-height")) * parseFloat(style.fontSize);
+          return { width: parseFloat(control.width), height: parseFloat(control.height), target };
+        });
+        expect(bounds.width, `${look} ${mode} ${device}`).toBeGreaterThanOrEqual(bounds.target);
+        expect(bounds.height, `${look} ${mode} ${device}`).toBeGreaterThanOrEqual(bounds.target);
+      }
+    }
+  });
+}
+
+test("open WidgetPicker gallery states show dialogs without moving focus on page load", async ({ page }) => {
+  await page.goto("/");
+  for (const state of ["open", "long-content"]) {
+    await page.locator(`iframe[title="WidgetPicker · ${state}"]`).contentFrame().locator("#root > *").first().waitFor({ state: "attached" });
+    const frame = page.frameLocator(`iframe[title="WidgetPicker · ${state}"]`);
+    const dialog = frame.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("switch")).toHaveCount(5);
+  }
+  await expect.poll(() => page.evaluate(() => {
+    const pickerFrames = Array.from(document.querySelectorAll<HTMLIFrameElement>('iframe[title^="WidgetPicker · "]'));
+    return pickerFrames
+      .filter(({ title }) => /WidgetPicker · (open|long-content)$/.test(title))
+      .every((frame) => {
+        const frameDocument = frame.contentDocument;
+        return !!frameDocument && frameDocument.activeElement === frameDocument.body;
+      });
+  })).toBe(true);
 });
 
 test("conversation gallery renders every declared state", async ({ page }) => {

@@ -32,6 +32,7 @@ const commandValid = ajv.compile({
 });
 
 const eventNames = new Set<string>();
+const widgetComponentIds = new Set(["ResumeWidget", "ProjectsWidget", "ScheduledWidget", "QuickPromptsWidget", "NowPlayingWidget"]);
 for (const rawDefinition of Object.values(definitions)) {
   if (rawDefinition === null || typeof rawDefinition !== "object" || !Object.hasOwn(rawDefinition, "properties")) continue;
   const definition = rawDefinition as { properties: Record<string, { const?: unknown; enum?: unknown[] }> };
@@ -49,6 +50,7 @@ export function validateRegistryDefinitions(entries: readonly SkeletonDefinition
     if (ids.has(entry.id)) throw new Error(`Duplicate registry component id: ${entry.id}`);
     ids.add(entry.id);
     if (!entry.propsSchema || !entry.slotsSchema || !entry.schema) throw new Error(`${entry.id} is missing its schema`);
+    if (widgetComponentIds.has(entry.id) && !entry.meta?.widget) throw new Error(`${entry.id} is missing widget metadata`);
     if (!Array.isArray(entry.events) || !entry.events.length) throw new Error(`${entry.id} is missing events`);
     if (entry.events.some((event) => !eventNames.has(event))) throw new Error(`${entry.id} declares an event not in T3`);
     if (!entry.events.includes("component_shown") || !entry.events.includes("component_seen")) throw new Error(`${entry.id} must declare shown and seen events`);
