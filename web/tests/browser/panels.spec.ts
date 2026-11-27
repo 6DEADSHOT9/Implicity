@@ -310,34 +310,30 @@ async function assertFocusedProjectLabels(page: Page, viewportWidth: 288 | 1440,
   }
   await page.getByLabel("Look").selectOption("focused");
   await page.getByLabel("Density").selectOption("spacious");
-  await page.getByLabel("Text size").selectOption("5");
+  if (viewportWidth === 1440 && panelWidth) {
+    await frame.evaluate((element, width) => { (element as HTMLIFrameElement).width = String(width); }, panelWidth);
+    await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentWindow?.innerWidth), { timeout: 15000 }).toBe(panelWidth);
+  }
   const previewHtml = frame.contentFrame().locator("html");
   await expect(previewHtml).toHaveAttribute("data-look", "focused");
   await expect(previewHtml).toHaveAttribute("data-density", "spacious");
-  await expect(previewHtml).toHaveAttribute("data-text-size", "5");
-  await frame.evaluate(async (element) => { await (element as HTMLIFrameElement).contentDocument!.fonts.ready; });
-  await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentDocument?.fonts.status)).toBe("loaded");
-  await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentWindow?.innerWidth)).toBe(viewportWidth);
-
-  if (viewportWidth === 1440 && panelWidth) {
-    await frame.evaluate((element, width) => {
-      const section = (element as HTMLIFrameElement).contentDocument!.querySelector<HTMLElement>('section[aria-label="Project"]')!;
-      section.style.width = `${width}px`;
-      section.style.boxSizing = "border-box";
-    }, panelWidth);
+  for (const textSize of ["1", "2", "3", "4", "5"]) {
+    await page.getByLabel("Text size").selectOption(textSize);
+    await expect(previewHtml).toHaveAttribute("data-text-size", textSize);
+    await frame.evaluate(async (element) => { await (element as HTMLIFrameElement).contentDocument!.fonts.ready; });
+    await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentDocument?.fonts.status)).toBe("loaded");
+    await expect.poll(() => frame.evaluate((element) => {
+      const document = (element as HTMLIFrameElement).contentDocument!;
+      const section = document.querySelector<HTMLElement>('section[aria-label="Project"]')!;
+      const list = section.querySelector<HTMLElement>('[role="tablist"]')!;
+      const labels = [...list.querySelectorAll<HTMLElement>("[role=tab]")].map((tab) => {
+        const range = document.createRange();
+        range.selectNodeContents(tab);
+        return { label: tab.textContent, lines: range.getClientRects().length };
+      });
+      return section.scrollWidth <= section.clientWidth && list.scrollWidth <= list.clientWidth && labels.every(({ lines }) => lines === 1) ? "ok" : JSON.stringify({ viewport: document.defaultView?.innerWidth, width: section.clientWidth, scroll: section.scrollWidth, listWidth: list.clientWidth, listScroll: list.scrollWidth, labels });
+    })).toBe("ok");
   }
-
-  await expect.poll(() => frame.evaluate((element) => {
-    const document = (element as HTMLIFrameElement).contentDocument!;
-    const section = document.querySelector<HTMLElement>('section[aria-label="Project"]')!;
-    const list = section.querySelector<HTMLElement>('[role="tablist"]')!;
-    const labels = [...list.querySelectorAll<HTMLElement>("[role=tab]")].map((tab) => {
-      const range = document.createRange();
-      range.selectNodeContents(tab);
-      return { label: tab.textContent, lines: range.getClientRects().length };
-    });
-    return section.scrollWidth <= section.clientWidth && list.scrollWidth <= list.clientWidth && labels.every(({ lines }) => lines === 1) ? "ok" : JSON.stringify({ viewport: document.defaultView?.innerWidth, width: section.clientWidth, scroll: section.scrollWidth, listWidth: list.clientWidth, listScroll: list.scrollWidth, labels });
-  })).toBe("ok");
 }
 
 test("ProjectPanel short labels fit Focused at a 288px viewport", async ({ page }) => assertFocusedProjectLabels(page, 288));
@@ -363,6 +359,75 @@ test("ProjectPanel keeps content readable beside a long tab label", async ({ pag
       return panel.querySelector<HTMLElement>("[role=tabpanel]")!.getBoundingClientRect().width;
     });
     expect(contentWidth, `content width at ${width}px`).toBeGreaterThanOrEqual(width === 288 ? 100 : 180);
+  }
+});
+
+test("ProjectPanel stacks tabs above content when its own width is 288px", async ({ page }) => {
+  await page.goto("/");
+  const frame = page.locator('iframe[title="ProjectPanel · decisions"]');
+  await expect(frame.contentFrame().getByRole("tablist")).toBeVisible({ timeout: 15000 });
+  await frame.evaluate((element) => { (element as HTMLIFrameElement).width = "288"; });
+  await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentWindow?.innerWidth), { timeout: 15000 }).toBe(288);
+  await expect(frame.contentFrame().getByRole("tablist")).toHaveAttribute("aria-orientation", "horizontal");
+});
+
+test("ProjectPanel keeps Constraints whole in Focused spacious at every size", async ({ page }) => {
+  await page.goto("/");
+  const frame = page.locator('iframe[title="ProjectPanel · decisions"]');
+  await expect(frame.contentFrame().getByRole("tablist")).toBeVisible({ timeout: 15000 });
+  await page.getByLabel("Look").selectOption("focused");
+  await page.getByLabel("Density").selectOption("spacious");
+  await frame.evaluate((element) => { (element as HTMLIFrameElement).width = "384"; });
+  for (const textSize of ["1", "2", "3", "4", "5"]) {
+    await page.getByLabel("Text size").selectOption(textSize);
+    await expect(frame.contentFrame().locator("html")).toHaveAttribute("data-text-size", textSize);
+    await frame.evaluate(async (element) => { await (element as HTMLIFrameElement).contentDocument!.fonts.ready; });
+    const constraintLines = await frame.evaluate((element) => {
+      const document = (element as HTMLIFrameElement).contentDocument!;
+      const tab = [...document.querySelectorAll<HTMLElement>("[role=tab]")].find((candidate) => candidate.textContent === "Constraints")!;
+      const range = document.createRange();
+      range.selectNodeContents(tab);
+      return range.getClientRects().length;
+    });
+    expect(constraintLines, `Constraints at text size ${textSize}`).toBe(1);
+  }
+});
+
+for (const look of ["default", "focused", "notebook"] as const) for (const width of [288, 384] as const) test(`ProjectPanel uses its ${width}px container in ${look} across density and text sizes`, async ({ page }) => {
+  await page.goto("/");
+  const decisions = page.locator('iframe[title="ProjectPanel · decisions"]');
+  const longLabel = page.locator('iframe[title="ProjectPanel · labels"]');
+  await Promise.all([decisions, longLabel].map((frame) => expect(frame.contentFrame().getByRole("tablist")).toBeVisible({ timeout: 15000 })));
+  await Promise.all([decisions, longLabel].map((frame) => frame.evaluate((element, value) => { (element as HTMLIFrameElement).width = String(value); }, width)));
+  await page.getByLabel("Look").selectOption(look);
+
+  for (const density of ["compact", "comfortable", "spacious"] as const) for (const textSize of ["1", "2", "3", "4", "5"] as const) {
+    await page.getByLabel("Density").selectOption(density);
+    await page.getByLabel("Text size").selectOption(textSize);
+    await expect.poll(() => page.evaluate(({ width: expectedWidth, look: expectedLook, density: expectedDensity, textSize: expectedTextSize }) => [...document.querySelectorAll<HTMLIFrameElement>('iframe[title="ProjectPanel · decisions"], iframe[title="ProjectPanel · labels"]')].length === 2 && [...document.querySelectorAll<HTMLIFrameElement>('iframe[title="ProjectPanel · decisions"], iframe[title="ProjectPanel · labels"]')].every((frame) => {
+      const preview = frame.contentDocument;
+      return frame.contentWindow?.innerWidth === expectedWidth && preview?.documentElement.dataset.look === expectedLook && preview.documentElement.dataset.density === expectedDensity && preview.documentElement.dataset.textSize === expectedTextSize;
+    }), { width, look, density, textSize }), { timeout: 15000 }).toBe(true);
+    await page.evaluate(async () => Promise.all([...document.querySelectorAll<HTMLIFrameElement>('iframe[title="ProjectPanel · decisions"], iframe[title="ProjectPanel · labels"]')].map((frame) => frame.contentDocument!.fonts.ready)));
+
+    const layout = await decisions.evaluate((element) => {
+      const document = (element as HTMLIFrameElement).contentDocument!;
+      const panel = document.querySelector<HTMLElement>('section[aria-label="Project"]')!;
+      const list = panel.querySelector<HTMLElement>("[role=tablist]")!;
+      const constraints = [...list.querySelectorAll<HTMLElement>("[role=tab]")].find((tab) => tab.textContent === "Constraints")!;
+      const range = document.createRange();
+      range.selectNodeContents(constraints);
+      return { orientation: list.getAttribute("aria-orientation"), constraintLines: range.getClientRects().length, overflow: panel.scrollWidth > panel.clientWidth || list.scrollWidth > list.clientWidth };
+    });
+    expect(layout.orientation).toBe(width === 288 ? "horizontal" : "vertical");
+    expect(layout.constraintLines, `Constraints at ${look}/${density}/${textSize}/${width}`).toBe(1);
+    expect(layout.overflow, `horizontal overflow at ${look}/${density}/${textSize}/${width}`).toBe(false);
+
+    const contentWidth = await longLabel.evaluate((element) => {
+      const panel = (element as HTMLIFrameElement).contentDocument!.querySelector<HTMLElement>('section[aria-label="Project"]')!;
+      return panel.querySelector<HTMLElement>("[role=tabpanel]")!.getBoundingClientRect().width;
+    });
+    expect(contentWidth, `long-label content at ${look}/${density}/${textSize}/${width}`).toBeGreaterThanOrEqual(100);
   }
 });
 
