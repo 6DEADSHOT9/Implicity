@@ -74,7 +74,7 @@ function SkeletonPreview({ entry, state, deviceClass, tokenStyles, texture, look
 }
 
 function choices(label: string, value: string, values: readonly string[], onChange: (value: string) => void) {
-  return <label className="gallery-control">{label}<select aria-label={label} value={value} onChange={(event) => onChange(event.target.value)}>
+  return <label className="gallery-control">{label}<select className="token-border border-input" aria-label={label} value={value} onChange={(event) => onChange(event.target.value)}>
     {values.map((item) => <option key={item} value={item}>{item}</option>)}
   </select></label>;
 }
@@ -116,7 +116,7 @@ export function Gallery({ registry = defaultRegistry, previewPath = "/preview.ht
 
   return <main ref={root} className="gallery" data-gallery-root data-look={look.id} data-mode={mode} data-density={density} data-text-size={textSize} data-texture={look.texture} data-device-class={deviceClass}>
     <ChangeNoticeToastHost mode={mode === "dark" ? "dark" : "light"} />
-    <header className="gallery-header"><div><p className="gallery-kicker">Implicity · Registry</p><h1>Skeleton gallery</h1></div>
+    <header className="gallery-header"><div><p className="gallery-kicker">Implicity · Registry</p><h1 className="font-bold">Skeleton gallery</h1></div>
       <div className="gallery-controls">
         {choices("Look", lookId, availableLooks.map(({ id }) => id), setLookId)}
         {choices("Mode", mode, ["light", "dark"], setMode)}
@@ -129,7 +129,7 @@ export function Gallery({ registry = defaultRegistry, previewPath = "/preview.ht
     <section className="gallery-grid" aria-label="Registered Skeletons">
       {[...registry.entries.values()].flatMap((entry) => entry.meta.galleryStates.map((state) => {
         return <article className="gallery-card" data-skeleton={entry.id} data-gallery-state={state.id} key={`${entry.id}-${state.id}`}>
-          <header><h2>{entry.id}</h2><span>{state.id}</span></header>
+          <header><h2 className="font-bold">{entry.id}</h2><span>{state.id}</span></header>
           <div className="gallery-preview"><SkeletonPreview entry={entry} state={state} deviceClass={deviceClass} tokenStyles={tokenStyles} texture={look.texture} look={look.id} mode={mode} density={density} textSize={textSize} previewPath={previewPath} /></div>
         </article>;
       }))}
