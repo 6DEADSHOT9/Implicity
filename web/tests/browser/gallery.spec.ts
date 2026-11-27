@@ -13,8 +13,9 @@ function builtPreviewUrl(path: string) {
   return `http://127.0.0.1:${port}${path}`;
 }
 
-function contentGalleryUrl(previews: readonly string[] = []) {
+function contentGalleryUrl(previews: readonly string[] = [], device?: "desktop" | "tablet") {
   const search = new URLSearchParams(previews.map((title) => ["preview", title]));
+  if (device) search.set("device", device);
   return builtPreviewUrl(`/tests/browser/content-gallery.html${search.size ? `?${search}` : ""}`);
 }
 
@@ -1044,11 +1045,11 @@ const contentMatrixStyles = ["DataChart", "Tabs", "CodeBlock", "Card"];
 const conversationMatrixNames = ["MessageBody", "Details", "RunActivity", "MessageActions", "AttachmentTray", "Citation", "ContextChip", "ShortcutChips", "ApprovalRequest"];
 
 test("content skeletons survive every desktop gallery setting", async ({ page }) => {
-  await assertGalleryMatrix(page, "desktop", "/tests/browser/content-gallery.html", contentMatrixNames, contentMatrixStyles);
+  await assertGalleryMatrix(page, "desktop", contentGalleryUrl(), contentMatrixNames, contentMatrixStyles);
 });
 
 test("content skeletons survive every tablet gallery setting", async ({ page }) => {
-  await assertGalleryMatrix(page, "tablet", "/tests/browser/content-gallery.html", contentMatrixNames, contentMatrixStyles);
+  await assertGalleryMatrix(page, "tablet", contentGalleryUrl([], "tablet"), contentMatrixNames, contentMatrixStyles);
 });
 
 test("conversation skeletons survive every desktop gallery setting", async ({ page }) => {
