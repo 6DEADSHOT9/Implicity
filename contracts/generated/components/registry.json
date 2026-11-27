@@ -1,5 +1,5 @@
 {
-  "registry_version": 7,
+  "registry_version": 8,
   "components": [
     "AppShell",
     "ApprovalRequest",
@@ -18,20 +18,28 @@
     "DataTable",
     "Details",
     "DockedPanel",
+    "HomeGrid",
     "List",
     "MediaPlayer",
     "MessageActions",
     "MessageBody",
     "Metric",
+    "NowPlayingWidget",
     "Nudge",
     "ProjectPanel",
+    "ProjectsWidget",
     "ProposalCard",
+    "QuickPromptsWidget",
+    "ResumeWidget",
     "RunActivity",
+    "ScheduledWidget",
     "Search",
     "Settings",
     "ShortcutChips",
     "SourcesPanel",
-    "Tabs"
+    "Tabs",
+    "WidgetFrame",
+    "WidgetPicker"
   ],
   "catalogue": [
     {
@@ -1008,6 +1016,50 @@
       }
     },
     {
+      "name": "HomeGrid",
+      "role": "home",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [
+        "widgets"
+      ],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "widgets": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            }
+          }
+        },
+        "required": [
+          "widgets"
+        ],
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 120,
+        "minContrast": 4.5
+      }
+    },
+    {
       "name": "List",
       "role": "content",
       "props_schema": {
@@ -1258,6 +1310,51 @@
       }
     },
     {
+      "name": "NowPlayingWidget",
+      "role": "home",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "progress": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "progress"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [
+        "content"
+      ],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "content": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            }
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 120,
+        "minContrast": 4.5
+      }
+    },
+    {
       "name": "Nudge",
       "role": "system",
       "props_schema": {
@@ -1388,6 +1485,42 @@
       }
     },
     {
+      "name": "ProjectsWidget",
+      "role": "home",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "slots": [
+        "content"
+      ],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "content": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            }
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 120,
+        "minContrast": 4.5
+      }
+    },
+    {
       "name": "ProposalCard",
       "role": "system",
       "props_schema": {
@@ -1441,6 +1574,78 @@
       "limits": {
         "minWidth": 320,
         "minHeight": 160,
+        "minContrast": 4.5
+      }
+    },
+    {
+      "name": "QuickPromptsWidget",
+      "role": "home",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "slots": [
+        "content"
+      ],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "content": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            }
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 120,
+        "minContrast": 4.5
+      }
+    },
+    {
+      "name": "ResumeWidget",
+      "role": "home",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "slots": [
+        "content"
+      ],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "content": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            }
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 120,
         "minContrast": 4.5
       }
     },
@@ -1514,6 +1719,42 @@
       "limits": {
         "minWidth": 320,
         "minHeight": 48,
+        "minContrast": 4.5
+      }
+    },
+    {
+      "name": "ScheduledWidget",
+      "role": "home",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "slots": [
+        "content"
+      ],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "content": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            }
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 120,
         "minContrast": 4.5
       }
     },
@@ -1824,6 +2065,152 @@
             "pattern": "^[a-z][a-z0-9_-]{0,63}$"
           }
         }
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 120,
+        "minContrast": 4.5
+      }
+    },
+    {
+      "name": "WidgetFrame",
+      "role": "home",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "lastUpdate": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "title",
+          "lastUpdate",
+          "source"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [
+        "content"
+      ],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "content": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            }
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "additionalProperties": false
+      },
+      "limits": {
+        "minWidth": 320,
+        "minHeight": 120,
+        "minContrast": 4.5
+      }
+    },
+    {
+      "name": "WidgetPicker",
+      "role": "home",
+      "props_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "open": {
+            "type": "boolean"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "widgets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "widgetId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "componentId": {
+                  "type": "string",
+                  "pattern": "^[A-Z][A-Za-z0-9_-]{0,63}$"
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "enabled": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "widgetId",
+                "componentId",
+                "label",
+                "enabled"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "availableWidgets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "widgetId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "componentId": {
+                  "type": "string",
+                  "pattern": "^[A-Z][A-Za-z0-9_-]{0,63}$"
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "widgetId",
+                "componentId",
+                "label"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "open",
+          "title",
+          "widgets",
+          "availableWidgets"
+        ],
+        "additionalProperties": false
+      },
+      "slots": [],
+      "slots_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
       },
       "limits": {
         "minWidth": 320,
