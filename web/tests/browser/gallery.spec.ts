@@ -559,7 +559,8 @@ test("tablet viewport stays fixed when text size changes and previews fit their 
 test("desktop preview scales into its card while keeping a 1440 px viewport", async ({ page }) => {
   await page.setViewportSize({ width: 1201, height: 900 });
   await page.goto("/tests/browser/gallery.html");
-  const frame = page.locator("iframe[title='ReviewPanel · plain']");
+  const card = page.locator("[data-skeleton='ReviewPanel'][data-gallery-state='plain'] .gallery-preview");
+  const frame = card.locator("iframe[title='ReviewPanel · plain']");
   await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentWindow?.innerWidth)).toBe(1440);
   await waitForStableHeight(frame);
   const { cardBounds, frameBounds } = await frame.evaluate((element) => ({
