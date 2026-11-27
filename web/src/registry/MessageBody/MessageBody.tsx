@@ -1,6 +1,9 @@
 import { Children, isValidElement, useEffect, useRef, useState, type ComponentProps, type ReactNode } from "react";
+import { marked } from "marked";
 import { defaultRemarkPlugins, defaultUrlTransform, Streamdown } from "streamdown";
 import type { Components } from "streamdown";
+import actions from "../../../../contracts/actions.json";
+import { Button } from "../../components/ui/button";
 import { Message, MessageContent } from "../../components/ai-elements/message";
 import { CodeBlock } from "../CodeBlock/CodeBlock";
 import { DataTable } from "../DataTable/DataTable";
@@ -62,38 +65,93 @@ function RemoteImage({ src, alt }: { src?: string; alt?: string }) {
     : <img src={src} alt={alt ?? ""} referrerPolicy="no-referrer" onError={() => setFailed(true)} className="max-h-full max-w-full rounded-md token-border object-contain" />;
 }
 
-export function MessageBody({ content }: { content: string }) {
+function markdownBlocks(content: string) {
+  let spacing = "";
+  const blocks: string[] = [];
+  for (const token of marked.lexer(content)) {
+    if (token.type === "space") spacing += token.raw;
+    else {
+      blocks.push(spacing + token.raw);
+      spacing = "";
+    }
+  }
+  if (spacing && blocks.length) blocks[blocks.length - 1] += spacing;
+  return blocks;
+}
+
+function Markdown({ content }: { content: string }) {
+  return <Streamdown
+    remarkPlugins={[...Object.values(defaultRemarkPlugins), rawHtmlAsText]}
+    urlTransform={(url, key, node) => key === "src" ? url : defaultUrlTransform(url, key, node)}
+    controls={false}
+    linkSafety={{ enabled: false }}
+    codeBlockMaxHeight={0}
+    tableMaxHeight={0}
+    components={{
+      a: ({ href, children }) => <a href={href} target="_blank" rel="noreferrer" className="break-all font-medium text-primary">{children}</a>,
+      code: ({ children, className }) => <code className={className ? "font-mono text-sm" : "rounded-md bg-muted px-space-2 py-space-1 font-mono text-sm"}>{children}</code>,
+      blockquote: ({ children }) => <blockquote className="my-space-4 token-border-s ps-space-3 text-muted-foreground">{children}</blockquote>,
+      hr: () => <hr className="my-space-4 token-border-b border-border" />,
+      pre: ({ children }) => {
+        const code = Children.only(children);
+        const props = isValidElement<ElementWithChildren>(code) ? code.props : {};
+        const language = props.className?.match(/language-([^\s]+)/)?.[1] ?? "text";
+        return <CodeBlock code={textContent(props.children)} language={language} variant="code" state="default" />;
+      },
+      table: MarkdownTable as Components["table"],
+      th: ({ children }) => <th scope="col" className="token-border px-space-3 py-space-2 text-start font-medium">{children}</th>,
+      td: ({ children }) => <td className="token-border px-space-3 py-space-2 align-top">{children}</td>,
+      img: ({ src, alt }) => <RemoteImage src={typeof src === "string" ? src : undefined} alt={alt} />,
+    }}
+  >{content}</Streamdown>;
+}
+
+type LongAnswerState = "folded" | "open";
+
+export function MessageBody({ content, streaming = false, initiallyOpen = false, longAnswerState = "folded" }: { content: string; streaming?: boolean; initiallyOpen?: boolean; longAnswerState?: LongAnswerState }) {
   const { emit } = useCapture<(typeof events)[number]>();
   const emitRef = useRef(emit); emitRef.current = emit;
-  const seenRef = useSeen({ component: "MessageBody", defaultState: "message" });
-  useEffect(() => { emitRef.current("component_shown", { component: "MessageBody", default_state: "message" }); }, []);
-  return <div ref={seenRef} className="min-w-0 max-w-full">
+  const isLong = content.length >= actions.length_cutoffs.answer.long;
+  const [state, setState] = useState<LongAnswerState>(() => streaming || initiallyOpen ? "open" : longAnswerState);
+  const displayedState = isLong ? (streaming ? "open" : state) : "message";
+  const shortSeenRef = useSeen({ component: "MessageBody", defaultState: "message" });
+  const longSeenRef = useSeen({ component: "MessageBody", defaultState: displayedState, slot: "long_answer" });
+  const previousState = useRef(displayedState);
+  useEffect(() => {
+    emitRef.current("component_shown", {
+      component: "MessageBody",
+      default_state: displayedState,
+      ...(isLong ? { slot: "long_answer" } : {}),
+    });
+  }, []);
+  useEffect(() => {
+    if (!isLong || previousState.current === displayedState) return;
+    emitRef.current(displayedState === "open" ? "section_expanded" : "section_collapsed", { component: "MessageBody", slot: "long_answer" });
+    previousState.current = displayedState;
+  }, [displayedState, isLong]);
+  const blocks = isLong ? markdownBlocks(content) : [];
+  let leadLength = 0;
+  let leadEnd = 0;
+  for (const block of blocks) {
+    if (leadEnd > 0 && leadLength + block.length > actions.length_cutoffs.answer.medium) break;
+    leadLength += block.length;
+    leadEnd++;
+    if (leadLength >= actions.length_cutoffs.answer.medium) break;
+  }
+  const lead = blocks.slice(0, leadEnd).join("");
+  const visibleContent = !isLong || displayedState === "open" ? content : lead;
+  return <div ref={isLong ? undefined : shortSeenRef} className="min-w-0 max-w-full">
     <Message role="article" from="assistant" aria-label="Message">
       <MessageContent className="min-w-0 max-w-full break-words [&_a]:break-all [&_ol]:my-space-2 [&_ol]:list-decimal [&_ol]:ps-space-6 [&_ul]:my-space-2 [&_ul]:list-disc [&_ul]:ps-space-6 [&_li]:my-space-1 [&_h1]:text-heading-1 [&_h2]:text-heading-2 [&_h3]:text-heading-3 [&_h4]:text-heading-4 [&_h5]:text-heading-5 [&_h6]:text-heading-6">
-        <Streamdown
-          remarkPlugins={[...Object.values(defaultRemarkPlugins), rawHtmlAsText]}
-          urlTransform={(url, key, node) => key === "src" ? url : defaultUrlTransform(url, key, node)}
-          controls={false}
-          linkSafety={{ enabled: false }}
-          codeBlockMaxHeight={0}
-          tableMaxHeight={0}
-          components={{
-            a: ({ href, children }) => <a href={href} target="_blank" rel="noreferrer" className="break-all font-medium text-primary">{children}</a>,
-            code: ({ children, className }) => <code className={className ? "font-mono text-sm" : "rounded-md bg-muted px-space-2 py-space-1 font-mono text-sm"}>{children}</code>,
-            blockquote: ({ children }) => <blockquote className="my-space-4 token-border-s ps-space-3 text-muted-foreground">{children}</blockquote>,
-            hr: () => <hr className="my-space-4 token-border-b border-border" />,
-            pre: ({ children }) => {
-              const code = Children.only(children);
-              const props = isValidElement<ElementWithChildren>(code) ? code.props : {};
-              const language = props.className?.match(/language-([^\s]+)/)?.[1] ?? "text";
-              return <CodeBlock code={textContent(props.children)} language={language} variant="code" state="default" />;
-            },
-            table: MarkdownTable as Components["table"],
-            th: ({ children }) => <th scope="col" className="token-border px-space-3 py-space-2 text-start font-medium">{children}</th>,
-            td: ({ children }) => <td className="token-border px-space-3 py-space-2 align-top">{children}</td>,
-            img: ({ src, alt }) => <RemoteImage src={typeof src === "string" ? src : undefined} alt={alt} />,
-          }}
-        >{content}</Streamdown>
+        {isLong ? <section ref={longSeenRef} role="region" aria-label="Long answer" data-slot="long_answer" data-state={displayedState}>
+          <Markdown content={visibleContent} />
+          {!streaming && displayedState === "folded"
+            ? <Button variant="ghost" onClick={() => setState("open")}>Show more</Button>
+            : null}
+          {!streaming && displayedState === "open"
+            ? <Button variant="ghost" onClick={() => setState("folded")}>Show less</Button>
+            : null}
+        </section> : <Markdown content={visibleContent} />}
       </MessageContent>
     </Message>
   </div>;

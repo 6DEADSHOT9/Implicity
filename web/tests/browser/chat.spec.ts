@@ -67,6 +67,87 @@ test("chat streams rendered content and reloads stored turns", async ({ page }) 
   await expect(page.getByRole("table")).toBeVisible();
 });
 
+test("long streamed answers stay open until reload, then fold by whole blocks", async ({ page }) => {
+  const id = "550e8400-e29b-41d4-a716-446655440002";
+  const content = `First paragraph ${"a".repeat(1300)}.\n\nSecond paragraph ${"b".repeat(1300)}.`;
+  let messages: Array<{ id: string; role: "user" | "assistant"; content: string }> = [];
+  await page.route("**/api/conversations", (route) => route.fulfill({ json: route.request().method() === "POST" ? { id, title: "New chat" } : messages.length ? [{ id, title: "New chat" }] : [] }));
+  await page.route(`**/api/conversations/${id}`, (route) => route.fulfill({ json: { id, title: "New chat", messages } }));
+  await stubQuota(page);
+  await page.route("**/api/chat", async (route) => {
+    messages = [
+      { id: "user-1", role: "user", content: "Give me a long answer" },
+      { id: "assistant-1", role: "assistant", content },
+    ];
+    const stream = [
+      { type: "start", messageId: "assistant-1" },
+      { type: "text-start", id: "text-1" },
+      { type: "text-delta", id: "text-1", delta: content },
+      { type: "text-end", id: "text-1" },
+      { type: "finish" },
+    ].map((part) => `data: ${JSON.stringify(part)}\n\n`).join("") + "data: [DONE]\n\n";
+    await route.fulfill({ status: 200, headers: { "content-type": "text/event-stream", "x-vercel-ai-ui-message-stream": "v1" }, body: stream });
+  });
+
+  await page.goto("/chat.html");
+  await page.getByRole("button", { name: "New chat", exact: true }).first().click();
+  await page.getByRole("textbox", { name: "Message" }).fill("Give me a long answer");
+  await page.getByRole("button", { name: "Submit" }).click();
+  const slot = page.locator('[data-slot="long_answer"]');
+  await expect(slot).toHaveAttribute("data-state", "open");
+  await expect(slot).toContainText("Second paragraph");
+
+  await page.reload();
+  const restored = page.locator('[data-slot="long_answer"]');
+  await expect(restored).toHaveAttribute("data-state", "folded");
+  await expect(restored).toContainText("First paragraph");
+  await expect(restored).not.toContainText("Second paragraph");
+  await page.getByRole("navigation", { name: "Conversations" }).getByRole("button", { name: "N New chat" }).click();
+  await expect(page.locator('[data-slot="long_answer"]')).toHaveAttribute("data-state", "folded");
+  await page.getByRole("button", { name: "Show more" }).click();
+  await expect(page.locator('[data-slot="long_answer"]')).toContainText("Second paragraph");
+});
+
+test("a stopped long answer stays open and folds when loaded from storage", async ({ page }) => {
+  const id = "550e8400-e29b-41d4-a716-446655440003";
+  const content = `First paragraph ${"a".repeat(1300)}.\n\nSecond paragraph ${"b".repeat(1300)}.`;
+  let messages: Array<{ id: string; role: "user" | "assistant"; content: string }> = [];
+  const server = createServer((_request, response) => {
+    messages = [{ id: "assistant-1", role: "assistant", content }];
+    response.writeHead(200, { "content-type": "text/event-stream", "x-vercel-ai-ui-message-stream": "v1" });
+    response.write([
+      { type: "start", messageId: "assistant-1" },
+      { type: "text-start", id: "text-1" },
+      { type: "text-delta", id: "text-1", delta: content },
+    ].map((part) => `data: ${JSON.stringify(part)}\n\n`).join(""));
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("Test stream server did not start");
+  await page.route("**/api/conversations", (route) => route.fulfill({ json: route.request().method() === "POST" ? { id, title: "New chat" } : messages.length ? [{ id, title: "New chat" }] : [] }));
+  await page.route(`**/api/conversations/${id}`, (route) => route.fulfill({ json: { id, title: "New chat", messages } }));
+  await stubQuota(page);
+  await page.route("**/api/chat", (route) => route.continue({ url: `http://127.0.0.1:${address.port}/api/chat` }));
+  try {
+    await page.goto("/chat.html");
+    await page.getByRole("button", { name: "New chat", exact: true }).first().click();
+    await page.getByRole("textbox", { name: "Message" }).fill("Start a long answer");
+    await page.getByRole("button", { name: "Submit" }).click();
+    const slot = page.locator('[data-slot="long_answer"]');
+    await expect(slot).toHaveAttribute("data-state", "open");
+    await expect(slot).toContainText("Second paragraph");
+    await page.getByRole("button", { name: "Stop" }).click();
+    await expect(page.getByRole("button", { name: "Stop" })).toHaveCount(0);
+    await expect(slot).toHaveAttribute("data-state", "open");
+    await page.reload();
+    const restored = page.locator('[data-slot="long_answer"]');
+    await expect(restored).toHaveAttribute("data-state", "folded");
+    await expect(restored).not.toContainText("Second paragraph");
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
 test("Stop closes the streaming request and leaves only the received answer", async ({ page }) => {
   const id = "550e8400-e29b-41d4-a716-446655440001";
   const server = createServer((_request, response) => {

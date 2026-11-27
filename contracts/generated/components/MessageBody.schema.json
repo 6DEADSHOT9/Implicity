@@ -8,6 +8,13 @@
         "content": {
           "type": "string",
           "minLength": 1
+        },
+        "longAnswerState": {
+          "type": "string",
+          "enum": [
+            "folded",
+            "open"
+          ]
         }
       },
       "required": [
@@ -17,7 +24,15 @@
     },
     "slots": {
       "type": "object",
-      "properties": {},
+      "properties": {
+        "long_answer": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          }
+        }
+      },
       "additionalProperties": false
     }
   },

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { useChat } from "@ai-sdk/react";
 import { Button } from "./components/ui/button";
@@ -33,6 +33,7 @@ function toUIMessage(message: StoredMessage): UIMessage {
 }
 
 function ConversationChat({ conversation, onNewChat }: { conversation: Conversation; onNewChat: () => void }) {
+  const storedMessageCount = useRef(conversation.messages.length).current;
   const { messages, sendMessage, status, stop, error } = useChat({
     id: conversation.id,
     messages: conversation.messages.map(toUIMessage),
@@ -42,10 +43,10 @@ function ConversationChat({ conversation, onNewChat }: { conversation: Conversat
     <ChatHeader title={conversation.title} kind="other" onOpenSettings={() => {}} />
     <div className="min-h-0 flex-1 overflow-y-auto p-space-4">
       <ol aria-label="Conversation messages" className="mx-auto flex w-full max-w-content flex-col gap-space-4">
-        {messages.map((message) => {
+        {messages.map((message, index) => {
           const content = message.parts.filter((part) => part.type === "text").map((part) => part.text).join("");
           return <li key={message.id}>
-            {message.role === "assistant" ? <MessageBody content={content || " "} /> : <Message role="user" from="user"><MessageContent>{content}</MessageContent></Message>}
+            {message.role === "assistant" ? <MessageBody content={content || " "} streaming={index === messages.length - 1 && (status === "submitted" || status === "streaming")} initiallyOpen={index >= storedMessageCount} /> : <Message role="user" from="user"><MessageContent>{content}</MessageContent></Message>}
           </li>;
         })}
       </ol>
@@ -64,12 +65,14 @@ function ConversationChat({ conversation, onNewChat }: { conversation: Conversat
 export function ChatApp() {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [conversation, setConversation] = useState<Conversation>();
+  const [conversationRevision, setConversationRevision] = useState(0);
   const [quota, setQuota] = useState("Unknown");
   const [error, setError] = useState(false);
 
   const openConversation = useCallback(async (id: string) => {
     try {
       setConversation(await request<Conversation>(`/api/conversations/${id}`));
+      setConversationRevision((revision) => revision + 1);
       setError(false);
     } catch {
       setError(true);
@@ -81,6 +84,7 @@ export function ChatApp() {
       const created = await request<ConversationSummary>("/api/conversations", { method: "POST" });
       setConversations((current) => [created, ...current.filter(({ id }) => id !== created.id)]);
       setConversation({ ...created, messages: [] });
+      setConversationRevision((revision) => revision + 1);
       setError(false);
     } catch {
       setError(true);
@@ -103,7 +107,7 @@ export function ChatApp() {
   return <AppShell panelOpen={false} slots={{
     navigation: [<ConversationNavigation key="navigation" items={conversations.map(({ id, title }) => ({ id, label: title }))} recent={[]} projects={[]} quota={quota} onNewChat={() => void newChat()} onSelect={(id) => void openConversation(id)} />],
     main: [conversation
-      ? <ConversationChat key={conversation.id} conversation={conversation} onNewChat={() => void newChat()} />
+      ? <ConversationChat key={`${conversation.id}-${conversationRevision}`} conversation={conversation} onNewChat={() => void newChat()} />
       : <main key="empty" className="flex min-h-svh flex-col items-center justify-center gap-space-3 p-space-4"><h1 className="text-heading-2 font-semibold">Implicity</h1><p>Start a conversation.</p><Button onClick={() => void newChat()}>New chat</Button>{error && <p role="alert">The chat service could not be reached.</p>}</main>],
   }} />;
 }
