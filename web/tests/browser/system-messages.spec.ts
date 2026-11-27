@@ -153,6 +153,19 @@ test("system message Skeletons render across every gallery setting", async ({ pa
   expect(errors).toEqual([]);
 });
 
+test("real gallery previews mount without uncaught errors", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("/");
+  const frames = page.locator("iframe");
+  const frameCount = await frames.count();
+  expect(frameCount).toBeGreaterThan(0);
+  const galleryFrames = () => page.frames().filter((frame) => frame.parentFrame() === page.mainFrame());
+  await expect.poll(() => galleryFrames().length).toBe(frameCount);
+  await Promise.all(galleryFrames().map((frame) => frame.locator("#root > *").first().waitFor({ state: "attached" })));
+  expect(errors).toEqual([]);
+});
+
 test("ChangeNotice shown events follow native disclosure and completed opacity reveals", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(async () => {

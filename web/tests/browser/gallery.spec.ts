@@ -904,7 +904,11 @@ test("conversation gallery renders every declared state", async ({ page }) => {
 });
 
 test("combined gallery mounts T10 content and T9 conversation previews", async ({ page }) => {
-  await page.goto("/tests/browser/focused-gallery.html?ids=DataTable,MessageBody");
+  await page.goto("/");
+  for (const title of ["DataTable · table", "MessageBody · message"]) {
+    await expect(page.locator(`iframe[title="${title}"]`)).toHaveCount(1);
+    await page.waitForFunction((target) => Number(document.querySelector<HTMLIFrameElement>(`iframe[title="${target}"]`)?.height) > 1, title);
+  }
   const table = page.frameLocator('iframe[title="DataTable · table"]');
   await expect(table.getByRole("table")).toBeVisible();
   const message = page.frameLocator('iframe[title="MessageBody · message"]');
