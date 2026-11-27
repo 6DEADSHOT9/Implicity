@@ -1,19 +1,17 @@
 import * as React from "react"
+import tokens from "../../../contracts/looks/tokens.json" with { type: "json" }
 
-const MOBILE_BREAKPOINT = 768
+const MOBILE_BREAKPOINT = tokens.derivedTokens.dimensions["--screen-md"]
 
 export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
+  const [isMobile, setIsMobile] = React.useState(() => typeof window !== "undefined" && window.matchMedia(`(width < ${MOBILE_BREAKPOINT})`).matches)
 
   React.useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
-    const onChange = () => {
-      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-    }
+    const mql = window.matchMedia(`(width < ${MOBILE_BREAKPOINT})`)
+    const onChange = () => setIsMobile(mql.matches)
     mql.addEventListener("change", onChange)
-    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
     return () => mql.removeEventListener("change", onChange)
   }, [])
 
-  return !!isMobile
+  return isMobile
 }

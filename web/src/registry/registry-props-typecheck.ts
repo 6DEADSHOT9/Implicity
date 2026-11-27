@@ -59,6 +59,11 @@ import { propsSchema as DetailsProps, slotsSchema as DetailsSlots } from "./Deta
 import { events as DetailsEvents } from "./Details/events.ts";
 import { meta as DetailsMeta } from "./Details/meta.ts";
 defineSkeleton(defineSkeletonDefinition({ id: "Details", props: DetailsProps, slots: DetailsSlots, events: DetailsEvents, meta: DetailsMeta }), DetailsComponent);
+import { DockedPanel as DockedPanelComponent } from "./DockedPanel/DockedPanel.tsx";
+import { propsSchema as DockedPanelProps, slotsSchema as DockedPanelSlots } from "./DockedPanel/schema.ts";
+import { events as DockedPanelEvents } from "./DockedPanel/events.ts";
+import { meta as DockedPanelMeta } from "./DockedPanel/meta.ts";
+defineSkeleton(defineSkeletonDefinition({ id: "DockedPanel", props: DockedPanelProps, slots: DockedPanelSlots, events: DockedPanelEvents, meta: DockedPanelMeta }), DockedPanelComponent);
 import { List as ListComponent } from "./List/List.tsx";
 import { propsSchema as ListProps, slotsSchema as ListSlots } from "./List/schema.ts";
 import { events as ListEvents } from "./List/events.ts";
@@ -89,6 +94,11 @@ import { propsSchema as NudgeProps, slotsSchema as NudgeSlots } from "./Nudge/sc
 import { events as NudgeEvents } from "./Nudge/events.ts";
 import { meta as NudgeMeta } from "./Nudge/meta.ts";
 defineSkeleton(defineSkeletonDefinition({ id: "Nudge", props: NudgeProps, slots: NudgeSlots, events: NudgeEvents, meta: NudgeMeta }), NudgeComponent);
+import { ProjectPanel as ProjectPanelComponent } from "./ProjectPanel/ProjectPanel.tsx";
+import { propsSchema as ProjectPanelProps, slotsSchema as ProjectPanelSlots } from "./ProjectPanel/schema.ts";
+import { events as ProjectPanelEvents } from "./ProjectPanel/events.ts";
+import { meta as ProjectPanelMeta } from "./ProjectPanel/meta.ts";
+defineSkeleton(defineSkeletonDefinition({ id: "ProjectPanel", props: ProjectPanelProps, slots: ProjectPanelSlots, events: ProjectPanelEvents, meta: ProjectPanelMeta }), ProjectPanelComponent);
 import { ProposalCard as ProposalCardComponent } from "./ProposalCard/ProposalCard.tsx";
 import { propsSchema as ProposalCardProps, slotsSchema as ProposalCardSlots } from "./ProposalCard/schema.ts";
 import { events as ProposalCardEvents } from "./ProposalCard/events.ts";
@@ -104,6 +114,11 @@ import { propsSchema as ShortcutChipsProps, slotsSchema as ShortcutChipsSlots } 
 import { events as ShortcutChipsEvents } from "./ShortcutChips/events.ts";
 import { meta as ShortcutChipsMeta } from "./ShortcutChips/meta.ts";
 defineSkeleton(defineSkeletonDefinition({ id: "ShortcutChips", props: ShortcutChipsProps, slots: ShortcutChipsSlots, events: ShortcutChipsEvents, meta: ShortcutChipsMeta }), ShortcutChipsComponent);
+import { SourcesPanel as SourcesPanelComponent } from "./SourcesPanel/SourcesPanel.tsx";
+import { propsSchema as SourcesPanelProps, slotsSchema as SourcesPanelSlots } from "./SourcesPanel/schema.ts";
+import { events as SourcesPanelEvents } from "./SourcesPanel/events.ts";
+import { meta as SourcesPanelMeta } from "./SourcesPanel/meta.ts";
+defineSkeleton(defineSkeletonDefinition({ id: "SourcesPanel", props: SourcesPanelProps, slots: SourcesPanelSlots, events: SourcesPanelEvents, meta: SourcesPanelMeta }), SourcesPanelComponent);
 import { Tabs as TabsComponent } from "./Tabs/Tabs.tsx";
 import { propsSchema as TabsProps, slotsSchema as TabsSlots } from "./Tabs/schema.ts";
 import { events as TabsEvents } from "./Tabs/events.ts";

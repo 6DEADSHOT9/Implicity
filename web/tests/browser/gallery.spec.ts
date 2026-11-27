@@ -18,6 +18,21 @@ function contentGalleryUrl(previews: readonly string[] = []) {
   return builtPreviewUrl(`/tests/browser/content-gallery.html${search.size ? `?${search}` : ""}`);
 }
 
+async function selectGallerySettings(page: Page, settings: Record<string, string>) {
+  await page.locator("[data-gallery-root]").evaluate((gallery, values) => {
+    for (const [label, value] of Object.entries(values)) {
+      const select = gallery.querySelector<HTMLSelectElement>(`select[aria-label="${label}"]`);
+      if (!select || !Array.from(select.options).some((option) => option.value === value)) {
+        throw new Error(`Gallery setting ${label} has no option ${value}`);
+      }
+      if (select.value === value) continue;
+      select.value = value;
+      select.dispatchEvent(new Event("input", { bubbles: true }));
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  }, settings);
+}
+
 async function sampleHeightAcrossFrames(frame: Locator, changeHeightOnFirstFrame = false) {
   return frame.evaluate((element, changeHeight) => {
     const iframe = element as HTMLIFrameElement;
@@ -793,32 +808,43 @@ test("Notebook applies its bundled body font, paper texture, and both mode palet
 });
 
 
-async function expectGalleryPreviews(page: Page, titles: string[], device: "desktop" | "tablet") {
-  await expect.poll(() => page.locator("iframe.gallery-preview-frame").evaluateAll((frames, expected) => {
-    if (frames.length !== expected.titles.length) return `frames: ${frames.length}/${expected.titles.length}`;
-    const remaining = new Set(expected.titles);
-    for (const frame of frames as HTMLIFrameElement[]) {
-      if (!remaining.delete(frame.title)) return `${frame.title}: unexpected preview`;
-      const doc = frame.contentDocument;
+async function waitForContentPreviewSettings(page: Page, titles: string[], settings: { look: string; mode: string; density: string; textSize: string; deviceClass: string }, allPreviews = false) {
+  await expect.poll(() => page.locator("iframe.gallery-preview-frame").evaluateAll((frames, args) => {
+    if (args.allPreviews && frames.length !== args.titles.length) return `frames: ${frames.length}/${args.titles.length}`;
+    const byTitle = new Map((frames as HTMLIFrameElement[]).map((frame) => [frame.title, frame]));
+    for (const title of args.titles) {
+      const frame = byTitle.get(title);
+      const doc = frame?.contentDocument;
       const root = doc?.getElementById("root");
-      if (doc?.documentElement.dataset.deviceClass !== expected.device || !root?.children.length) return `${frame.title}: loading ${expected.device} preview`;
-      if (/Preview unavailable|preview failed/.test(root.textContent ?? "")) return `${frame.title}: ${root.textContent}`;
+      if (!frame || !doc || !root?.children.length) return `${title}: loading preview`;
+      if (/Preview unavailable|preview failed/.test(root.textContent ?? "")) return `${title}: ${root.textContent}`;
+      if (args.allPreviews && frame.dataset.deviceClass !== args.settings.deviceClass) return `${title}: iframe device ${frame.dataset.deviceClass}`;
+      for (const [key, value] of Object.entries(args.settings)) {
+        if (doc.documentElement.dataset[key] !== value) return `${title}: ${key} ${doc.documentElement.dataset[key]}, expected ${value}`;
+      }
+      if (doc.fonts.status !== "loaded") return `${title}: fonts loading`;
     }
     return "ready";
-  }, { titles, device }), { timeout: 10000 }).toBe("ready");
+  }, { titles, settings, allPreviews }), { timeout: allPreviews ? 10000 : 15000 }).toBe("ready");
 }
 
 test("content skeletons render every declared gallery state across gallery settings", async ({ page }) => {
-  await page.goto(contentGalleryUrl());
+  await page.goto(contentGalleryUrl(), { waitUntil: "domcontentloaded" });
   await expect(page.locator("[data-gallery-root]")).toBeAttached();
   const cards = await page.locator(".gallery-card[data-skeleton]").evaluateAll((elements) => elements.map((element) => ({
     name: element.getAttribute("data-skeleton")!,
     state: element.getAttribute("data-gallery-state")!,
   })));
   const names = new Set(cards.map(({ name }) => name));
-  expect(names).toEqual(new Set(["DataTable", "DataChart", "CodeBlock", "MediaPlayer", "ArtifactWorkspace", "Checklist", "List", "Metric", "Tabs", "Card", "ChangeNotice", "ProposalCard", "Nudge"]));
   const titles = cards.map(({ name, state }) => `${name} · ${state}`);
-  await expectGalleryPreviews(page, titles, "desktop");
+  expect(names).toEqual(new Set(["DataTable", "DataChart", "CodeBlock", "MediaPlayer", "ArtifactWorkspace", "Checklist", "List", "Metric", "Tabs", "Card", "ChangeNotice", "ProposalCard", "Nudge"]));
+  await waitForContentPreviewSettings(page, titles, {
+    look: await page.getByLabel("Look").inputValue(),
+    mode: await page.getByLabel("Mode").inputValue(),
+    density: await page.getByLabel("Density").inputValue(),
+    textSize: await page.getByLabel("Text size").inputValue(),
+    deviceClass: await page.getByLabel("Screen size").inputValue(),
+  }, true);
   const cardEmpty = page.frameLocator('iframe[title="Card · empty"]').locator("[data-slot='empty']");
   const emptyBorder = await cardEmpty.evaluate((element) => ({
     width: getComputedStyle(element).borderTopWidth,
@@ -828,15 +854,12 @@ test("content skeletons render every declared gallery state across gallery setti
   expect(emptyBorder.width).toBe(emptyBorder.token);
   expect(emptyBorder.style).toBe("dashed");
 
-  await page.getByLabel("Look").selectOption("notebook");
-  await page.getByLabel("Mode").selectOption("dark");
-  await page.getByLabel("Density").selectOption("spacious");
-  await page.getByLabel("Text size").selectOption("5");
-  await page.getByLabel("Screen size").selectOption("tablet");
+  await selectGallerySettings(page, { Look: "notebook", Mode: "dark", Density: "spacious", "Text size": "5", "Screen size": "tablet" });
   await expect(page.locator("[data-gallery-root]")).toHaveAttribute("data-look", "notebook");
   await expect(page.locator("[data-gallery-root]")).toHaveAttribute("data-mode", "dark");
   await expect(page.locator("[data-gallery-root]")).toHaveAttribute("data-device-class", "tablet");
-  await expectGalleryPreviews(page, titles, "tablet");
+  const selectedSettings = { look: "notebook", mode: "dark", density: "spacious", textSize: "5", deviceClass: "tablet" };
+  await waitForContentPreviewSettings(page, titles, selectedSettings, true);
   await expect(page.frameLocator('iframe[title="DataTable · table"]').locator("html")).toHaveAttribute("data-mode", "dark");
   await expect(page.frameLocator('iframe[title="DataTable · table"]').locator("table")).toBeVisible();
   await expect(page.frameLocator('iframe[title="Tabs · default"]').getByRole("tablist")).toBeVisible();
@@ -855,8 +878,10 @@ test("content skeletons render every declared gallery state across gallery setti
   await tabs.getByRole("tab", { name: "Details" }).click();
   await expect(tabs.getByRole("tab", { name: "Details" })).toHaveAttribute("aria-selected", "true");
   await expect(tabs.getByRole("tabpanel").getByText("additional-details")).toBeVisible();
-  await page.getByLabel("Screen size").selectOption("desktop");
-  await expectGalleryPreviews(page, titles, "desktop");
+  for (const device of ["desktop", "tablet"] as const) {
+    await page.getByLabel("Screen size").selectOption(device);
+    await waitForContentPreviewSettings(page, titles, { ...selectedSettings, deviceClass: device }, true);
+  }
 });
 
 test("conversation gallery renders every declared state", async ({ page }) => {
@@ -878,6 +903,13 @@ test("conversation gallery renders every declared state", async ({ page }) => {
 
 test("combined gallery mounts T10 content and T9 conversation previews", async ({ page }) => {
   await page.goto("/");
+  await waitForContentPreviewSettings(page, ["DataTable · table", "MessageBody · message"], {
+    look: await page.getByLabel("Look").inputValue(),
+    mode: await page.getByLabel("Mode").inputValue(),
+    density: await page.getByLabel("Density").inputValue(),
+    textSize: await page.getByLabel("Text size").inputValue(),
+    deviceClass: await page.getByLabel("Screen size").inputValue(),
+  });
   const table = page.frameLocator('iframe[title="DataTable · table"]');
   await expect(table.getByRole("table")).toBeVisible();
   const message = page.frameLocator('iframe[title="MessageBody · message"]');
@@ -906,8 +938,10 @@ test("compact tablet conversation controls meet the 44px target in both dimensio
 });
 
 
-async function assertGalleryMatrix(page: import("@playwright/test").Page, device: "desktop" | "tablet", fixture: string, skeletonNames: string[], styleNames: string[]) {
-  await page.goto(fixture);
+async function assertGalleryMatrix(page: Page, device: "desktop" | "tablet", fixture: string, skeletonNames: string[], styleNames: string[]) {
+  await page.goto(fixture, { waitUntil: "domcontentloaded" });
+  await expect(page.locator("[data-gallery-root]")).toBeAttached();
+  await selectGallerySettings(page, { "Screen size": device });
   await expect.poll(() => page.locator("iframe").evaluateAll((frames, names) => frames.some((frame) => frame.getAttribute("title")?.startsWith(`${names[0]} · `)) && names.every((name) => frames.some((frame) => frame.getAttribute("title")?.startsWith(`${name} · `))) && frames.filter((frame) => names.some((name) => frame.getAttribute("title")?.startsWith(`${name} · `))).every((frame) => {
     const root = (frame as HTMLIFrameElement).contentDocument?.querySelector("#root");
     return !!root && !/Preview unavailable|preview failed/.test(root.textContent ?? "");
@@ -916,15 +950,9 @@ async function assertGalleryMatrix(page: import("@playwright/test").Page, device
   const densities = ["compact", "comfortable", "spacious"] as const;
   const sizes = ["1", "2", "3", "4", "5"] as const;
   const modes = ["light", "dark"] as const;
-  const current = Object.fromEntries(await Promise.all(["Look", "Mode", "Density", "Text size", "Screen size"].map(async (label) => [label, await page.getByLabel(label).inputValue()]))) as Record<string, string>;
   let combinations = 0;
   for (const look of looks) for (const mode of modes) for (const density of densities) for (const textSize of sizes) {
-    for (const [label, value] of [["Look", look], ["Mode", mode], ["Density", density], ["Text size", textSize], ["Screen size", device]]) {
-      if (current[label] !== value) {
-        await page.getByLabel(label).selectOption(value);
-        current[label] = value;
-      }
-    }
+    await selectGallerySettings(page, { Look: look, Mode: mode, Density: density, "Text size": textSize });
     const lookConfig = lookById[look as keyof typeof lookById];
     const expected = { names: skeletonNames, styleNames, look, mode, density, densitySpace: tokens.derivedTokens.density[density]["--space-1"], background: lookConfig[mode as "light" | "dark"].background, font: tokens.typefaces[lookConfig.typeface.body as keyof typeof tokens.typefaces].family, checkStyles: textSize === "1", checkHeight: textSize === "1" && density === "compact", textSize, width: device === "tablet" ? 800 : 1440 };
     await expect.poll(() => page.evaluate(async ({ names, styleNames, density, densitySpace, background, font, checkStyles, checkHeight, ...settings }) => {
@@ -949,7 +977,7 @@ async function assertGalleryMatrix(page: import("@playwright/test").Page, device
         }
       }
       return "ready";
-    }, expected), { timeout: 10000, message: `${look}/${mode}/${density}/${textSize}/${device}` }).toBe("ready");
+    }, expected), { timeout: 10000, intervals: [25, 50, 100], message: `${look}/${mode}/${density}/${textSize}/${device}` }).toBe("ready");
     combinations++;
   }
   expect(combinations).toBe(90);
@@ -972,7 +1000,7 @@ test("conversation skeletons survive every desktop gallery setting", async ({ pa
 });
 
 test("conversation skeletons survive every tablet gallery setting", async ({ page }) => {
-  await assertGalleryMatrix(page, "tablet", builtPreviewUrl("/tests/browser/conversation-gallery.html"), conversationMatrixNames, conversationMatrixNames);
+  await assertGalleryMatrix(page, "tablet", builtPreviewUrl("/tests/browser/conversation-gallery.html?device=tablet"), conversationMatrixNames, conversationMatrixNames);
 });
 
 test("content controls use their host, show focus rings, preserve list markers, and apply chart tokens", async ({ page }) => {

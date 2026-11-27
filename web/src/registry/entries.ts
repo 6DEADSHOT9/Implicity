@@ -2,10 +2,10 @@ import type { ComponentType, ReactNode } from "react";
 import type { z } from "zod";
 import { defineSkeleton } from "./define-skeleton.ts";
 import { discoverRegistryFolders, registryFoldersFromPaths } from "./discovery.ts";
-import type { SkeletonEntry } from "./define-skeleton.ts";
+import type { SkeletonEntry, SlotsSchema } from "./define-skeleton.ts";
 
 const components = import.meta.glob<Record<string, ComponentType<never>>>(["./*/*.tsx", "!**/*.test.tsx"], { eager: true });
-const schemas = import.meta.glob<{ propsSchema: z.ZodObject<z.ZodRawShape>; slotsSchema: z.ZodObject<z.ZodRawShape>; namedPartProp?: string }>("./*/schema.ts", { eager: true });
+const schemas = import.meta.glob<{ propsSchema: z.ZodObject<z.ZodRawShape>; slotsSchema: SlotsSchema; namedPartProp?: string }>("./*/schema.ts", { eager: true });
 const eventModules = import.meta.glob<{ events: readonly string[] }>("./*/events.ts", { eager: true });
 const metaModules = import.meta.glob<{ meta: SkeletonEntry["meta"] }>("./*/meta.ts", { eager: true });
 const testPaths = Object.keys(import.meta.glob("./*/*.test.tsx"));
@@ -28,5 +28,5 @@ const discovered = discoverRegistryFolders(registryFoldersFromPaths(modulePaths)
 export const entries: readonly SkeletonEntry[] = discovered.map(({ id, definition }) => {
   const component = components[`./${id}/${id}.tsx`]?.[id];
   if (!component) throw new Error(`${id} registry entry is missing named component export ${id}`);
-  return defineSkeleton(definition, component as ComponentType<z.infer<typeof definition.propsSchema> & { slots?: Partial<Record<Extract<keyof z.infer<typeof definition.slotsSchema>, string>, ReactNode[]>> }>);
+  return defineSkeleton(definition, component as ComponentType<z.infer<typeof definition.propsSchema> & { slots?: Partial<Record<Extract<keyof z.infer<typeof definition.slotsSchema>, string>, ReactNode[]>>; onAction?: (action?: string, value?: string | number | boolean) => void }>);
 });

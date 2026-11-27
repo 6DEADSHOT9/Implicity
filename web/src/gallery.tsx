@@ -79,12 +79,12 @@ function choices(label: string, value: string, values: readonly string[], onChan
   </select></label>;
 }
 
-export function Gallery({ registry = defaultRegistry, previewPath = "/preview.html" }: { registry?: Registry; previewPath?: string }) {
+export function Gallery({ registry = defaultRegistry, previewPath = "/preview.html", initialDeviceClass = "desktop" }: { registry?: Registry; previewPath?: string; initialDeviceClass?: "desktop" | "tablet" }) {
   const [lookId, setLookId] = useState(availableLooks[0].id);
   const [mode, setMode] = useState("light");
   const [density, setDensity] = useState(availableLooks[0].density);
   const [textSize, setTextSize] = useState(String(availableLooks[0].text_size));
-  const [deviceClass, setDeviceClass] = useState("desktop");
+  const [deviceClass, setDeviceClass] = useState<string>(initialDeviceClass);
   const root = useRef<HTMLElement>(null);
   const look = availableLooks.find(({ id }) => id === lookId) ?? availableLooks[0];
   const scale = tokens.derivedTokens.textSize[textSize as keyof typeof tokens.derivedTokens.textSize];
