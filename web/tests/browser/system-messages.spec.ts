@@ -163,7 +163,9 @@ async function mountRealGallery(page: import("@playwright/test").Page, component
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   // The fake clock sends errors from timers it runs on its own to the console, not to pageerror.
-  page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(`${message.text()} (${message.location().url})`);
+  });
   // The fake clock gives delayed preview errors a defined window without a real wait.
   await page.clock.install();
   await page.goto(`/tests/browser/focused-gallery.html?ids=${encodeURIComponent(componentIds.join(","))}`);
@@ -190,23 +192,20 @@ async function mountRealGallery(page: import("@playwright/test").Page, component
       throw new Error(`Gallery previews did not apply ${expectedKey}: ${unready.join(", ")}`, { cause: error });
     }
   };
-  const expectNoFallbacks = async () => {
-    const previewTexts = await page.locator("iframe").evaluateAll((frames) => (frames as HTMLIFrameElement[]).map((frame) => frame.contentDocument?.querySelector("#root")?.textContent ?? ""));
-    expect(previewTexts.filter((text) => /Preview unavailable|preview failed/.test(text))).toEqual([]);
-  };
   const expectHealthyPreviews = async () => {
     await page.clock.runFor(5_000);
-    await expectNoFallbacks();
+    const previewTexts = await page.locator("iframe").evaluateAll((frames) => (frames as HTMLIFrameElement[]).map((frame) => frame.contentDocument?.querySelector("#root")?.textContent ?? ""));
+    expect(previewTexts.filter((text) => /Preview unavailable|preview failed/.test(text))).toEqual([]);
     expect(errors).toEqual([]);
   };
   await waitForEverySetting();
-  return { waitForEverySetting, expectNoFallbacks, expectHealthyPreviews };
+  return { waitForEverySetting, expectHealthyPreviews };
 }
 
 // One walk per cohort: each setting carries into the next, so combinations such as dark and tablet are seen.
 for (const cohort of galleryCohorts) {
   test(`real gallery ${cohort.name} has no uncaught preview errors across settings`, async ({ page }) => {
-    const { waitForEverySetting, expectNoFallbacks, expectHealthyPreviews } = await mountRealGallery(page, cohort.ids);
+    const { waitForEverySetting, expectHealthyPreviews } = await mountRealGallery(page, cohort.ids);
     const select = async (label: string, value: string) => {
       await page.getByLabel(label).selectOption(value);
       await waitForEverySetting();
@@ -217,8 +216,8 @@ for (const cohort of galleryCohorts) {
     }
     for (const density of ["compact", "comfortable", "spacious"]) await select("Density", density);
     for (const textSize of ["1", "2", "3", "4", "5"]) await select("Text size", textSize);
-    // A screen size change reloads every frame, which would drop an earlier fallback.
-    await expectNoFallbacks();
+    // A screen size change reloads every frame, clearing pending timers and earlier fallbacks.
+    await expectHealthyPreviews();
     for (const screenSize of ["desktop", "tablet"]) await select("Screen size", screenSize);
     await expectHealthyPreviews();
   });
