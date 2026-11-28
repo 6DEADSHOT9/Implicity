@@ -14,6 +14,7 @@ const addCssNames = (value) => {
 addCssNames(tokens.derivedTokens);
 
 const utilityNames = new Set();
+utilityNames.add("max-h-viewport-content");
 for (const color of tokens.colorKeys) {
   for (const prefix of ["text", "bg", "border", "outline", "ring", "fill", "stroke", "decoration", "caret", "accent"]) utilityNames.add(`${prefix}-${color}`);
 }

@@ -41,7 +41,7 @@ Every event has the same shared fields and one of three shapes: an action, a tur
 - A temporary chat sends no events at all.
 - Components never call PostHog. They call the capture wrapper, which validates against the schema and adds the shared fields.
 - **How a skeleton emits.** The registry provides a capture context. A skeleton calls `useCapture().emit(name, fields)`, typed so it accepts only events from the closed vocabulary that the skeleton declares in `events.ts`. The default context does nothing; tests use a provider that records what was emitted; the capture wrapper (T18) supplies the real provider. User actions are separate: a control calls a prop callback such as `onAction`, and the app decides what happens.
-- **When a component counts as seen.** One shared registry helper, `useSeen()`, measures it for every skeleton: a component is on screen while at least half of it is visible (an IntersectionObserver), and `component_seen` is emitted once per mount after it has stayed on screen for 3 seconds, carrying the seconds it was actually visible; if it leaves the screen first, the timer resets. A component that is never on screen, such as a hidden toast, is never seen. The half-visible ratio and the 3 seconds are named constants that the capture wrapper (T18) may tune. Skeletons never measure seen time themselves. On screen means the IntersectionObserver reports at least half visible and the browser's `element.checkVisibility({ opacityProperty: true, visibilityProperty: true })` is true, checked when visibility reports arrive and again when the timer fires; `useSeen()` does not watch DOM changes or compute clipping itself. Two limits are accepted: a component hidden and shown again within the same 3 seconds may still count, and `clip-path` is ignored.
+- **When a component counts as seen.** One shared registry helper, `useSeen()`, measures it for every skeleton: a component is on screen while at least half of it is visible, or, for a component taller than the viewport, while it covers at least half of the viewport (an IntersectionObserver), so an open long answer can be seen, and `component_seen` is emitted once per mount after it has stayed on screen for 3 seconds, carrying the seconds it was actually visible; if it leaves the screen first, the timer resets. A component that is never on screen, such as a hidden toast, is never seen. The half-visible ratio and the 3 seconds are named constants that the capture wrapper (T18) may tune. Skeletons never measure seen time themselves. On screen means the IntersectionObserver reports at least half visible and the browser's `element.checkVisibility({ opacityProperty: true, visibilityProperty: true })` is true, checked when visibility reports arrive and again when the timer fires; `useSeen()` does not watch DOM changes or compute clipping itself. Two limits are accepted: a component hidden and shown again within the same 3 seconds may still count, and `clip-path` is ignored.
 - **A choice is recorded when it shows, not when it is asked for.** A control calls its prop callback (such as `onFormChange` or `onOpenChange`) and the app decides. A controlled skeleton emits the event for a choice (`representation_switched`, a panel opening or closing, a tab changing) when its displayed value actually changes, for example when its `form` prop moves from `table` to `chart`, never on the click itself. A refused or unchanged choice records nothing.
 
 **Shared fields.**
@@ -52,7 +52,7 @@ Every event has the same shared fields and one of three shapes: an action, a tur
 | `name` | The event name |
 | `timestamp` | When it happened, from the browser: UTC, RFC 3339, to the millisecond |
 | `contracts_version` | Version of the contracts it was built against: an integer |
-| `session_id` | The session it belongs to: a UUID minted by the app |
+| `session_id` | The session it belongs to: a UUID minted by the app. The browser keeps the current session's id and sends it with every message, so stored messages carry the same id as the events of that session. A message also carries its `conversation_id`, which is what loads a conversation; the two are never the same field |
 | `conversation_id` | The conversation, when there is one: a UUID minted by the app |
 | `kind` | The kind of chat, when known: a predefined kind name or the opaque id of an accepted custom kind, never its label |
 | `component`, `slot` | The registry component and slot it concerns, when relevant |
@@ -65,7 +65,7 @@ A field that does not apply to an event is left out, never sent as null. A suspe
 
 | Event | Sent when | Extra fields |
 | --- | --- | --- |
-| `session_started`, `session_ended` | A session begins, or ends on close or idle | Mode, text scale, local hour bucket (both carry the bucket of the session's start) |
+| `session_started`, `session_ended` | A session begins, or ends on close or idle. A session continues across a reload. The page cannot tell a reload from a close when it unloads, so `session_ended` is not sent then: the next load, or another open tab, that finds the session idle past the timeout sends one `session_ended`, timestamped at the session's last activity. After a real close it can therefore arrive late, or never if the app is not opened again, and anything that acts when a session ends allows for that | Mode, text scale, local hour bucket (both carry the bucket of the session's start) |
 | `conversation_started`, `conversation_ended` | A conversation opens or is left | |
 | `message_sent` | The person sends a message | Length bucket, attachment count, the Command if a shortcut sent it |
 | `answer_shown` | An answer finishes rendering | Length bucket, has code, has table, has reasoning |
@@ -184,7 +184,7 @@ A dimension on a scale adds `scale: true`, which makes the engine move one value
 | Dimension | Values | An occasion is | Evidence toward a value |
 | --- | --- | --- | --- |
 | `reasoning` | folded, expanded | An answer with reasoning, seen | Expanding or collapsing the reasoning |
-| `long_answers` | folded, open | A long answer, seen | Expanding or collapsing it |
+| `long_answers` | folded, open | A long answer, seen: an answer in the `long` length bucket, whose MessageBody `long_answer` slot was seen. Events report what is displayed (ADR 0025), so a live answer seen open counts as open | Expanding or collapsing it |
 | `data_form` | table, chart | A data result, seen | Switching form, and time spent on each |
 | `sources_panel` | closed, docked | An answer with sources, seen | Opening or closing the sources panel |
 | `project_panel` | closed, docked | A conversation inside a project | Opening or closing the project panel |

@@ -1,6 +1,8 @@
 import { Component, useEffect, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import type { SkeletonEntry } from "./registry";
+import type { propsSchema } from "./registry/WidgetPicker/schema";
+import type { z } from "zod";
 import { ChangeNoticeToastHost } from "./components/change-notice-toast-host";
 
 class PreviewBoundary extends Component<{ children: ReactNode; label: string }, { failed: boolean }> {
@@ -12,6 +14,31 @@ class PreviewBoundary extends Component<{ children: ReactNode; label: string }, 
 function PreviewMounted({ children, onMounted, version }: { children: ReactNode; onMounted: (version: number) => void; version: number }) {
   useEffect(() => onMounted(version), [onMounted, version]);
   return children;
+}
+
+function WidgetPickerExample({ entry, props }: { entry: SkeletonEntry; props: z.infer<typeof propsSchema> }) {
+  const [open, setOpen] = useState(props.open);
+  const [widgets, setWidgets] = useState(props.widgets);
+  const [availableWidgets, setAvailableWidgets] = useState(props.availableWidgets);
+  useEffect(() => {
+    if (open) document.body.dataset.previewPicker = "open";
+    else delete document.body.dataset.previewPicker;
+    return () => { delete document.body.dataset.previewPicker; };
+  }, [open]);
+  return <entry.Component props={{ open, title: props.title, widgets, availableWidgets }} slots={{}} interactions={{
+    onOpenChange: setOpen,
+    suppressInitialFocus: true,
+    onWidgetChange: (widgetId: string, enabled: boolean) => {
+      setWidgets((current) => current.map((widget) => widget.widgetId === widgetId ? { ...widget, enabled } : widget));
+      return true;
+    },
+    onAdd: (widgetId: string) => {
+      const added = availableWidgets.find((widget) => widget.widgetId === widgetId);
+      if (!added) return;
+      setWidgets((current) => [...current, { ...added, enabled: true }]);
+      setAvailableWidgets((current) => current.filter((widget) => widget.widgetId !== widgetId));
+    },
+  }} />;
 }
 
 function PreviewExample({ entry, props, slots, label }: { entry: SkeletonEntry; props: Record<string, unknown>; slots: Record<string, ReactNode>; label: string }) {
@@ -28,7 +55,9 @@ function PreviewExample({ entry, props, slots, label }: { entry: SkeletonEntry; 
     ...(Object.hasOwn(exampleProps, "open") ? { onOpenChange: update("open") } : {}),
     ...(Object.hasOwn(exampleProps, "docked") ? { onDockChange: update("docked") } : {}),
   };
-  return <PreviewBoundary label={label}><entry.Component props={exampleProps} slots={slots} onAction={onAction} interactions={interactions} /></PreviewBoundary>;
+  return <PreviewBoundary label={label}>{entry.id === "WidgetPicker"
+    ? <WidgetPickerExample entry={entry} props={props as z.infer<typeof propsSchema>} />
+    : <entry.Component props={exampleProps} slots={slots} onAction={onAction} interactions={interactions} />}</PreviewBoundary>;
 }
 
 export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | undefined>) {
@@ -50,10 +79,12 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
   const previewRoot = document.getElementById("root")!;
   const readHeight = () => {
     const sheetBody = document.querySelector<HTMLElement>("[data-panel-sheet-body]");
-    if (!sheetBody) return previewRoot.getBoundingClientRect().height;
-    const body = sheetBody.getBoundingClientRect();
-    const content = sheetBody.lastElementChild?.getBoundingClientRect();
-    return content ? content.bottom - body.top + Number.parseFloat(getComputedStyle(sheetBody).paddingBottom) : body.height;
+    if (sheetBody) {
+      const body = sheetBody.getBoundingClientRect();
+      const content = sheetBody.lastElementChild?.getBoundingClientRect();
+      return content ? content.bottom - body.top + Number.parseFloat(getComputedStyle(sheetBody).paddingBottom) : body.height;
+    }
+    return document.body.dataset.previewPicker ? Math.max(previewRoot.getBoundingClientRect().height, document.body.scrollHeight) : previewRoot.getBoundingClientRect().height;
   };
   const reportHeight = () => {
     if (!mounted || !fontsLoaded || heightReportPending) return;
@@ -91,6 +122,7 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
   };
   const heightObserver = new ResizeObserver(reportHeight);
   heightObserver.observe(document.documentElement);
+  heightObserver.observe(document.body);
   heightObserver.observe(previewRoot);
   const portalObserver = new MutationObserver(() => {
     const dialog = document.querySelector<HTMLElement>('[role="dialog"]');

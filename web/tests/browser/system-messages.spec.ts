@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import registrySnapshot from "../../../contracts/generated/components/registry.json" with { type: "json" };
 import { measureContrast } from "./contrast";
 
 async function expectPanelsInsideFrames(page: import("@playwright/test").Page, previews: readonly (readonly [string, string])[]) {
@@ -30,7 +31,7 @@ test("system message Skeletons render across every gallery setting", async ({ pa
   test.setTimeout(60_000);
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto("/");
+  await page.goto("/tests/browser/focused-gallery.html?ids=ChangeNotice,ProposalCard,Nudge");
   const previews = [
     ["ChangeNotice", "inline"],
     ["ChangeNotice", "toast"],
@@ -152,6 +153,75 @@ test("system message Skeletons render across every gallery setting", async ({ pa
   await page.mouse.click(toastRect!.x + toastRect!.width / 2, toastRect!.y + toastRect!.height / 2);
   expect(errors).toEqual([]);
 });
+
+const galleryCohorts = Array.from({ length: 8 }, (_, cohort) => ({
+  name: `cohort ${cohort + 1}`,
+  ids: registrySnapshot.components.filter((_, index) => index % 8 === cohort),
+}));
+
+async function mountRealGallery(page: import("@playwright/test").Page, componentIds: string[]) {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  // The fake clock sends errors from timers it runs on its own to the console, not to pageerror.
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(`${message.text()} (${message.location().url})`);
+  });
+  // The fake clock gives delayed preview errors a defined window without a real wait.
+  await page.clock.install();
+  await page.goto(`/tests/browser/focused-gallery.html?ids=${encodeURIComponent(componentIds.join(","))}`);
+  const expectedFrames = await page.locator("iframe").count();
+  expect(expectedFrames).toBeGreaterThan(0);
+  const waitForEverySetting = async () => {
+    const expected = await Promise.all(["Look", "Mode", "Density", "Text size", "Screen size"].map(async (label) => [label, await page.getByLabel(label).inputValue()] as const));
+    const settings = Object.fromEntries(expected) as Record<string, string>;
+    const expectedKey = JSON.stringify({ look: settings.Look, mode: settings.Mode, density: settings.Density, textSize: settings["Text size"], deviceClass: settings["Screen size"] });
+    try {
+      await page.waitForFunction(({ expectedCount, key }) => {
+        const frames = Array.from(document.querySelectorAll<HTMLIFrameElement>("iframe"));
+        const unready = frames.filter((frame) => {
+          const document = frame.contentDocument;
+          if (!document?.querySelector("#root > *")) return true;
+          const { dataset } = document.documentElement;
+          return JSON.stringify({ look: dataset.look, mode: dataset.mode, density: dataset.density, textSize: dataset.textSize, deviceClass: dataset.deviceClass }) !== key;
+        }).map((frame) => frame.title);
+        (window as Window & { unreadyPreviews?: string[] }).unreadyPreviews = unready;
+        return frames.length === expectedCount && unready.length === 0;
+      }, { expectedCount: expectedFrames, key: expectedKey }, { timeout: 10_000 });
+    } catch (error) {
+      const unready = await page.evaluate(() => (window as Window & { unreadyPreviews?: string[] }).unreadyPreviews ?? []);
+      throw new Error(`Gallery previews did not apply ${expectedKey}: ${unready.join(", ")}`, { cause: error });
+    }
+  };
+  const expectHealthyPreviews = async () => {
+    await page.clock.runFor(5_000);
+    const previewTexts = await page.locator("iframe").evaluateAll((frames) => (frames as HTMLIFrameElement[]).map((frame) => frame.contentDocument?.querySelector("#root")?.textContent ?? ""));
+    expect(previewTexts.filter((text) => /Preview unavailable|preview failed/.test(text))).toEqual([]);
+    expect(errors).toEqual([]);
+  };
+  await waitForEverySetting();
+  return { waitForEverySetting, expectHealthyPreviews };
+}
+
+// One walk per cohort: each setting carries into the next, so combinations such as dark and tablet are seen.
+for (const cohort of galleryCohorts) {
+  test(`real gallery ${cohort.name} has no uncaught preview errors across settings`, async ({ page }) => {
+    const { waitForEverySetting, expectHealthyPreviews } = await mountRealGallery(page, cohort.ids);
+    const select = async (label: string, value: string) => {
+      await page.getByLabel(label).selectOption(value);
+      await waitForEverySetting();
+    };
+    for (const look of ["default", "focused", "notebook"]) {
+      await select("Look", look);
+      for (const mode of ["light", "dark"]) await select("Mode", mode);
+    }
+    for (const density of ["compact", "comfortable", "spacious"]) await select("Density", density);
+    for (const textSize of ["1", "2", "3", "4", "5"]) await select("Text size", textSize);
+    // A screen size change reloads every frame, clearing pending timers and earlier fallbacks.
+    await expectHealthyPreviews();
+    for (const screenSize of ["desktop", "tablet"]) await select("Screen size", screenSize);
+    await expectHealthyPreviews();
+  });
+}
 
 test("ChangeNotice shown events follow native disclosure and completed opacity reveals", async ({ page }) => {
   await page.goto("/");
