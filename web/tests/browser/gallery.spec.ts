@@ -114,20 +114,20 @@ test("Button variants and Tabs triggers meet 4.5:1 contrast in every look and mo
       expect(await buttons.evaluateAll((elements) => [...new Set(elements.map((element) => element.getAttribute("data-variant")))].sort())).toEqual(["default", "destructive", "ghost", "link", "outline", "secondary"]);
       const triggers = page.locator("[data-slot='tabs-trigger']");
       await expect(triggers).toHaveCount(2);
-      for (const control of await page.locator(".primitive-gallery [data-slot='button'], .primitive-gallery [data-slot='tabs-trigger']").all()) {
-        const result = await control.evaluate(measureContrast);
-        expect(result.ratio, `${look} ${mode}: ${await control.evaluate((element) => element.outerHTML)} (${result.foreground} on ${result.background})`).toBeGreaterThanOrEqual(4.5);
+      const controls = page.locator(".primitive-gallery [data-slot='button'], .primitive-gallery [data-slot='tabs-trigger']");
+      for (const result of await controls.evaluateAll(measureContrast<Element[]>)) {
+        expect(result.ratio, `${look} ${mode}: ${result.markup} (${result.foreground} on ${result.background})`).toBeGreaterThanOrEqual(4.5);
       }
       if (look === "default" && mode === "light") {
         const ghost = page.locator("[data-slot='button'][data-variant='ghost']").first();
         await ghost.evaluate((element) => { (element as HTMLElement).style.color = "oklab(0.276448 0 0 / 0.1)"; });
-        expect((await ghost.evaluate(measureContrast)).ratio).toBeLessThan(4.5);
+        expect((await ghost.evaluate(measureContrast<Element>)).ratio).toBeLessThan(4.5);
         await ghost.evaluate((element) => { (element as HTMLElement).style.color = ""; element.parentElement!.style.opacity = "0.1"; });
-        expect((await ghost.evaluate(measureContrast)).ratio).toBeLessThan(4.5);
+        expect((await ghost.evaluate(measureContrast<Element>)).ratio).toBeLessThan(4.5);
         await ghost.evaluate((element) => { element.parentElement!.style.opacity = ""; });
         const outline = page.locator("[data-slot='button'][data-variant='outline']").first();
         await outline.evaluate((element) => { Object.assign((element as HTMLElement).style, { color: "black", backgroundColor: "rgb(100 100 100)", opacity: "0.7" }); });
-        expect((await outline.evaluate(measureContrast)).ratio).toBeLessThan(4.5);
+        expect((await outline.evaluate(measureContrast<Element>)).ratio).toBeLessThan(4.5);
         await outline.evaluate((element) => { (element as HTMLElement).removeAttribute("style"); });
       }
       for (const [opener, overlay, buttons] of [
@@ -137,9 +137,10 @@ test("Button variants and Tabs triggers meet 4.5:1 contrast in every look and mo
         await page.getByRole("button", { name: opener }).click();
         if (opener === "Open dialog") await expect(page.locator("[data-slot='dialog-content']")).toHaveCSS("opacity", "1");
         const close = page.locator(overlay).getByRole("button", { name: "Close" });
-        for (const button of [close, ...buttons.map((name) => page.getByRole("button", { name }))]) {
-          const result = await button.evaluate(measureContrast);
-          expect(result.ratio, `${look} ${mode} overlay: ${await button.evaluate((element) => element.outerHTML)} (${result.foreground} on ${result.background})`).toBeGreaterThanOrEqual(4.5);
+        const controls = close.or(page.getByRole("button", { name: buttons[0] })).or(page.getByRole("button", { name: buttons[1] }));
+        await expect(controls).toHaveCount(3);
+        for (const result of await controls.evaluateAll(measureContrast<Element[]>)) {
+          expect(result.ratio, `${look} ${mode} overlay: ${result.markup} (${result.foreground} on ${result.background})`).toBeGreaterThanOrEqual(4.5);
         }
         await page.keyboard.press("Escape");
       }
@@ -156,7 +157,7 @@ test("Preflight leaves visible token borders on shared form controls", async ({ 
     expect(Number.parseFloat(style.width), await control.evaluate((element) => element.outerHTML)).toBeGreaterThan(0);
     expect(style.style).toBe("solid");
     const borderColor: "borderColor" = "borderColor";
-    const contrast = await control.evaluate(measureContrast, borderColor);
+    const contrast = await control.evaluate(measureContrast<Element>, borderColor);
     expect(contrast.ratio, `${await control.evaluate((element) => element.outerHTML)} (${contrast.foreground} on ${contrast.background})`).toBeGreaterThanOrEqual(3);
   }
 });
@@ -324,10 +325,8 @@ test("focus rings are painted with 3:1 contrast on shared controls in every look
         page.getByRole("button", { name: "Undo marker" }),
       ];
       for (const control of controls) {
-        await control.focus();
-        await page.keyboard.press("Tab");
+        await control.press("Tab");
         await page.keyboard.press("Shift+Tab");
-        await expect(control).toBeFocused();
         const style = await control.evaluate((element) => {
           const computed = getComputedStyle(element);
           const shadows = [...computed.boxShadow.matchAll(/(rgba?\([^)]+\))\s+-?[\d.]+px\s+-?[\d.]+px\s+-?[\d.]+px\s+(-?[\d.]+)px/g)];
@@ -337,8 +336,9 @@ test("focus rings are painted with 3:1 contrast on shared controls in every look
             if (!color.startsWith("rgba(") || Number.parseFloat(color.slice(color.lastIndexOf(",") + 1)) > 0) break;
             surface = surface.parentElement;
           }
-          return { name: element.getAttribute("aria-label") ?? element.textContent?.trim(), focusVisible: element.matches(":focus-visible"), outlineStyle: computed.outlineStyle, outlineWidth: computed.outlineWidth, outlineColor: computed.outlineColor, shadows: shadows.map(([, color, spread]) => ({ color, spread: Number.parseFloat(spread) })), background: surface ? getComputedStyle(surface).backgroundColor : getComputedStyle(document.documentElement).backgroundColor };
+          return { name: element.getAttribute("aria-label") ?? element.textContent?.trim(), focused: element === document.activeElement, focusVisible: element.matches(":focus-visible"), outlineStyle: computed.outlineStyle, outlineWidth: computed.outlineWidth, outlineColor: computed.outlineColor, shadows: shadows.map(([, color, spread]) => ({ color, spread: Number.parseFloat(spread) })), background: surface ? getComputedStyle(surface).backgroundColor : getComputedStyle(document.documentElement).backgroundColor };
         });
+        expect(style.focused, style.name).toBe(true);
         expect(style.focusVisible).toBe(true);
         const shadow = style.shadows.at(-1);
         const outlineVisible = style.outlineStyle !== "none" && !style.outlineColor.endsWith(", 0)");
@@ -579,17 +579,12 @@ test("waits for the requested fixture before sending its first height", async ({
   const heldImport = new Promise<void>((resolve) => { releaseImport = resolve; });
   const importStarted = new Promise<void>((resolve) => { importRequested = resolve; });
   await page.route("**/assets/ReviewPanel-*.js", async (route) => {
-    if (route.request().frame() === page.mainFrame()) {
-      // The host imports the same chunk to build its registry. Keep its response out of the preview's cache.
-      const response = await route.fetch();
-      return route.fulfill({ response, headers: { ...response.headers(), "cache-control": "no-store" } });
-    }
     importRequested();
     const response = await route.fetch();
     await heldImport;
     await route.fulfill({ response });
   });
-  await page.goto(reviewPanelUrl, { waitUntil: "commit" });
+  await page.goto(reviewPanelUrl, { waitUntil: "domcontentloaded" });
   const frame = page.locator("iframe[title='ReviewPanel · plain']");
   await expect(frame).toBeAttached();
   await importStarted;
@@ -1191,7 +1186,7 @@ test("DataChart reads the live chart axis token when the host updates styles", a
 
 test("rendered code, diff, stack trace and terminal text stay readable in every look and mode", async ({ page }) => {
   const titles = ["CodeBlock · code", "CodeBlock · diff", "CodeBlock · stack_trace", "CodeBlock · terminal", "DataChart · long_content"];
-  await page.goto(contentGalleryUrl(titles));
+  await page.goto(contentGalleryUrl(titles), { waitUntil: "domcontentloaded" });
   const frames = titles.map((title) => page.frameLocator(`iframe[title="${title}"]`));
   const ratio = (foreground: string, background: string) => {
     const luminance = (input: string) => {
@@ -1204,71 +1199,72 @@ test("rendered code, diff, stack trace and terminal text stay readable in every 
     return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
   };
   for (const look of ["default", "focused", "notebook"]) {
-    await page.getByLabel("Look").selectOption(look);
     for (const mode of ["light", "dark"]) {
-      await page.getByLabel("Mode").selectOption(mode);
+      await selectGallerySettings(page, { Look: look, Mode: mode });
       await Promise.all(frames.map((frame) => expect(frame.locator(`html[data-look="${look}"][data-mode="${mode}"]`)).toBeAttached()));
-      for (const state of ["code", "diff"] as const) {
-        const frame = page.frameLocator(`iframe[title="CodeBlock · ${state}"]`);
-        const code = frame.locator("pre code");
-        await expect(code).toBeVisible();
-        const syntax = code.locator("span[class*='text-code-']");
-        await expect(syntax.first()).toBeAttached();
-        if (state === "diff") {
-          await expect(code).toContainText("const old");
-          await expect(code).toContainText("const current");
-          const colors = await code.locator(":scope > span.block").evaluateAll((lines) => lines.filter((line) => line.textContent?.includes("const old") || line.textContent?.includes("const current")).map((line) => getComputedStyle(line.querySelector("span")!).color));
-          expect(colors).toHaveLength(2);
-          expect(colors[0]).not.toBe(colors[1]);
-        }
-        const colors = await syntax.evaluateAll((nodes) => nodes.filter((node) => node.textContent?.trim()).map((node) => ({ color: getComputedStyle(node).color, background: getComputedStyle(node.closest("pre")!).backgroundColor })));
-        expect(colors.length, `${look}/${mode}/${state} rendered syntax`).toBeGreaterThan(0);
-        for (const { color, background } of colors) expect(ratio(color, background), `${look}/${mode}/${state}: ${color} on ${background}`).toBeGreaterThanOrEqual(4.5);
-      }
-      const stack = page.frameLocator('iframe[title="CodeBlock · stack_trace"]');
-      const stackColors = await stack.locator("button").evaluate((element) => ({ color: getComputedStyle(element.querySelector("span.text-code-foreground")!).color, background: getComputedStyle(element).backgroundColor }));
-      expect(ratio(stackColors.color, stackColors.background), `${look}/${mode}/stack trace`).toBeGreaterThanOrEqual(4.5);
-      const terminal = page.frameLocator('iframe[title="CodeBlock · terminal"]');
-      const terminalText = await terminal.locator("[role=region] pre span[class*='text-terminal-']").evaluateAll((nodes) => nodes.map((element) => ({ role: element.className, color: getComputedStyle(element).color, background: getComputedStyle(element.closest("[role=region]")!).backgroundColor })));
-      expect(terminalText.map(({ role }) => role)).toEqual(expect.arrayContaining(["text-terminal-success", "text-terminal-warning", "text-terminal-error", "text-terminal-info"]));
-      for (const { color, background } of terminalText) expect(ratio(color, background), `${look}/${mode}/terminal`).toBeGreaterThanOrEqual(4.5);
+      await Promise.all([
+        (async () => {
+          await Promise.all((["code", "diff"] as const).map(async (state) => {
+            const frame = page.frameLocator(`iframe[title="CodeBlock · ${state}"]`);
+            const code = frame.locator("pre code");
+            const syntax = code.locator("span[class*='text-code-']");
+            await Promise.all([expect(code).toBeVisible(), expect(syntax.first()).toBeAttached()]);
+            if (state === "diff") {
+              await Promise.all([expect(code).toContainText("const old"), expect(code).toContainText("const current")]);
+              const colors = await code.locator(":scope > span.block").evaluateAll((lines) => lines.filter((line) => line.textContent?.includes("const old") || line.textContent?.includes("const current")).map((line) => getComputedStyle(line.querySelector("span")!).color));
+              expect(colors).toHaveLength(2);
+              expect(colors[0]).not.toBe(colors[1]);
+            }
+            const colors = await syntax.evaluateAll((nodes) => nodes.filter((node) => node.textContent?.trim()).map((node) => ({ color: getComputedStyle(node).color, background: getComputedStyle(node.closest("pre")!).backgroundColor })));
+            expect(colors.length, `${look}/${mode}/${state} rendered syntax`).toBeGreaterThan(0);
+            for (const { color, background } of colors) expect(ratio(color, background), `${look}/${mode}/${state}: ${color} on ${background}`).toBeGreaterThanOrEqual(4.5);
+          }));
+          const stack = page.frameLocator('iframe[title="CodeBlock · stack_trace"]');
+          const stackColors = await stack.locator("button").evaluate((element) => ({ color: getComputedStyle(element.querySelector("span.text-code-foreground")!).color, background: getComputedStyle(element).backgroundColor }));
+          expect(ratio(stackColors.color, stackColors.background), `${look}/${mode}/stack trace`).toBeGreaterThanOrEqual(4.5);
+          const terminal = page.frameLocator('iframe[title="CodeBlock · terminal"]');
+          const terminalText = await terminal.locator("[role=region] pre span[class*='text-terminal-']").evaluateAll((nodes) => nodes.map((element) => ({ role: element.className, color: getComputedStyle(element).color, background: getComputedStyle(element.closest("[role=region]")!).backgroundColor })));
+          expect(terminalText.map(({ role }) => role)).toEqual(expect.arrayContaining(["text-terminal-success", "text-terminal-warning", "text-terminal-error", "text-terminal-info"]));
+          for (const { color, background } of terminalText) expect(ratio(color, background), `${look}/${mode}/terminal`).toBeGreaterThanOrEqual(4.5);
 
-      const traceTrigger = stack.getByRole("button");
-      const controls = await traceTrigger.getAttribute("aria-controls");
-      expect(controls).toBeTruthy();
-      await expect(stack.locator(`#${controls}`)).toBeAttached();
-
-      const lineChart = page.frameLocator('iframe[title="DataChart · long_content"]');
-      const axisWidth = await lineChart.locator("html").evaluate((html) => {
-        const style = getComputedStyle(html);
-        return Number.parseFloat(style.getPropertyValue("--chart-axis-width")) * Number.parseFloat(style.fontSize);
-      });
-      const firstDotX = Number(await lineChart.locator(".recharts-dot").first().getAttribute("cx"));
-      expect(firstDotX).toBe(axisWidth);
-      const line = lineChart.locator(".recharts-line-curve");
-      await expect(line).toHaveAttribute("stroke", "var(--color-value)");
-      await expect(line).toHaveAttribute("stroke-width", "1");
-      const dot = lineChart.locator(".recharts-dot").first();
-      await expect(dot).toHaveAttribute("stroke", "var(--color-value)");
-      await expect(dot).toHaveAttribute("fill", "var(--color-value)");
-      const dotRadius = await lineChart.locator("html").evaluate((html) => {
-        const style = getComputedStyle(html);
-        return Number.parseFloat(style.getPropertyValue("--space-2")) * Number.parseFloat(style.fontSize);
-      });
-      expect(Number(await dot.getAttribute("r"))).toBe(dotRadius);
-      await expect(dot).toBeVisible();
-      const hoverDot = lineChart.locator(".recharts-dot").nth(1);
-      await hoverDot.scrollIntoViewIfNeeded();
-      await hoverDot.hover();
-      const activeDot = lineChart.locator(".recharts-active-dot circle").first();
-      await expect(activeDot).toHaveAttribute("fill", "var(--color-value)");
-      await expect(activeDot).toHaveAttribute("stroke", "var(--foreground)");
-      const activeRadius = await lineChart.locator("html").evaluate((html) => {
-        const style = getComputedStyle(html);
-        return Number.parseFloat(style.getPropertyValue("--space-3")) * Number.parseFloat(style.fontSize);
-      });
-      expect(Number(await activeDot.getAttribute("r"))).toBe(activeRadius);
-      await expect(lineChart.locator(".recharts-tooltip-cursor")).toHaveAttribute("stroke", "var(--border)");
+          const traceTrigger = stack.getByRole("button");
+          const controls = await traceTrigger.getAttribute("aria-controls");
+          expect(controls).toBeTruthy();
+          await expect(stack.locator(`#${controls}`)).toBeAttached();
+        })(),
+        (async () => {
+          const lineChart = page.frameLocator('iframe[title="DataChart · long_content"]');
+          const chartTokens = await lineChart.locator("html").evaluate((html) => {
+            const style = getComputedStyle(html);
+            const rem = Number.parseFloat(style.fontSize);
+            return {
+              axisWidth: Number.parseFloat(style.getPropertyValue("--chart-axis-width")) * rem,
+              dotRadius: Number.parseFloat(style.getPropertyValue("--space-2")) * rem,
+              activeRadius: Number.parseFloat(style.getPropertyValue("--space-3")) * rem,
+            };
+          });
+          const line = lineChart.locator(".recharts-line-curve");
+          const dot = lineChart.locator(".recharts-dot").first();
+          await Promise.all([
+            expect(line).toHaveAttribute("stroke", "var(--color-value)"),
+            expect(line).toHaveAttribute("stroke-width", "1"),
+            expect(dot).toHaveAttribute("stroke", "var(--color-value)"),
+            expect(dot).toHaveAttribute("fill", "var(--color-value)"),
+            expect(dot).toBeVisible(),
+          ]);
+          const position = await dot.evaluate((element) => ({ x: Number(element.getAttribute("cx")), radius: Number(element.getAttribute("r")) }));
+          expect(position.x).toBe(chartTokens.axisWidth);
+          expect(position.radius).toBe(chartTokens.dotRadius);
+          await lineChart.locator(".recharts-dot").nth(1).hover();
+          const activeDot = lineChart.locator(".recharts-active-dot circle").first();
+          await Promise.all([
+            expect(activeDot).toHaveAttribute("fill", "var(--color-value)"),
+            expect(activeDot).toHaveAttribute("stroke", "var(--foreground)"),
+            expect(lineChart.locator(".recharts-tooltip-cursor")).toHaveAttribute("stroke", "var(--border)"),
+          ]);
+          expect(Number(await activeDot.getAttribute("r"))).toBe(chartTokens.activeRadius);
+        })(),
+      ]);
     }
   }
   const stackHeader = page.frameLocator('iframe[title="CodeBlock · stack_trace"]').locator("button");

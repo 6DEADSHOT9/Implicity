@@ -1,6 +1,8 @@
 import type { SkeletonEntry } from "../../src/registry";
 
-export function selectGalleryEntries(entries: readonly SkeletonEntry[], search: string) {
+type GalleryEntry = Pick<SkeletonEntry, "id" | "meta">;
+
+export function selectGalleryEntries<T extends GalleryEntry>(entries: readonly T[], search: string): readonly T[] {
   const requested = new Set(new URLSearchParams(search).getAll("preview"));
   if (!requested.size) return entries;
 

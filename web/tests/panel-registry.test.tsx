@@ -5,7 +5,7 @@ import { registry } from "../src/registry";
 
 describe("panel Skeletons in the registry gallery", () => {
   it("registers and lists each declared state", () => {
-    const html = renderToStaticMarkup(<Gallery />);
+    const html = renderToStaticMarkup(<Gallery registry={registry} />);
     for (const id of ["DockedPanel", "SourcesPanel", "ProjectPanel"]) {
       const entry = registry.getSkeleton(id);
       expect(entry).toBeDefined();

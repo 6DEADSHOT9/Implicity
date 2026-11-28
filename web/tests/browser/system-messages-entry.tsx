@@ -1,8 +1,7 @@
 import { createRoot } from "react-dom/client";
 import { Gallery } from "../../src/gallery";
 import { ChangeNotice } from "../../src/registry/ChangeNotice/ChangeNotice";
-import { CaptureProvider, createRegistry, registryVersion, type CapturedEvent } from "../../src/registry";
-import "../../src/tokens.css";
+import { CaptureProvider, type CapturedEvent } from "../../src/registry/capture";
 
 declare global {
   interface Window {
@@ -63,5 +62,5 @@ const cases = {
 };
 
 window.mountSystemMessageCase = (name) => cases[name]();
-const registry = createRegistry([], registryVersion);
+const registry = { entries: new Map() };
 createRoot(document.getElementById("root")!).render(<Gallery registry={registry} />);

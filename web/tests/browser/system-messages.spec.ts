@@ -105,7 +105,7 @@ test("system message Skeletons render across every gallery setting", async ({ pa
         await expect(preview.locator(id === "ProposalCard" ? "[role='region']" : "[role='status']")).toHaveCount(1);
         await expect(preview.locator("button").first()).toHaveCSS("font-family", new RegExp(look === "notebook" ? "Source Serif 4" : look === "focused" ? "IBM Plex Mono" : "Inter"));
         for (const button of await preview.locator("button").all()) {
-          const contrast = await button.evaluate(measureContrast);
+          const contrast = await button.evaluate(measureContrast<Element>);
           expect(contrast.ratio, `${id} ${state} ${look} ${mode}`).toBeGreaterThanOrEqual(4.5);
         }
         await expectHeadingToken(id, state);

@@ -33,13 +33,14 @@ async function panelMatrix(page: Page, look: string, mode: string, device: strin
 
   const densities = ["compact", "comfortable", "spacious"];
   const textSizes = ["1", "2", "3", "4", "5"];
-  for (const density of densities) for (const textSize of textSizes) {
-    await selectGallerySettings(page, { Look: look, Mode: mode, Density: density, "Text size": textSize }, 15000);
-    const expectedWidth = device === "desktop" ? 1440 : 800;
-    await expect.poll(() => page.evaluate(({ names, contentByTitle, expected, width }) => {
-      const root = document.querySelector<HTMLElement>("[data-gallery-root]");
-      if (!root || Object.entries(expected).some(([key, value]) => root.dataset[key] !== value)) {
-        return `gallery settings: ${JSON.stringify(root?.dataset)}`;
+  const result = await page.evaluate(async ({ names, contentByTitle, look, mode, width, densities, textSizes }) => {
+    const root = document.querySelector<HTMLElement>("[data-gallery-root]")!;
+    const selects = new Map([...root.querySelectorAll<HTMLSelectElement>("select[aria-label]")].map((select) => [select.getAttribute("aria-label"), select]));
+    const frames = [...root.querySelectorAll<HTMLIFrameElement>("iframe")].filter(({ title }) => names.includes(title));
+
+    function checkPreviews(expected: Record<string, string>) {
+      if (Object.entries(expected).some(([key, value]) => root.dataset[key] !== value)) {
+        return `gallery settings: ${JSON.stringify(root.dataset)}`;
       }
       const readTokens = (style: CSSStyleDeclaration) => ({
         background: style.getPropertyValue("--background").trim(),
@@ -48,16 +49,18 @@ async function panelMatrix(page: Page, look: string, mode: string, device: strin
         target: style.getPropertyValue("--target-min-size").trim(),
       });
       const tokens = readTokens(getComputedStyle(root));
-      const frames = [...document.querySelectorAll<HTMLIFrameElement>("iframe")].filter(({ title }) => names.includes(title));
       const previews = frames.map((iframe) => {
         const document = iframe.contentDocument;
         const view = document?.defaultView;
         if (!document?.documentElement || !view) return { title: iframe.title, ready: false as const };
         const frameSettings = document.documentElement.dataset;
+        const viewport = { settings: { ...frameSettings }, width: view.innerWidth };
+        if (viewport.width !== width || Object.entries(expected).some(([key, value]) => frameSettings[key] !== value)) {
+          return { title: iframe.title, ready: false as const, ...viewport };
+        }
         const frameTokens = readTokens(view.getComputedStyle(document.documentElement));
-        const config = { ...frameTokens, settings: { ...frameSettings }, width: view.innerWidth };
-        if (view.innerWidth !== width || Object.entries(expected).some(([key, value]) => frameSettings[key] !== value) ||
-            frameTokens.background !== tokens.background || frameTokens.space !== tokens.space || frameTokens.text !== tokens.text || frameTokens.target !== tokens.target) {
+        const config = { ...frameTokens, ...viewport };
+        if (frameTokens.background !== tokens.background || frameTokens.space !== tokens.space || frameTokens.text !== tokens.text || frameTokens.target !== tokens.target) {
           return { title: iframe.title, ready: false as const, ...config };
         }
         const rgba = (color: string) => color.slice(color.indexOf("(") + 1, color.lastIndexOf(")")).split(/[, /]+/).map(Number).concat(1).slice(0, 4).map((channel, index) => index === 3 ? channel : channel / 255);
@@ -102,13 +105,31 @@ async function panelMatrix(page: Page, look: string, mode: string, device: strin
         };
       });
       return previews.length === names.length && previews.every((preview) => preview.ready && preview.content && preview.healthy && preview.headingsMatchToken && preview.controlsMeetTarget && preview.labelsAndPanelFit && preview.textMeetsContrast && preview.sheetSurfaceMatches) ? "ok" : JSON.stringify(previews);
-    }, {
-      names: titles,
-      contentByTitle: expectedContent,
-      expected: { look, mode, density, textSize },
-      width: expectedWidth,
-    }), { message: `panel invariant failed for ${JSON.stringify({ look, mode, density, textSize, device })}` }).toBe("ok");
-  }
+    }
+
+    for (const density of densities) for (const textSize of textSizes) {
+      for (const [label, value] of Object.entries({ Look: look, Mode: mode, Density: density, "Text size": textSize })) {
+        const select = selects.get(label);
+        if (!select || !Array.from(select.options).some((option) => option.value === value)) {
+          throw new Error(`Gallery setting ${label} has no option ${value}`);
+        }
+        if (select.value === value) continue;
+        select.value = value;
+        select.dispatchEvent(new Event("input", { bubbles: true }));
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+      const deadline = performance.now() + 5000;
+      const expected = { look, mode, density, textSize };
+      let status = checkPreviews(expected);
+      while (status !== "ok" && performance.now() < deadline) {
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+        status = checkPreviews(expected);
+      }
+      if (status !== "ok") return { ...expected, status };
+    }
+    return "ok";
+  }, { names: titles, contentByTitle: expectedContent, look, mode, width: device === "desktop" ? 1440 : 800, densities, textSizes });
+  expect(result, `panel invariant failed for ${look}/${mode}/${device}`).toBe("ok");
 
   const sources = page.frameLocator('iframe[title="SourcesPanel · docked"]');
   const list = sources.locator("ul");

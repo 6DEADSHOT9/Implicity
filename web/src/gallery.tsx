@@ -3,16 +3,16 @@ import looks from "../../contracts/looks/default.json" with { type: "json" };
 import focused from "../../contracts/looks/focused.json" with { type: "json" };
 import notebook from "../../contracts/looks/notebook.json" with { type: "json" };
 import tokens from "../../contracts/looks/tokens.json" with { type: "json" };
-import { registry as defaultRegistry, type SkeletonEntry } from "./registry";
+import type { SkeletonEntry } from "./registry/define-skeleton";
 import { PrimitiveGallery } from "./components/primitive-gallery";
 import { ChangeNoticeToastHost } from "./components/change-notice-toast-host";
 import "./tokens.css";
 import "./gallery.css";
 
 const availableLooks = [looks, focused, notebook];
-type Registry = typeof defaultRegistry;
+type GalleryEntry = Pick<SkeletonEntry, "id" | "meta">;
 
-function SkeletonPreview({ entry, state, deviceClass, tokenStyles, texture, look, mode, density, textSize, previewPath }: { entry: SkeletonEntry; state: SkeletonEntry["meta"]["galleryStates"][number]; deviceClass: string; tokenStyles: string; texture: string; look: string; mode: string; density: string; textSize: string; previewPath: string }) {
+function SkeletonPreview({ entry, state, deviceClass, tokenStyles, texture, look, mode, density, textSize, previewPath }: { entry: GalleryEntry; state: SkeletonEntry["meta"]["galleryStates"][number]; deviceClass: string; tokenStyles: string; texture: string; look: string; mode: string; density: string; textSize: string; previewPath: string }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const viewportWidth = deviceClass === "desktop" ? 1440 : 800;
@@ -80,7 +80,7 @@ function choices(label: string, value: string, values: readonly string[], onChan
   </select></label>;
 }
 
-export function Gallery({ registry = defaultRegistry, previewPath = "/preview.html", initialDeviceClass = "desktop" }: { registry?: Registry; previewPath?: string; initialDeviceClass?: "desktop" | "tablet" }) {
+export function Gallery({ registry, previewPath = "/preview.html", initialDeviceClass = "desktop" }: { registry: { entries: ReadonlyMap<string, GalleryEntry> }; previewPath?: string; initialDeviceClass?: "desktop" | "tablet" }) {
   const [lookId, setLookId] = useState(availableLooks[0].id);
   const [mode, setMode] = useState("light");
   const [density, setDensity] = useState(availableLooks[0].density);
