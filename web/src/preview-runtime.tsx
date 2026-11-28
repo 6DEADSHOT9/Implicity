@@ -4,8 +4,6 @@ import type { SkeletonEntry } from "./registry";
 import type { propsSchema } from "./registry/WidgetPicker/schema";
 import type { z } from "zod";
 import { ChangeNoticeToastHost } from "./components/change-notice-toast-host";
-import { registryVersion } from "./registry/version";
-import type { CaptureRegistry } from "./registry/capture";
 
 class PreviewBoundary extends Component<{ children: ReactNode; label: string }, { failed: boolean }> {
   state = { failed: false };
@@ -68,7 +66,6 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
   const stateId = params.get("state");
   const root = createRoot(document.getElementById("root")!);
   let entry: SkeletonEntry | undefined;
-  let captureRegistry: CaptureRegistry = { version: registryVersion, entries: new Map() };
   let state: SkeletonEntry["meta"]["galleryStates"][number] | undefined;
   let styles: string | undefined;
   let texture: string | undefined;
@@ -155,9 +152,11 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
       root.render(preview);
       return;
     }
-    void import("./registry/capture").then(({ BrowserCaptureProvider }) => {
+    // Opted-in previews validate against the whole registry, because an event can name another
+    // entry (a WidgetPicker change names the widget's component). Normal previews never load it.
+    void Promise.all([import("./registry/capture"), import("./registry")]).then(([{ BrowserCaptureProvider }, { registry }]) => {
       if (version !== renderVersion) return;
-      root.render(<BrowserCaptureProvider registry={captureRegistry} enabled>{preview}</BrowserCaptureProvider>);
+      root.render(<BrowserCaptureProvider registry={registry} enabled>{preview}</BrowserCaptureProvider>);
     });
   };
   window.addEventListener("message", (event: MessageEvent<unknown>) => {
@@ -169,7 +168,6 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
   });
   void loadEntry(entryId).then((loaded) => {
     entry = loaded;
-    captureRegistry = { version: registryVersion, entries: new Map(loaded ? [[loaded.id, loaded]] : []) };
     state = entry?.meta.galleryStates.find(({ id }) => id === stateId);
     entrySettled = true;
     render();

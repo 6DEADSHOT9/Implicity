@@ -4,13 +4,13 @@ import posthog from "posthog-js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import actions from "../../../contracts/actions.json" with { type: "json" };
 import { BrowserCaptureProvider, useCapture, type CaptureRegistry } from "./capture";
-import { SESSION_STORAGE_KEY } from "./capture-session";
+import { SESSIONS_KEY, TAB_SESSION_KEY } from "./capture-session";
 
 vi.mock("posthog-js", () => ({ default: { init: vi.fn(), capture: vi.fn() } }));
 
 const registry: CaptureRegistry = { version: 7, entries: new Map() };
 const idle = actions.session_idle_milliseconds;
-type Sent = { name: string; session_id: string; local_hour_bucket?: string };
+type Sent = { name: string; session_id: string; timestamp: string; local_hour_bucket?: string; sdkTimestamp?: Date };
 
 let emitWithoutInput: () => void = () => {};
 function Probe() {
@@ -25,7 +25,7 @@ async function sent(): Promise<Sent[]> {
     await vi.dynamicImportSettled();
     for (let tick = 0; tick < 5; tick += 1) await Promise.resolve();
   });
-  return vi.mocked(posthog.capture).mock.calls.map(([name, properties]) => ({ name, ...(properties as Omit<Sent, "name">) }));
+  return vi.mocked(posthog.capture).mock.calls.map(([name, properties, options]) => ({ name, ...(properties as Omit<Sent, "name">), sdkTimestamp: options?.timestamp }));
 }
 
 /** No event may carry a session id after that id's session_ended. */
@@ -51,6 +51,7 @@ beforeEach(() => {
   vi.stubEnv("VITE_POSTHOG_HOST", "http://posthog.test");
   vi.mocked(posthog.capture).mockClear();
   sessionStorage.clear();
+  localStorage.clear();
 });
 
 afterEach(() => {
@@ -167,21 +168,91 @@ describe("browser capture provider", () => {
     const events = await sent();
     expect(events.map(({ name }) => name)).toEqual(["session_started", "search_used", "search_used"]);
     expect(new Set(events.map(({ session_id }) => session_id)).size).toBe(1);
-    expect(JSON.parse(sessionStorage.getItem(SESSION_STORAGE_KEY) ?? "{}")).toMatchObject({ id: events[0].session_id, ended: false });
+    expect(JSON.parse(sessionStorage.getItem(TAB_SESSION_KEY) ?? "{}")).toMatchObject({ id: events[0].session_id });
+    expect(JSON.parse(localStorage.getItem(SESSIONS_KEY) ?? "{}")[events[0].session_id]).toMatchObject({ ended: false });
   });
 
-  it("renders and still captures when session storage throws", async () => {
+  it("renders and still captures when session and local storage throw", async () => {
     // jsdom's window and Vitest's global scope hold separate bindings, so replace both.
-    const targets = [window, globalThis].map((target) => [target, Object.getOwnPropertyDescriptor(target, "sessionStorage")] as const);
+    const targets = [window, globalThis].flatMap((target) => (["sessionStorage", "localStorage"] as const).map((name) => [target, name, Object.getOwnPropertyDescriptor(target, name)] as const));
     const denied = { configurable: true, get(): Storage { throw new DOMException("denied", "SecurityError"); } };
-    for (const [target] of targets) Object.defineProperty(target, "sessionStorage", denied);
+    for (const [target, name] of targets) Object.defineProperty(target, name, denied);
     try {
-      expect(() => sessionStorage.getItem(SESSION_STORAGE_KEY)).toThrow("denied");
+      expect(() => sessionStorage.getItem(TAB_SESSION_KEY)).toThrow("denied");
+      expect(() => localStorage.getItem(SESSIONS_KEY)).toThrow("denied");
       mount();
       click();
       expect((await sent()).map(({ name }) => name)).toEqual(["session_started", "search_used"]);
     } finally {
-      for (const [target, descriptor] of targets) if (descriptor) Object.defineProperty(target, "sessionStorage", descriptor);
+      for (const [target, name, descriptor] of targets) if (descriptor) Object.defineProperty(target, name, descriptor);
     }
+  });
+
+  it("rotates to a new id after idle when storage keeps returning an old record but writes fail", async () => {
+    mount();
+    click();
+    const before = await sent();
+    // From here on the browser keeps returning these old values, and every write throws.
+    const snapshot = new Map([[TAB_SESSION_KEY, sessionStorage.getItem(TAB_SESSION_KEY)], [SESSIONS_KEY, localStorage.getItem(SESSIONS_KEY)]]);
+    const stale = { getItem: (key: string) => snapshot.get(key) ?? null, setItem: () => { throw new DOMException("full", "QuotaExceededError"); } } as unknown as Storage;
+    const targets = [window, globalThis].flatMap((target) => (["sessionStorage", "localStorage"] as const).map((name) => [target, name, Object.getOwnPropertyDescriptor(target, name)] as const));
+    for (const [target, name] of targets) Object.defineProperty(target, name, { configurable: true, get: () => stale });
+    try {
+      click();
+      act(() => { vi.advanceTimersByTime(idle); });
+      click();
+      act(() => { vi.advanceTimersByTime(idle); });
+      click();
+      const events = await sent();
+      expect(events.slice(before.length).map(({ name }) => name)).toEqual(["search_used", "session_ended", "session_started", "search_used", "session_ended", "session_started", "search_used"]);
+      const starts = events.filter(({ name }) => name === "session_started").map(({ session_id }) => session_id);
+      expect(new Set(starts).size).toBe(starts.length);
+      const ends = events.filter(({ name }) => name === "session_ended").map(({ session_id }) => session_id);
+      expect(new Set(ends).size).toBe(ends.length);
+      expectNothingAfterEnd(events);
+    } finally {
+      for (const [target, name, descriptor] of targets) if (descriptor) Object.defineProperty(target, name, descriptor);
+    }
+  });
+
+  it("ends two sessions over two idle intervals when the second starts from an event with no input", async () => {
+    mount();
+    act(() => { vi.advanceTimersByTime(idle); });
+    act(() => { emitWithoutInput(); });
+    act(() => { vi.advanceTimersByTime(idle); });
+    const events = await sent();
+    expect(events.map(({ name }) => name)).toEqual(["session_started", "session_ended", "session_started", "search_used", "session_ended"]);
+    expect(events[4].session_id).toBe(events[2].session_id);
+    expect(events[2].session_id).not.toBe(events[0].session_id);
+    expectNothingAfterEnd(events);
+  });
+
+  it("stamps a late end at the session's last activity, in the event and for the store", async () => {
+    mount();
+    vi.advanceTimersByTime(60_000);
+    click();
+    const lastActivity = new Date(Date.now()).toISOString();
+    vi.setSystemTime(Date.now() + 8 * 60 * 60 * 1000);
+    act(() => { emitWithoutInput(); });
+    const end = (await sent()).find(({ name }) => name === "session_ended");
+    expect(end).toMatchObject({ timestamp: lastActivity, local_hour_bucket: "morning" });
+    expect(end?.sdkTimestamp?.toISOString()).toBe(lastActivity);
+  });
+
+  it("renders a disabled provider and a temporary chat without storage records or the UUID API, and sends nothing", async () => {
+    const randomUUID = crypto.randomUUID;
+    Object.defineProperty(crypto, "randomUUID", { configurable: true, value: undefined });
+    try {
+      const disabled = mount({ enabled: false });
+      click();
+      disabled.unmount();
+      mount({ temporary: true });
+      click();
+      expect(sessionStorage.getItem(TAB_SESSION_KEY)).toBeNull();
+      expect(localStorage.getItem(SESSIONS_KEY)).toBeNull();
+    } finally {
+      Object.defineProperty(crypto, "randomUUID", { configurable: true, value: randomUUID });
+    }
+    expect(await sent()).toEqual([]);
   });
 });

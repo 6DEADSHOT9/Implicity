@@ -57,6 +57,20 @@ describe("validated capture", () => {
     expect(unknown({ name: "search_used" })).toBe(false);
   });
 
+  it("takes shared identity only from the provider context, never from the event payload", () => {
+    const raw = { conversation_id: "323e4567-e89b-42d3-a456-426614174000", kind: "coding", session_id: "423e4567-e89b-42d3-a456-426614174000", layout_version: 99 };
+    const send = vi.fn();
+    const withoutConversation = createValidatedCapture({ context, registry, send, ids: { has: () => false } });
+    expect(withoutConversation({ name: "search_used", ...raw } as never)).toBe(true);
+    expect(send.mock.calls[0][0]).not.toHaveProperty("conversation_id");
+    expect(send.mock.calls[0][0]).not.toHaveProperty("kind");
+    expect(send.mock.calls[0][0]).toMatchObject({ session_id: context.session_id, layout_version: 1 });
+    const appConversation = "223e4567-e89b-42d3-a456-426614174000";
+    const withConversation = createValidatedCapture({ context: { ...context, conversation_id: appConversation }, registry, send, ids: { has: () => false } });
+    expect(withConversation({ name: "search_used", ...raw } as never)).toBe(true);
+    expect(send.mock.calls[1][0]).toMatchObject({ conversation_id: appConversation, session_id: context.session_id });
+  });
+
   it("passes the shared conversation and kind fields through validation", () => {
     const send = vi.fn();
     const capture = createValidatedCapture({ context: { ...context, conversation_id: "223e4567-e89b-42d3-a456-426614174000", kind: "coding" }, registry, send, ids: { has: () => false } });
@@ -93,6 +107,7 @@ describe("validated capture", () => {
     const capture = createValidatedCapture({ context, registry, send: vi.fn(), ids: { has: (type, id) => type === "command" && id === workflow } });
     expect(capture({ name: "message_sent", length_bucket: "short", attachment_count: 0, command: "copy_answer" })).toBe(true);
     expect(capture({ name: "shortcut_used", command: "search" })).toBe(true);
+    expect(capture({ name: "setting_changed", dimension: "shortcut_chips", value: "on", command: "search" } as never)).toBe(true);
     expect(capture({ name: "setting_changed", dimension: "shortcut_chips", value: "on", command: workflow } as never)).toBe(true);
     expect(capture({ name: "shortcut_used", command: "not_declared" })).toBe(false);
     expect(capture({ name: "setting_changed", dimension: "shortcut_chips", value: "on", command: "not_declared" } as never)).toBe(false);

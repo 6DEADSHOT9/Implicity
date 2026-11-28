@@ -1,15 +1,17 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, type ReactNode } from "react";
 import validateEvent from "../contracts/event-validator.js";
 import schema from "../../../contracts/schemas/index.json" with { type: "json" };
 import type { Event } from "../contracts/generated";
 import type { SkeletonEntry } from "./define-skeleton";
 import { deviceClass, SECONDS_DECIMAL_PLACES } from "./capture-rules";
-import { createSessionHolder, safeSessionStore, watchSession } from "./capture-session";
+import { createSessionHolder, safeStore, watchSession, type SessionStamp } from "./capture-session";
 
 type SharedField = "event_id" | "timestamp" | "contracts_version" | "session_id" | "conversation_id" | "kind" | "layout_version" | "registry_version" | "device_class" | "input_type";
 export type EventName = Event["name"];
 export type CapturedEvent<N extends EventName = EventName> = N extends EventName ? Omit<Extract<Event, { name: N }>, SharedField> : never;
 export type CaptureSink = (event: CapturedEvent, producer?: string) => void;
+/** The wrapper's own sink: session events carry the stamp of the session they belong to. */
+type SessionCapture = (event: CapturedEvent, producer?: string, stamp?: SessionStamp) => boolean;
 export type AppIdType = "command" | "kind" | "proposal" | "decision";
 export type CaptureRegistry = { version: number; entries: ReadonlyMap<string, { meta: Pick<SkeletonEntry["meta"], "slots" | "defaultStates" | "commands"> }> };
 export type CaptureContextValue = Pick<Event, "session_id" | "layout_version"> & Pick<Partial<Event>, "conversation_id" | "kind">;
@@ -52,15 +54,15 @@ export function createValidatedCapture({ context: contextSource, registry, send,
       window.addEventListener("pointerdown", (event) => { inputType.current = ["mouse", "touch", "pen"].includes(event.pointerType) ? event.pointerType as typeof inputType.current : "mouse"; }, { passive: true });
     }
   }
-  return (fields: CapturedEvent, producer?: string) => {
+  return (fields: CapturedEvent, producer?: string, stamp?: SessionStamp) => {
     if (isExcludedEvent(fields.name)) return false;
     const context = typeof contextSource === "function" ? contextSource() : contextSource;
     const event = {
-      ...roundSeconds(fields),
+      ...roundSeconds(withoutSharedFields(fields)),
       event_id: crypto.randomUUID(),
-      timestamp: new Date().toISOString(),
+      timestamp: new Date(stamp?.timestamp ?? Date.now()).toISOString(),
       contracts_version: 1,
-      session_id: context.session_id,
+      session_id: stamp?.session_id ?? context.session_id,
       ...(context.conversation_id ? { conversation_id: context.conversation_id } : {}),
       ...(context.kind ? { kind: context.kind } : {}),
       layout_version: context.layout_version,
@@ -75,6 +77,14 @@ export function createValidatedCapture({ context: contextSource, registry, send,
 }
 
 export function isExcludedEvent(name: string) { return excludedEvents.has(name); }
+
+const sharedFields: readonly SharedField[] = ["event_id", "timestamp", "contracts_version", "session_id", "conversation_id", "kind", "layout_version", "registry_version", "device_class", "input_type"];
+/** Shared fields come only from the provider's context, never from the caller's payload. */
+function withoutSharedFields(fields: CapturedEvent): CapturedEvent {
+  const own = { ...fields } as Record<string, unknown>;
+  for (const key of sharedFields) delete own[key];
+  return own as CapturedEvent;
+}
 
 function hasRegistryValues(event: Event, registry: CaptureRegistry, ids: { has: (type: AppIdType, id: string) => boolean }, producer?: string) {
   if ("component" in event && event.component) {
@@ -117,24 +127,28 @@ export function BrowserCaptureProvider({ children, registry, ids = emptyIds, tem
   kind?: string;
 }) {
   const active = enabled && !temporary;
-  const captureRef = useRef<CaptureSink>(() => {});
-  const [holder] = useState(() => createSessionHolder({ store: safeSessionStore(), emit: (event) => captureRef.current(event) }));
+  const captureRef = useRef<SessionCapture>(() => false);
+  // Capture state exists only for an active provider: a disabled one or a temporary chat is a plain no-op.
+  const holder = useMemo(() => active
+    ? createSessionHolder({ tab: safeStore(() => sessionStorage), shared: safeStore(() => localStorage), top: window.top === window, emit: (event, stamp) => { captureRef.current(event, undefined, stamp); } })
+    : undefined, [active]);
   const sink = useMemo<CaptureSink>(() => {
-    if (!active) {
-      captureRef.current = () => {};
+    if (!holder) {
+      captureRef.current = () => false;
       return () => {};
     }
     const capture = createPostHogCapture(() => ({ session_id: holder.id, layout_version: layoutVersion, ...(conversationId ? { conversation_id: conversationId } : {}), ...(kind ? { kind } : {}) }), registry, ids);
     captureRef.current = capture;
     return (event, producer) => {
-      if (event.name !== "session_started" && event.name !== "session_ended") holder.ensureActive();
-      capture(event, producer);
+      if (event.name === "session_started" || event.name === "session_ended") return;
+      holder.ensureActive();
+      if (capture(event, producer)) holder.recordEvent();
     };
-  }, [active, holder, layoutVersion, conversationId, kind, registry, ids]);
+  }, [holder, layoutVersion, conversationId, kind, registry, ids]);
   useEffect(() => {
-    if (!active) return;
+    if (!holder) return;
     return watchSession(holder);
-  }, [active, holder]);
+  }, [holder]);
   return <CaptureProvider sink={sink}>{children}</CaptureProvider>;
 }
 
@@ -152,9 +166,9 @@ export function recordingCapture() {
   return { events, sink: (event: CapturedEvent) => void events.push(event) };
 }
 
-export function createPostHogCapture(context: CaptureContextValue | (() => CaptureContextValue), registry: CaptureRegistry, ids: { has: (type: AppIdType, id: string) => boolean }, config = { apiKey: import.meta.env.VITE_POSTHOG_API_KEY, apiHost: import.meta.env.VITE_POSTHOG_HOST || "http://127.0.0.1:18000" }): CaptureSink {
+export function createPostHogCapture(context: CaptureContextValue | (() => CaptureContextValue), registry: CaptureRegistry, ids: { has: (type: AppIdType, id: string) => boolean }, config = { apiKey: import.meta.env.VITE_POSTHOG_API_KEY, apiHost: import.meta.env.VITE_POSTHOG_HOST || "http://127.0.0.1:18000" }): SessionCapture {
   const { apiKey, apiHost } = config;
-  if (!apiKey) return () => {};
+  if (!apiKey) return () => false;
   posthogClient ??= import("posthog-js").then(({ default: client }) => {
     if (!posthogInitialized) {
       client.init(apiKey, postHogOptions(apiHost));
@@ -162,7 +176,11 @@ export function createPostHogCapture(context: CaptureContextValue | (() => Captu
     }
     return client;
   });
-  return createValidatedCapture({ context, registry, ids, send: (event) => { void posthogClient?.then((client) => client.capture(event.name, event as unknown as Record<string, unknown>, event.name === "session_ended" ? { send_instantly: true, transport: "sendBeacon" } : undefined)); } });
+  return createValidatedCapture({ context, registry, ids, send: (event) => {
+    // The store's own event time is what the event source groups by, so it matches the contract timestamp (a late end is in the past).
+    const options = { timestamp: new Date(event.timestamp), ...(event.name === "session_ended" ? { send_instantly: true, transport: "sendBeacon" as const } : {}) };
+    void posthogClient?.then((client) => client.capture(event.name, event as unknown as Record<string, unknown>, options));
+  } });
 }
 
 export function postHogOptions(apiHost: string) {
