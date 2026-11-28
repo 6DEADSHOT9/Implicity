@@ -239,7 +239,7 @@ test("ChangeNotice shown events follow native disclosure and completed opacity r
   await disclosure.click();
   await expect.poll(shownDecisions).toEqual([disclosedDecision]);
 
-  await opacityCase.evaluate((element) => new Promise<void>((resolve) => {
+  await opacityCase.evaluate((element: HTMLDivElement) => new Promise<void>((resolve) => {
     const onTransitionEnd = (event: TransitionEvent) => {
       if (event.target !== element || event.propertyName !== "opacity") return;
       element.removeEventListener("transitionend", onTransitionEnd);
