@@ -275,7 +275,12 @@ def test_session_derived_rows_require_session_id(tmp_path):
     app_store = create_store("app", bind)
     agent_store = create_store("agent", bind)
     for row, store in (
-        (Message(id="message", session_id=None, data={}), app_store),
+        (
+            Message(
+                id="message", session_id=None, conversation_id="conversation", data={}
+            ),
+            app_store,
+        ),
         (AgentSession(id="agent-session", session_id=None, data={}), agent_store),
     ):
         with pytest.raises(ValueError, match="requires session_id"):

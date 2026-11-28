@@ -13,6 +13,56 @@ test("native IntersectionObserver detects a scroll across the half-visible bound
   expect(event.seconds_visible).toBeGreaterThanOrEqual(3);
 });
 
+test("a tall narrow component counts when half of the component is visible", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto("/tests/browser/use-seen.html");
+  const target = page.locator("#seen-target");
+  await target.evaluate((element) => {
+    Object.assign(element.style, { width: "160px", height: "900px" });
+  });
+  const visibleRatio = await target.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const visibleHeight = Math.max(0, Math.min(rect.bottom, innerHeight) - Math.max(rect.top, 0));
+    return visibleHeight / rect.height;
+  });
+  expect(visibleRatio).toBeGreaterThan(0.9);
+  await expect.poll(() => page.evaluate(() => window.seenEvents.length), { timeout: 5000 }).toBe(1);
+});
+
+test("an offscreen scroll area is not seen until it enters the window", async ({ page }) => {
+  await page.goto("/tests/browser/offscreen-scroll-seen.html?offscreen");
+  await expect.poll(() => page.evaluate(() => window.offscreenRootVisible)).toBe(false);
+  const startedAt = await page.evaluate(() => performance.now());
+  await expect.poll(() => page.evaluate((start) => performance.now() - start, startedAt), { timeout: 5000 }).toBeGreaterThanOrEqual(3200);
+  expect(await page.evaluate(() => window.seenEvents)).toEqual([]);
+  await page.evaluate(() => window.scrollTo(0, 1200));
+  await expect.poll(() => page.evaluate(() => window.offscreenRootVisible)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.seenEvents.length), { timeout: 6500 }).toBe(1);
+});
+
+test("a target outside a partly visible scroll area is not seen until the target enters the window", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto("/tests/browser/offscreen-scroll-seen.html");
+  await page.locator("#seen-target").waitFor();
+  const startedAt = await page.evaluate(() => performance.now());
+  await expect.poll(() => page.evaluate((start) => performance.now() - start, startedAt), { timeout: 5000 }).toBeGreaterThanOrEqual(3200);
+  expect(await page.evaluate(() => window.seenEvents)).toEqual([]);
+  await page.evaluate(() => window.scrollTo(0, 100));
+  await expect.poll(() => page.evaluate(() => window.seenEvents.length), { timeout: 6500 }).toBe(1);
+});
+
+test("a tall target must cover half the scroll area after window clipping", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto("/tests/browser/offscreen-scroll-seen.html?tall");
+  await page.locator("#seen-target").waitFor();
+  await page.evaluate(() => window.scrollTo(0, 100));
+  const startedAt = await page.evaluate(() => performance.now());
+  await expect.poll(() => page.evaluate((start) => performance.now() - start, startedAt), { timeout: 5000 }).toBeGreaterThanOrEqual(3200);
+  expect(await page.evaluate(() => window.seenEvents)).toEqual([]);
+  await page.evaluate(() => window.scrollTo(0, 150));
+  await expect.poll(() => page.evaluate(() => window.seenEvents.length), { timeout: 6500 }).toBe(1);
+});
+
 test("a hidden data-visible ancestor is not seen and starts a new stretch after reveal", async ({ page }) => {
   await page.goto("/tests/browser/use-seen.html");
   await page.locator("#seen-target").waitFor();

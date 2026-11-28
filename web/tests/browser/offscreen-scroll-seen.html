@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Offscreen scroll seen fixture</title>
+    <style>html, body { margin: 0; min-height: 2400px; } #scroll-root { position: absolute; top: var(--root-top, 768px); left: 20px; width: 240px; height: 200px; overflow-y: auto; } #seen-target { margin-top: 70px; height: var(--target-height, 100px); }</style>
+    <script>const params = new URLSearchParams(location.search); document.documentElement.style.setProperty('--root-top', params.has('offscreen') ? '1200px' : '768px'); if (params.has('tall')) document.documentElement.style.setProperty('--target-height', '900px');</script>
+  </head>
+  <body><div id="scroll-root"><div id="root"></div></div><script type="module" src="/tests/browser/offscreen-scroll-seen.tsx"></script></body>
+</html>

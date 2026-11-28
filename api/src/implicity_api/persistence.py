@@ -1,7 +1,7 @@
 import json
 from typing import Any
 
-from sqlalchemy import event, select
+from sqlalchemy import event, select, update
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.sql import visitors
@@ -100,6 +100,11 @@ class ModuleStore:
         with self._session() as session:
             return session.scalars(select(model)).all()
 
+    def filter_by(self, model: type, **filters: Any) -> list[Any]:
+        _check_model(model, self.__owner)
+        with self._session() as session:
+            return session.scalars(select(model).filter_by(**filters)).all()
+
     def insert(self, row: Any):
         self._validate(row)
         with self._session() as session, session.begin():
@@ -122,6 +127,37 @@ class ModuleStore:
                 session.merge(row)
             session.flush()
         return rows
+
+    def attach_message_spec(self, message_id: str, spec_id: str) -> str | None:
+        if self.__owner != "app":
+            raise PermissionError("Only the app store owns message specs")
+        with self._session() as session, session.begin():
+            message = session.get(Message, message_id)
+            if message is None:
+                return "message_missing"
+            spec = session.get(MessageSpec, spec_id)
+            if spec is None:
+                return "spec_missing"
+            if message.data.get("role") != "assistant":
+                return "not_assistant"
+            existing = message.data.get("message_spec_id")
+            if spec.session_id is not None:
+                return (
+                    "already_attached"
+                    if existing != spec_id or spec.session_id != message.session_id
+                    else None
+                )
+            if existing is not None and existing != spec_id:
+                return "message_has_spec"
+            claimed = session.execute(
+                update(MessageSpec)
+                .where(MessageSpec.id == spec_id, MessageSpec.session_id.is_(None))
+                .values(session_id=message.session_id)
+            )
+            if claimed.rowcount != 1:
+                return "already_attached"
+            message.data = {**message.data, "message_spec_id": spec_id}
+        return None
 
     def delete_unattached_message_specs_before(self, cutoff) -> int:
         if self.__owner != "app":

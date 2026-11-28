@@ -1,5 +1,5 @@
 {
-  "registry_version": 8,
+  "registry_version": 9,
   "components": [
     "AppShell",
     "ApprovalRequest",
@@ -382,7 +382,6 @@
         },
         "required": [
           "title",
-          "kind",
           "settingsOpen"
         ],
         "additionalProperties": false
@@ -608,6 +607,12 @@
               ],
               "additionalProperties": false
             }
+          },
+          "disabled": {
+            "type": "boolean"
+          },
+          "attachmentsEnabled": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -1224,6 +1229,13 @@
           "content": {
             "type": "string",
             "minLength": 1
+          },
+          "longAnswerState": {
+            "type": "string",
+            "enum": [
+              "folded",
+              "open"
+            ]
           }
         },
         "required": [
@@ -1231,11 +1243,22 @@
         ],
         "additionalProperties": false
       },
-      "slots": [],
+      "slots": [
+        "long_answer"
+      ],
       "slots_schema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
-        "properties": {},
+        "properties": {
+          "long_answer": {
+            "maxItems": 0,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            }
+          }
+        },
         "additionalProperties": false
       },
       "limits": {

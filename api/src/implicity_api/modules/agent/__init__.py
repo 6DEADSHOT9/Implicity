@@ -5,7 +5,7 @@ import os
 import threading
 import time
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from contextlib import aclosing, suppress
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
@@ -403,9 +403,9 @@ class HermesAgent:
                 await asyncio.to_thread(self.quota)
             return SkillResult(result)
 
-    async def send(
+    def admit(
         self, conversation_id: str, message: UserMessage, turn_type: TurnType = "chat"
-    ) -> AsyncIterator[dict[str, Any]]:
+    ) -> tuple[AsyncIterator[dict[str, Any]], Callable[[], None]]:
         if turn_type not in {"chat", "background"}:
             raise ValueError("Invalid turn type")
         if not isinstance(message, UserMessage):
@@ -416,12 +416,39 @@ class HermesAgent:
             raise ValueError("Conversation has not been started")
         if not self._api_key:
             raise RuntimeError("Hermes API key is not configured")
-
         cancelled = asyncio.Event()
         with self._active_lock:
             if conversation_id in self._active:
                 raise RuntimeError("Conversation is already streaming")
             self._active[conversation_id] = cancelled
+
+        def release() -> None:
+            with self._active_lock:
+                if self._active.get(conversation_id) is cancelled:
+                    self._active.pop(conversation_id, None)
+
+        return self._send_admitted(
+            conversation_id, message, turn_type, session, cancelled
+        ), release
+
+    async def send(
+        self, conversation_id: str, message: UserMessage, turn_type: TurnType = "chat"
+    ) -> AsyncIterator[dict[str, Any]]:
+        parts, release = self.admit(conversation_id, message, turn_type)
+        try:
+            async for part in parts:
+                yield part
+        finally:
+            release()
+
+    async def _send_admitted(
+        self,
+        conversation_id: str,
+        message: UserMessage,
+        turn_type: TurnType,
+        session: AgentSession,
+        cancelled: asyncio.Event,
+    ) -> AsyncIterator[dict[str, Any]]:
         headers = {"Authorization": f"Bearer {self._api_key}"}
         payload = {
             "model": "hermes-agent",
@@ -675,6 +702,9 @@ class HermesAgent:
             }
             yield {"type": "finish"}
         finally:
+            with self._active_lock:
+                if self._active.get(conversation_id) is cancelled:
+                    self._active.pop(conversation_id, None)
             cancel_task.cancel()
             if read_task and not read_task.done():
                 read_task.cancel()
@@ -683,18 +713,22 @@ class HermesAgent:
                 *(task for task in (read_task,) if task is not None),
                 return_exceptions=True,
             )
-            with self._active_lock:
-                if self._active.get(conversation_id) is cancelled:
-                    self._active.pop(conversation_id, None)
 
 
 async def stream_sse(
     agent: HermesAgent, conversation_id: str, message: UserMessage
 ) -> AsyncIterator[str]:
-    async with aclosing(agent.send(conversation_id, message)) as parts:
+    async for event in stream_parts_sse(agent.send(conversation_id, message)):
+        yield event
+
+
+async def stream_parts_sse(
+    parts: AsyncIterator[dict[str, Any]],
+) -> AsyncIterator[str]:
+    async with aclosing(parts):
         async for part in parts:
             yield _sse(part)
-        yield "data: [DONE]\n\n"
+    yield "data: [DONE]\n\n"
 
 
 __all__ = [
@@ -708,5 +742,6 @@ __all__ = [
     "TurnType",
     "UserMessage",
     "stream_sse",
+    "stream_parts_sse",
     "store",
 ]

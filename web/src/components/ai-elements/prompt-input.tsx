@@ -493,6 +493,8 @@ export type PromptInputProps = Omit<
   // e.g., "image/*" or leave undefined for any
   accept?: string;
   multiple?: boolean;
+  attachmentsEnabled?: boolean;
+  onAttachmentRejected?: () => void;
   // When true, accepts drops anywhere on document. Default false (opt-in).
   globalDrop?: boolean;
   // Render a hidden input with given name and keep it in sync for native form posts. Default false.
@@ -515,6 +517,8 @@ export const PromptInput = ({
   className,
   accept,
   multiple,
+  attachmentsEnabled = true,
+  onAttachmentRejected,
   globalDrop,
   syncHiddenInput,
   maxFiles,
@@ -702,7 +706,10 @@ export const PromptInput = ({
     []
   );
 
-  const add = usingProvider ? addWithProviderValidation : addLocal;
+  const rejectFiles = useCallback((incoming: File[] | FileList) => {
+    if (incoming.length) onAttachmentRejected?.();
+  }, [onAttachmentRejected]);
+  const add = attachmentsEnabled ? usingProvider ? addWithProviderValidation : addLocal : rejectFiles;
   const remove = usingProvider ? controller.attachments.remove : removeLocal;
   const openFileDialog = usingProvider
     ? controller.attachments.openFileDialog
@@ -853,11 +860,10 @@ export const PromptInput = ({
             return (formData.get("message") as string) || "";
           })();
 
-      // Reset form immediately after capturing text to avoid race condition
-      // where user input during async blob conversion would be lost
-      if (!usingProvider) {
-        form.reset();
-      }
+      const clearSubmittedText = () => {
+        const textarea = form.querySelector<HTMLTextAreaElement>('textarea[name="message"]');
+        if (!usingProvider && textarea?.value === text) form.reset();
+      };
 
       try {
         // Convert blob URLs to data URLs asynchronously
@@ -881,6 +887,7 @@ export const PromptInput = ({
         if (result instanceof Promise) {
           try {
             await result;
+            clearSubmittedText();
             clear();
             if (usingProvider) {
               controller.textInput.clear();
@@ -890,6 +897,7 @@ export const PromptInput = ({
           }
         } else {
           // Sync function completed without throwing, clear inputs
+          clearSubmittedText();
           clear();
           if (usingProvider) {
             controller.textInput.clear();
@@ -909,6 +917,7 @@ export const PromptInput = ({
         accept={accept}
         aria-label="Upload files"
         className="hidden"
+        disabled={!attachmentsEnabled}
         multiple={multiple}
         onChange={handleChange}
         ref={inputRef}
@@ -949,13 +958,16 @@ export const PromptInputBody = ({
   <div className={cn("contents", className)} {...props} />
 );
 
-export type PromptInputTextareaProps = ComponentProps<
-  typeof InputGroupTextarea
->;
+export type PromptInputTextareaProps = ComponentProps<typeof InputGroupTextarea> & {
+  attachmentsEnabled?: boolean;
+  onAttachmentRejected?: () => void;
+};
 
 export const PromptInputTextarea = ({
   onChange,
   onKeyDown,
+  attachmentsEnabled = true,
+  onAttachmentRejected,
   className,
   placeholder = "What would you like to know?",
   ...props
@@ -1032,10 +1044,11 @@ export const PromptInputTextarea = ({
 
       if (files.length > 0) {
         event.preventDefault();
-        attachments.add(files);
+        if (attachmentsEnabled) attachments.add(files);
+        else onAttachmentRejected?.();
       }
     },
-    [attachments]
+    [attachments, attachmentsEnabled, onAttachmentRejected]
   );
 
   const handleCompositionEnd = useCallback(() => setIsComposing(false), []);

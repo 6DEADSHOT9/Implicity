@@ -64,8 +64,10 @@ Hermes keeps its configuration in a named volume. After the first start, run
 `docker compose exec hermes hermes setup` to configure it, then complete Codex
 subscription sign-in yourself inside the container. Keep that volume to retain the
 sign-in. Both API services run the T14 FastAPI app; development mounts `api/src`
-with Uvicorn reload enabled. The web service still keeps its scaffold runtime
-alive: web startup and hot reload depend on T16, which adds the runnable web app.
+with Uvicorn reload enabled. For chat, put the Hermes API key in `.env`, start the
+development profile with `make up-development`, apply the app migrations with
+`docker compose --profile development exec api-development uv run --locked alembic -c api/alembic.ini upgrade head`,
+then open `http://localhost:5173/chat.html`. Vite proxies `/api` to the API container.
 
 PostHog serves plain HTTP only on a loopback-bound port; its secure redirect and
 secure cookies are disabled for this local-only endpoint. The capture proxy routes
