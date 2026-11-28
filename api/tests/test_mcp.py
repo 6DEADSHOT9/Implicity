@@ -7,8 +7,8 @@ import httpx2
 import pytest
 from fastapi.testclient import TestClient
 from implicity_api.mcp import create_server
-from implicity_api.models import METADATA
 from implicity_api.models.app import Message, MessageSpec
+from implicity_api.models.metadata import METADATA
 from implicity_api.modules import app as app_module
 from implicity_api.persistence import create_store
 from mcp import Client
@@ -120,6 +120,7 @@ def test_catalogue_default_registry_is_the_highest_committed_snapshot():
 
 def test_mcp_is_reachable_from_the_api_over_streamable_http(monkeypatch):
     import implicity_api.app as app_module
+    import implicity_api.mcp as mcp_module
     from implicity_api.app import create_app
 
     app = create_app()
@@ -129,6 +130,14 @@ def test_mcp_is_reachable_from_the_api_over_streamable_http(monkeypatch):
 
     monkeypatch.setattr(app_module, "daily_backups", idle)
     monkeypatch.setattr(app_module, "discard_unattached_message_specs", lambda: None)
+    managers = []
+
+    def track_server():
+        server = create_server()
+        managers.append(server)
+        return server
+
+    monkeypatch.setattr(mcp_module, "create_server", track_server)
 
     async def check():
         async with httpx2.AsyncClient(
@@ -142,8 +151,16 @@ def test_mcp_is_reachable_from_the_api_over_streamable_http(monkeypatch):
                     "render",
                 }
 
-    with TestClient(app):
-        anyio.run(check)
+    async def check_lifespan():
+        async with app.router.lifespan_context(app):
+            async with anyio.create_task_group() as clients:
+                clients.start_soon(check)
+                clients.start_soon(check)
+
+    anyio.run(check_lifespan)
+    assert len(managers) == 1
+    anyio.run(check_lifespan)
+    assert len(managers) == 2
 
 
 def test_api_discards_expired_specs_at_startup(monkeypatch):

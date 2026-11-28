@@ -1,11 +1,7 @@
 import json
 from typing import Any
 
-from implicity_contracts.codec import decode_contract, encode_contract
-from implicity_contracts.generated import Decision as ContractDecision
-from implicity_contracts.generated import Spec as ContractSpec
-from jsonschema.exceptions import ValidationError as JSONSchemaValidationError
-from sqlalchemy import delete, event, select
+from sqlalchemy import event, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.sql import visitors
@@ -14,10 +10,11 @@ from sqlalchemy.sql.schema import Table
 from sqlalchemy.sql.selectable import TableClause
 
 from implicity_api.db import engine as default_engine
-from implicity_api.models import METADATA
 from implicity_api.models.agent import AgentSession
 from implicity_api.models.app import Message, MessageSpec
 from implicity_api.models.engine import Decision
+from implicity_api.models.metadata import METADATA
+from implicity_api.stores.app import delete_unattached_message_specs_before
 
 TABLE_OWNERS = {
     table.name: owner
@@ -26,10 +23,6 @@ TABLE_OWNERS = {
 }
 OWNER_BY_METADATA = {metadata: owner for owner, metadata in METADATA.items()}
 SESSION_REQUIRED = (Message, AgentSession)
-CONTRACT_PAYLOADS = {
-    Decision: ContractDecision,
-    MessageSpec: ContractSpec,
-}
 
 
 class _OwnedSession(Session):
@@ -133,20 +126,22 @@ class ModuleStore:
     def delete_unattached_message_specs_before(self, cutoff) -> int:
         if self.__owner != "app":
             raise PermissionError("Only the app store owns message specs")
-        statement = delete(MessageSpec).where(
-            MessageSpec.session_id.is_(None), MessageSpec.created_at < cutoff
-        )
-        _check_tables(statement, self.__owner)
-        with self._session() as session, session.begin():
-            return session.execute(statement).rowcount
+        return delete_unattached_message_specs_before(cutoff, self.__engine)
 
     def _validate(self, row: Any) -> None:
         model = type(row)
         _check_model(model, self.__owner)
         if isinstance(row, SESSION_REQUIRED) and not row.session_id:
             raise ValueError(f"{model.__tablename__} requires session_id")
-        contract = CONTRACT_PAYLOADS.get(model)
-        if contract:
+        if model in (Decision, MessageSpec):
+            from implicity_contracts.codec import decode_contract, encode_contract
+            from implicity_contracts.generated import Decision as ContractDecision
+            from implicity_contracts.generated import Spec as ContractSpec
+            from jsonschema.exceptions import (
+                ValidationError as JSONSchemaValidationError,
+            )
+
+            contract = ContractDecision if model is Decision else ContractSpec
             try:
                 value = decode_contract(json.dumps(row.data, allow_nan=False))
                 if not isinstance(value, contract):
