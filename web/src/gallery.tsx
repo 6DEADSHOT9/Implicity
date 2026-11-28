@@ -6,6 +6,7 @@ import tokens from "../../contracts/looks/tokens.json" with { type: "json" };
 import { registry as defaultRegistry, type SkeletonEntry } from "./registry";
 import { PrimitiveGallery } from "./components/primitive-gallery";
 import { ChangeNoticeToastHost } from "./components/change-notice-toast-host";
+import "./tokens.css";
 import "./gallery.css";
 
 const availableLooks = [looks, focused, notebook];

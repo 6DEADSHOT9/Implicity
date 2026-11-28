@@ -9,6 +9,8 @@ import { builtPreviewUrl, selectGallerySettings } from "./gallery-test-helpers";
 import { openPickerPreview } from "./widget-picker-test-helpers";
 
 const lookById = { default: defaultLook, focused: focusedLook, notebook: notebookLook };
+const primitiveGalleryUrl = builtPreviewUrl("/tests/browser/focused-gallery.html");
+const reviewPanelUrl = builtPreviewUrl("/tests/browser/focused-gallery.html?ids=ReviewPanel&" + new URLSearchParams({ preview: "ReviewPanel · plain" }));
 
 function contentGalleryUrl(previews: readonly string[] = [], device?: "desktop" | "tablet") {
   const search = new URLSearchParams(previews.map((title) => ["preview", title]));
@@ -102,7 +104,7 @@ test("base primitives stay in the gallery across token selections", async ({ pag
 });
 
 test("Button variants and Tabs triggers meet 4.5:1 contrast in every look and mode", async ({ page }) => {
-  await page.goto("/tests/browser/gallery.html");
+  await page.goto(primitiveGalleryUrl, { waitUntil: "domcontentloaded" });
   for (const look of ["default", "focused", "notebook"]) {
     await page.getByLabel("Look").selectOption(look);
     for (const mode of ["light", "dark"]) {
@@ -284,7 +286,7 @@ test("Preflight preserves gallery heading hierarchy and token-bordered controls"
 });
 
 test("focus rings are painted with 3:1 contrast on shared controls in every look and mode", async ({ page }) => {
-  await page.goto("/tests/browser/gallery.html");
+  await page.goto(primitiveGalleryUrl, { waitUntil: "domcontentloaded" });
   const marker = page.getByRole("note", { name: "Remembered from your earlier conversation about travel" });
   await expect(marker).toBeVisible();
   await expect(marker).toContainText("This answer used saved context.");
@@ -576,19 +578,22 @@ test("waits for the requested fixture before sending its first height", async ({
   let importRequested!: () => void;
   const heldImport = new Promise<void>((resolve) => { releaseImport = resolve; });
   const importStarted = new Promise<void>((resolve) => { importRequested = resolve; });
-  await page.route("**/ReviewPanel/entry*", async (route) => {
-    if (route.request().frame() === page.mainFrame()) return route.continue();
+  await page.route("**/assets/ReviewPanel-*.js", async (route) => {
+    if (route.request().frame() === page.mainFrame()) {
+      // The host imports the same chunk to build its registry. Keep its response out of the preview's cache.
+      const response = await route.fetch();
+      return route.fulfill({ response, headers: { ...response.headers(), "cache-control": "no-store" } });
+    }
     importRequested();
     const response = await route.fetch();
     await heldImport;
     await route.fulfill({ response });
   });
-  await page.goto("/tests/browser/gallery.html", { waitUntil: "commit" });
+  await page.goto(reviewPanelUrl, { waitUntil: "commit" });
   const frame = page.locator("iframe[title='ReviewPanel · plain']");
   await expect(frame).toBeAttached();
   await importStarted;
-  const placeholder = await sampleHeightAcrossFrames(frame);
-  releaseImport();
+  const placeholder = await sampleHeightAcrossFrames(frame).finally(releaseImport);
   expect(placeholder).toMatchObject({ firstHeight: 1, height: 1, stable: false });
   await expect(frame.contentFrame().locator(".review-panel")).toBeVisible();
   await expect.poll(() => frame.getAttribute("height").then(Number)).toBeGreaterThan(1);
@@ -748,21 +753,25 @@ test("preview ignores styling messages from unrelated same-origin frames", async
 });
 
 test("Notebook applies its bundled body font, paper texture, and both mode palettes without changing Skeleton headings", async ({ page }) => {
-  await page.goto("/tests/browser/gallery.html");
+  await page.goto(reviewPanelUrl, { waitUntil: "domcontentloaded" });
   await page.getByLabel("Look").selectOption("notebook");
   const frame = page.locator("iframe[title='ReviewPanel · plain']");
   await expect(frame.contentFrame().locator("html")).toHaveAttribute("data-look", "notebook");
   await waitForStableHeight(frame);
   const root = page.locator("[data-gallery-root]");
-  const bodyFont = await root.evaluate((element) => getComputedStyle(element).fontFamily);
-  expect(bodyFont).toContain("Source Serif 4");
+  await expect(root).toHaveCSS("font-family", /Source Serif 4/);
   const preview = page.frameLocator("iframe[title='ReviewPanel · plain']");
   const previewRoot = preview.locator("html");
   await expect(previewRoot).toHaveAttribute("data-look", "notebook");
   await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentDocument?.fonts.status)).toBe("loaded");
   await waitForStableHeight(frame);
   const previewHeading = preview.locator("[data-preview-heading]");
-  const previewBodyFont = await preview.locator("body").evaluate((element) => getComputedStyle(element).fontFamily);
+  const previewBody = preview.locator("body");
+  await expect(previewBody).toHaveCSS("font-family", /Source Serif 4/);
+  const previewBodyFont = await previewBody.evaluate(async (element) => {
+    await element.ownerDocument.fonts.load('16px "Source Serif 4"');
+    return getComputedStyle(element).fontFamily;
+  });
   expect(await previewHeading.evaluate((element) => getComputedStyle(element).fontFamily)).toBe(previewBodyFont);
   for (const size of ["1", "2", "3", "4", "5"] as const) {
     await page.getByLabel("Text size").selectOption(size);
@@ -930,7 +939,8 @@ test("open WidgetPicker gallery states show dialogs without moving focus on page
 });
 
 test("conversation gallery renders every declared state", async ({ page }) => {
-  await page.goto("/tests/browser/conversation-gallery.html");
+  await page.goto(builtPreviewUrl("/tests/browser/conversation-gallery.html"), { waitUntil: "domcontentloaded" });
+  await expect(page.locator("[data-gallery-root]")).toBeAttached();
   const states = await page.locator(".gallery-card[data-skeleton]").evaluateAll((elements) => elements.map((element) => `${element.getAttribute("data-skeleton")} · ${element.getAttribute("data-gallery-state")}`));
   expect(new Set(states.map((title) => title.split(" · ")[0]))).toEqual(new Set(["MessageBody", "Details", "RunActivity", "MessageActions", "AttachmentTray", "Citation", "ContextChip", "ShortcutChips", "ApprovalRequest"]));
   await expect.poll(() => page.locator("iframe").evaluateAll((frames, expectedTitles) => {
@@ -1097,7 +1107,7 @@ test("content skeletons survive every tablet gallery setting", async ({ page }) 
 });
 
 test("conversation skeletons survive every desktop gallery setting", async ({ page }) => {
-  await assertGalleryMatrix(page, "desktop", "/tests/browser/conversation-gallery.html", conversationMatrixNames, conversationMatrixNames);
+  await assertGalleryMatrix(page, "desktop", builtPreviewUrl("/tests/browser/conversation-gallery.html"), conversationMatrixNames, conversationMatrixNames);
 });
 
 test("conversation skeletons survive every tablet gallery setting", async ({ page }) => {
@@ -1105,7 +1115,9 @@ test("conversation skeletons survive every tablet gallery setting", async ({ pag
 });
 
 test("content controls use their host, show focus rings, preserve list markers, and apply chart tokens", async ({ page }) => {
-  await page.goto("/tests/browser/content-gallery.html");
+  await page.goto(contentGalleryUrl([
+    "DataTable · table", "Checklist · default", "Tabs · default", "List · default", "DataChart · bar",
+  ]), { waitUntil: "domcontentloaded" });
   const table = page.frameLocator('iframe[title="DataTable · table"]');
   const tableButton = table.getByRole("button", { name: "Table" });
   await tableButton.focus();
