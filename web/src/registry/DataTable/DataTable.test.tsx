@@ -5,6 +5,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { CaptureProvider, recordingCapture } from "../capture";
 import { registry } from "../index";
+import { DataTable } from "./DataTable";
 import { propsSchema } from "./schema";
 
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
@@ -122,12 +123,30 @@ describe("DataTable public registry entry", () => {
   }
   act(() => root.unmount());
  });
- it("shows headers while rows are empty and keeps the chart switcher available", () => {
+ it("keeps ordinary empty tables empty and shows headers for Markdown tables", () => {
   const host = document.createElement("div");
   const root = createRoot(host);
-  act(() => root.render(<entry.Component props={{ columns: ["Name", "Value"], rows: [], form: "table" }} slots={{}} />));
+  const recorder = recordingCapture();
+  act(() => root.render(<CaptureProvider sink={recorder.sink}><entry.Component props={{ columns: ["Name", "Value"], rows: [], form: "table" }} slots={{}} /></CaptureProvider>));
+  expect(host.textContent).toContain("No data");
+  expect(recorder.events).toContainEqual({ name: "component_shown", component: "DataTable", default_state: "empty" });
+  act(() => root.render(<DataTable columns={["Name", "Value"]} rows={[]} renderedColumns={["Name", "Value"]} showEmptyHeaders form="table" state="default" />));
   expect(Array.from(host.querySelectorAll("thead th"), (cell) => cell.textContent)).toEqual(["Name", "Value"]);
-  act(() => root.render(<entry.Component props={{ columns: ["Name", "Value"], rows: [["A", "1"]], form: "chart" }} slots={{}} />));
+  act(() => root.unmount());
+ });
+
+ it("shows the representation switcher only when another representation exists", () => {
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  const onAction = vi.fn();
+  act(() => root.render(<entry.Component props={{ columns: ["Name"], rows: [["A"]], form: "table" }} slots={{}} onAction={onAction} />));
+  expect(host.querySelector('[aria-label="Data representation"]')).toBeNull();
+  act(() => root.render(<entry.Component props={{ columns: ["Name"], rows: [["A"]], form: "chart" }} slots={{}} onAction={onAction} />));
+  expect(host.querySelector('[aria-label="Data representation"]')).toBeTruthy();
+  act(() => (host.querySelector('[aria-label="Data representation"] button') as HTMLButtonElement).click());
+  expect(onAction).toHaveBeenCalledWith("representation", "table");
+  act(() => root.render(<entry.Component props={{ columns: ["Name"], rows: [["A"]], form: "chart" }} slots={{}} onAction={onAction} />));
+  expect(host.textContent).toContain("No data");
   expect(host.querySelector('[aria-label="Data representation"]')).toBeTruthy();
   act(() => root.unmount());
  });

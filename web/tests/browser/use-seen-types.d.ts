@@ -7,6 +7,7 @@ declare global {
     restoreSeenClock(): void;
     delaySeenObserver: boolean;
     pendingSeenObserverCallbacks: Array<() => void>;
+    chatSeenEvents: CapturedEvent[];
   }
 }
 

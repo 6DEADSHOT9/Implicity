@@ -42,7 +42,7 @@ function ConversationChat({ conversation, onQuotaRefresh }: { conversation: Conv
   const { messages, sendMessage, status, stop, error } = useChat({
     id: conversation.id,
     messages: conversation.messages.map(toUIMessage),
-    transport: new DefaultChatTransport({ api: "/api/chat", body: { session_id: getCurrentSessionId() } }),
+    transport: new DefaultChatTransport({ api: "/api/chat", body: () => ({ session_id: getCurrentSessionId() }) }),
   });
   const contentKey = messages.map((message) => message.parts.filter((part) => part.type === "text").map((part) => part.text).join("")).join("\n\n");
   useLayoutEffect(() => {
@@ -81,10 +81,10 @@ function ConversationChat({ conversation, onQuotaRefresh }: { conversation: Conv
       {(sendError || error) && <p role="alert" className="mx-auto mt-space-3 max-w-content text-destructive">{sendError || "The answer could not be loaded. Try again."}</p>}
     </div>
     <div className="mx-auto flex w-full max-w-content min-w-0 items-end gap-space-2 p-space-4">
-      <Composer attachments={[]} shortcuts={[]} disabled={status === "submitted" || status === "streaming"} attachmentsEnabled={false} onSubmit={(message) => {
+      <Composer attachments={[]} shortcuts={[]} disabled={status === "submitted" || status === "streaming"} attachmentsEnabled={false} onAttachmentRejected={() => setSendError("Attachments are not supported in chat. Your draft is unchanged.")} onSubmit={async (message) => {
         if (message.files.length) {
-          setSendError("Attachments are not supported yet. Remove the file before sending.");
-          return;
+          setSendError("Attachments are not supported in chat. Your draft is unchanged.");
+          throw new Error("Attachments are not supported in chat.");
         }
         setSendError(undefined);
         if (message.text.trim() && status !== "submitted" && status !== "streaming") void sendMessage({ text: message.text });
@@ -150,6 +150,6 @@ export function ChatApp() {
     navigation: [<ConversationNavigation key="navigation" items={conversations.map(({ id, title }) => ({ id, label: title }))} recent={[]} projects={[]} quota={quota} onNewChat={() => void newChat()} onSelect={(id) => void openConversation(id)} />],
     main: [conversation
       ? <ConversationChat key={`${conversation.id}-${conversationRevision}`} conversation={conversation} onQuotaRefresh={refreshQuota} />
-      : <main key="empty" className="flex min-h-svh flex-col items-center justify-center gap-space-3 p-space-4"><h1 className="text-heading-2 font-semibold">Implicity</h1><p>Start a conversation.</p><Button onClick={() => void newChat()}>New chat</Button>{error && <p role="alert">The chat service could not be reached.</p>}</main>],
+      : <main key="empty" className="flex h-full min-h-0 flex-col items-center justify-center gap-space-3 overflow-y-auto p-space-4"><h1 className="text-heading-2 font-semibold">Implicity</h1><p>Start a conversation.</p><Button onClick={() => void newChat()}>New chat</Button>{error && <p role="alert">The chat service could not be reached.</p>}</main>],
   }} />;
 }

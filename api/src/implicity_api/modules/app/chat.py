@@ -28,15 +28,17 @@ def get_conversation(app_store, conversation_id: str) -> dict | None:
     conversation = app_store.get(Conversation, conversation_id)
     if conversation is None:
         return None
-    messages = [
-        row for row in app_store.list(Message) if row.conversation_id == conversation_id
-    ]
+    messages = app_store.filter_by(Message, conversation_id=conversation_id)
     messages.sort(key=lambda row: (row.data["created_at"], row.id))
     return {
         "id": conversation.id,
         **conversation.data,
         "messages": [{"id": row.id, **row.data} for row in messages],
     }
+
+
+def conversation_exists(app_store, conversation_id: str) -> bool:
+    return app_store.get(Conversation, str(UUID(conversation_id))) is not None
 
 
 def save_message(

@@ -18,6 +18,15 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    if op.get_bind().execute(
+        sa.text(
+            "SELECT 1 FROM messages "
+            "WHERE conversation_id != session_id LIMIT 1"
+        )
+    ).first():
+        raise RuntimeError(
+            "Cannot downgrade while messages have distinct session and conversation ids"
+        )
     with op.batch_alter_table("messages") as batch:
         batch.drop_index("ix_messages_conversation_id")
         batch.drop_column("conversation_id")

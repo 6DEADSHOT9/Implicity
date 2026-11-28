@@ -104,12 +104,42 @@ describe("MessageBody", () => {
     expect(capture.events.filter(({ name, component }) => name === "component_shown" && component === "CodeBlock")).toHaveLength(1);
   });
 
+  it("keeps rendered code and tables mounted when streaming crosses the long boundary", () => {
+    const capture = recordingCapture();
+    const prefix = "```python\nprint(1)\n```\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n\n";
+    const short = prefix + "x".repeat(actions.length_cutoffs.answer.long - 1 - prefix.length);
+    const view = render(<CaptureProvider sink={capture.sink}><MessageBody content={short} streaming /></CaptureProvider>);
+    const code = view.container.querySelector("pre");
+    const table = view.container.querySelector("table");
+    view.rerender(<CaptureProvider sink={capture.sink}><MessageBody content={`${short}x`} streaming /></CaptureProvider>);
+    view.rerender(<CaptureProvider sink={capture.sink}><MessageBody content={`${short}x`} /></CaptureProvider>);
+    expect(view.container.querySelector("pre")).toBe(code);
+    expect(view.container.querySelector("table")).toBe(table);
+    for (const component of ["CodeBlock", "DataTable"]) {
+      expect(capture.events.filter((event) => event.name === "component_shown" && event.component === component)).toHaveLength(1);
+    }
+    expect(capture.events.filter((event) => event.name === "section_expanded" || event.name === "section_collapsed")).toEqual([]);
+  });
+
   it("uses the shared long-answer boundary", () => {
     const cutoff = actions.length_cutoffs.answer.long;
     const view = render(<MessageBody content={"x".repeat(cutoff - 1)} />);
     expect(screen.queryByRole("region", { name: "Long answer" })).toBeNull();
     view.rerender(<MessageBody content={"x".repeat(cutoff)} />);
     expect(screen.getByRole("region", { name: "Long answer" })).toBeTruthy();
+  });
+
+  it("uses a changed action cutoff instead of a matching literal", () => {
+    const original = actions.length_cutoffs.answer.long;
+    actions.length_cutoffs.answer.long = 17;
+    try {
+      const view = render(<MessageBody content={"x".repeat(16)} />);
+      expect(screen.queryByRole("region", { name: "Long answer" })).toBeNull();
+      view.rerender(<MessageBody content={"x".repeat(17)} />);
+      expect(screen.getByRole("region", { name: "Long answer" })).toBeTruthy();
+    } finally {
+      actions.length_cutoffs.answer.long = original;
+    }
   });
 
   it("folds at the shared 600-character lead limit and stops at 601", () => {
@@ -153,6 +183,19 @@ describe("MessageBody", () => {
     expect(screen.getByText("bold").getAttribute("data-streamdown")).toBe("strong");
     expect(screen.getByRole("img", { name: /alt.*example\.test/ })).toBeTruthy();
     expect(screen.getByText("bold").closest("td")?.className).toContain("whitespace-normal");
+  });
+
+  it("preserves rich Markdown in table headers and wraps long headers and cells", () => {
+    render(<MessageBody content={'| [Header link](https://example.test "title") `code` **bold** ![alt](http://example.test/image.png) long header text |\n| --- |\n| [Body link](https://example.test/body) `body-code` **body-bold** and a long body sentence |'} />);
+    const header = screen.getByRole("columnheader");
+    const headerLink = header.querySelector("a");
+    expect(headerLink?.getAttribute("href")).toBe("https://example.test/");
+    expect(headerLink?.getAttribute("rel")).toBe("noreferrer");
+    expect(header.querySelector("code")?.textContent).toBe("code");
+    expect(header.querySelector('[data-streamdown="strong"]')?.textContent).toBe("bold");
+    expect(screen.getByRole("img", { name: /alt.*example\.test/ })).toBeTruthy();
+    expect(header.className).toContain("whitespace-normal");
+    expect(screen.getByRole("cell").className).toContain("whitespace-normal");
   });
 });
 

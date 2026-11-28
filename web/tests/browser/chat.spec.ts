@@ -39,6 +39,123 @@ test("an open long answer counts as seen when it covers half a 375px viewport", 
   await page.waitForFunction(() => Boolean((window.seenEvents as Array<{ name: string; slot?: string }>).some((event) => event.name === "component_seen" && event.slot === "long_answer")), null, { timeout: 5000 });
 });
 
+test("an open long answer in the 375px chat is seen", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  const id = "550e8400-e29b-41d4-a716-446655440050";
+  const answer = `Long answer.\n\n${"A long paragraph remains in the chat viewport. ".repeat(520)}`;
+  const messages = [
+    { id: "user-1", role: "user", content: "A previous prompt. ".repeat(420) },
+    { id: "assistant-1", role: "assistant", content: answer },
+  ];
+  await page.route("**/api/conversations", (route) => route.fulfill({ json: [{ id, title: "New chat" }] }));
+  await page.route(`**/api/conversations/${id}`, (route) => route.fulfill({ json: { id, title: "New chat", messages } }));
+  await stubQuota(page);
+  await page.goto("/tests/browser/chat-seen-fixture.html");
+  const slot = page.locator('[data-slot="long_answer"]');
+  await expect(slot).toHaveAttribute("data-state", "folded");
+  await page.getByRole("button", { name: "Show more" }).click();
+  await expect(slot).toHaveAttribute("data-state", "open");
+  await slot.evaluate((element) => element.scrollIntoView({ block: "start" }));
+  await expect.poll(() => page.evaluate(() => window.chatSeenEvents.filter((event) => event.name === "component_seen" && event.slot === "long_answer" && event.default_state === "open").length), { timeout: 6500 }).toBe(1);
+  await expect(page.getByRole("heading", { name: "New chat" })).toBeInViewport();
+  await expect(page.getByRole("textbox", { name: "Message" })).toBeInViewport();
+});
+
+test("mobile navigation leaves the chat and its first and last actions reachable", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  let count = 0;
+  const streamServer = createServer((_request, response) => {
+    response.writeHead(200, { "content-type": "text/event-stream", "x-vercel-ai-ui-message-stream": "v1" });
+    response.write([
+      { type: "start", messageId: "assistant-1" },
+      { type: "text-start", id: "text-1" },
+      { type: "text-delta", id: "text-1", delta: "Streaming answer" },
+    ].map((part) => `data: ${JSON.stringify(part)}\n\n`).join(""));
+  });
+  await new Promise<void>((resolve) => streamServer.listen(0, "127.0.0.1", resolve));
+  const streamAddress = streamServer.address();
+  if (!streamAddress || typeof streamAddress === "string") throw new Error("Test stream server did not start");
+  const ids = Array.from({ length: 12 }, (_, index) => `550e8400-e29b-41d4-a716-${String(index + 1).padStart(12, "0")}`);
+  await page.route("**/api/conversations", async (route) => {
+    if (route.request().method() === "POST") {
+      await route.fulfill({ json: { id: ids[0], title: "New chat" } });
+      return;
+    }
+    await route.fulfill({ json: ids.slice(0, count).map((id) => ({ id, title: "New chat" })) });
+  });
+  await page.route("**/api/conversations/*", (route) => route.fulfill({ json: { id: new URL(route.request().url()).pathname.split("/").at(-1), title: "New chat", messages: [] } }));
+  await page.route("**/api/chat", (route) => route.continue({ url: `http://127.0.0.1:${streamAddress.port}/api/chat` }));
+  await stubQuota(page);
+  await page.goto("/chat.html");
+  const firstRun = page.locator("main").getByRole("button", { name: "New chat", exact: true });
+  await expect(firstRun).toBeInViewport();
+  await firstRun.click();
+  await expect(page.getByRole("textbox", { name: "Message" })).toBeInViewport();
+  await expect(page.getByRole("heading", { name: "New chat" })).toBeInViewport();
+
+  count = 1;
+  await page.reload();
+  await expect(page.getByRole("textbox", { name: "Message" })).toBeInViewport();
+  count = 12;
+  await page.reload();
+  const nav = page.getByRole("navigation", { name: "Conversations" });
+  const chats = nav.getByRole("button", { name: "N New chat" });
+  await expect(chats).toHaveCount(12);
+  const navigationMetrics = await chats.last().evaluate((element) => {
+    const list = element.closest("ul")!;
+    list.scrollTop = list.scrollHeight;
+    const listRect = list.getBoundingClientRect();
+    const itemRect = element.getBoundingClientRect();
+    return { listHeight: list.clientHeight, scrollHeight: list.scrollHeight, scrollTop: list.scrollTop, itemFullyVisible: itemRect.top >= listRect.top && itemRect.bottom <= listRect.bottom };
+  });
+  expect(navigationMetrics.scrollTop).toBeGreaterThan(0);
+  expect(navigationMetrics.itemFullyVisible, JSON.stringify(navigationMetrics)).toBe(true);
+  await expect(chats.last()).toBeInViewport();
+  await chats.last().click();
+  await expect(page.getByRole("textbox", { name: "Message" })).toBeInViewport();
+  await page.getByRole("textbox", { name: "Message" }).fill("Keep chat reachable");
+  await page.getByRole("button", { name: "Submit" }).click();
+  await expect(page.getByRole("button", { name: "Stop" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "New chat" })).toBeInViewport();
+  await expect(page.getByRole("textbox", { name: "Message" })).toBeInViewport();
+  await page.getByRole("button", { name: "Stop" }).click();
+  streamServer.closeAllConnections();
+  await new Promise<void>((resolve, reject) => streamServer.close((error) => error ? reject(error) : resolve()));
+});
+
+test("chat rejects pasted and dropped files without clearing the draft", async ({ page }) => {
+  const id = "550e8400-e29b-41d4-a716-446655440040";
+  const chatBodies: unknown[] = [];
+  await page.route("**/api/conversations", (route) => route.fulfill({ json: route.request().method() === "POST" ? { id, title: "New chat" } : [] }));
+  await page.route(`**/api/conversations/${id}`, (route) => route.fulfill({ json: { id, title: "New chat", messages: [] } }));
+  await page.route("**/api/chat", async (route) => { chatBodies.push(route.request().postDataJSON()); await route.fulfill({ status: 200, headers: { "content-type": "text/event-stream", "x-vercel-ai-ui-message-stream": "v1" }, body: "data: [DONE]\n\n" }); });
+  await stubQuota(page);
+  await page.goto("/chat.html");
+  await page.getByRole("button", { name: "New chat", exact: true }).first().click();
+  const input = page.getByRole("textbox", { name: "Message" });
+  await input.fill("Keep my draft");
+  await page.evaluate(() => {
+    const transfer = new DataTransfer();
+    transfer.items.add(new File(["private sample"], "sample.txt", { type: "text/plain" }));
+    document.querySelector("textarea")!.dispatchEvent(new ClipboardEvent("paste", { bubbles: true, clipboardData: transfer }));
+  });
+  await expect(input).toHaveValue("Keep my draft");
+  await expect(page.getByRole("alert")).toContainText(/attachments are not supported/i);
+  await expect(page.getByRole("list", { name: "Selected files" })).toHaveCount(0);
+  await page.locator('[aria-label="Message composer"]').dispatchEvent("drop", { dataTransfer: await page.evaluateHandle(() => {
+    const transfer = new DataTransfer();
+    transfer.items.add(new File(["private sample"], "dropped.txt", { type: "text/plain" }));
+    return transfer;
+  }) });
+  await expect(input).toHaveValue("Keep my draft");
+  await page.getByRole("button", { name: "Submit" }).click();
+  await expect(input).toHaveValue("");
+  expect(chatBodies).toHaveLength(1);
+  expect(JSON.stringify(chatBodies[0])).toContain("Keep my draft");
+  expect(JSON.stringify(chatBodies[0])).not.toContain("sample.txt");
+  expect(JSON.stringify(chatBodies[0])).not.toContain("dropped.txt");
+});
+
 test("chat streams rendered content and reloads stored turns", async ({ page }) => {
   const id = "550e8400-e29b-41d4-a716-446655440000";
   let messages: Array<{ id: string; role: "user" | "assistant"; content: string }> = [];
@@ -86,10 +203,12 @@ test("chat streams rendered content and reloads stored turns", async ({ page }) 
   await expect(page.getByText("Show me a table", { exact: true })).toBeVisible();
   await expect(page.getByRole("table")).toBeVisible();
   expect(await page.evaluate(() => sessionStorage.getItem("implicity.current_session_id"))).toBe(sessionId);
+  const rotatedSessionId = "550e8400-e29b-41d4-a716-446655440123";
+  await page.evaluate((id) => sessionStorage.setItem("implicity.current_session_id", id), rotatedSessionId);
   await page.getByRole("textbox", { name: "Message" }).fill("One more turn");
   await page.getByRole("button", { name: "Submit" }).click();
   await expect.poll(() => sessionIds.length).toBe(2);
-  expect(sessionIds[1]).toBe(sessionId);
+  expect(sessionIds[1]).toBe(rotatedSessionId);
 });
 
 test("long streamed answers stay open until reload, then fold by whole blocks", async ({ page }) => {

@@ -107,6 +107,11 @@ class ModuleStore:
         with self._session() as session:
             return session.scalars(select(model)).all()
 
+    def filter_by(self, model: type, **filters: Any) -> list[Any]:
+        _check_model(model, self.__owner)
+        with self._session() as session:
+            return session.scalars(select(model).filter_by(**filters)).all()
+
     def insert(self, row: Any):
         self._validate(row)
         with self._session() as session, session.begin():

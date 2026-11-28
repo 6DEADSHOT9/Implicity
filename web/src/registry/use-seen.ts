@@ -88,7 +88,7 @@ export function useSeen({ component, defaultState, slot, onVisible }: { componen
         const viewport = entry.rootBounds;
         const tall = viewport && entry.boundingClientRect.height > viewport.height;
         const coversHalfViewport = tall && entry.intersectionRect.width * entry.intersectionRect.height >= viewport.width * viewport.height / 2;
-        intersectionVisible = entry.isIntersecting && (tall ? !!coversHalfViewport : entry.intersectionRatio >= SEEN_VISIBLE_RATIO);
+        intersectionVisible = entry.isIntersecting && (entry.intersectionRatio >= SEEN_VISIBLE_RATIO || !!(tall && coversHalfViewport));
         intersectionVisibleRef.current = intersectionVisible;
         if (!intersectionVisible) {
           resetStretch();

@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+import traceback
 import uuid
 from contextlib import AsyncExitStack, asynccontextmanager
 from dataclasses import asdict
@@ -16,13 +17,14 @@ from implicity_api.modules.agent import (
     AI_SDK_STREAM_HEADERS,
     HermesAgent,
     UserMessage,
-    stream_sse,
+    stream_parts_sse,
 )
 from implicity_api.modules.app import (
     attach_message_spec,
     discard_unattached_message_specs,
 )
 from implicity_api.modules.app.chat import (
+    conversation_exists,
     create_conversation,
     get_conversation,
     list_conversations,
@@ -31,6 +33,59 @@ from implicity_api.modules.app.chat import (
 from implicity_api.stores.app import store as app_store
 
 logger = logging.getLogger(__name__)
+
+
+def _rendered_spec_id(value, depth=0):
+    if depth > 5:
+        return None
+    if isinstance(value, dict):
+        if isinstance(value.get("id"), str):
+            return value["id"]
+        for key in ("result", "text", "content", "output"):
+            if key in value:
+                found = _rendered_spec_id(value[key], depth + 1)
+                if found:
+                    return found
+    elif isinstance(value, list):
+        for item in value:
+            found = _rendered_spec_id(item, depth + 1)
+            if found:
+                return found
+    elif isinstance(value, str):
+        try:
+            return _rendered_spec_id(json.loads(value), depth + 1)
+        except json.JSONDecodeError:
+            return None
+    return None
+
+
+def _chat_error_response(message):
+    async def events():
+        for part in (
+            {"type": "error", "errorText": message},
+            {"type": "finish"},
+        ):
+            yield f"data: {json.dumps(part, separators=(',', ':'))}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        events(), media_type="text/event-stream", headers=AI_SDK_STREAM_HEADERS
+    )
+
+
+def _log_chat_failure(message, error, conversation_id, session_id):
+    stack = " <- ".join(
+        f"{frame.filename}:{frame.lineno} in {frame.name}"
+        for frame in traceback.extract_tb(error.__traceback__)
+    )
+    logger.error(
+        "%s for conversation %s session %s (%s): %s",
+        message,
+        conversation_id,
+        session_id,
+        type(error).__name__,
+        stack,
+    )
 
 
 async def cleanup_message_specs() -> None:
@@ -124,7 +179,7 @@ def create_app(
             session_id = str(uuid.UUID(body.get("session_id", "")))
         except (AttributeError, TypeError, ValueError) as error:
             raise HTTPException(status_code=422, detail="Invalid session id") from error
-        if get_conversation(conversation_store, conversation_id) is None:
+        if not conversation_exists(conversation_store, conversation_id):
             raise HTTPException(status_code=404, detail="Conversation does not exist")
         messages = body.get("messages")
         last = messages[-1] if isinstance(messages, list) and messages else None
@@ -133,28 +188,47 @@ def create_app(
                 status_code=422, detail="The last message must be from the user"
             )
         parts = last.get("parts")
-        if not isinstance(parts, list) or len(parts) > 4:
-            raise HTTPException(
-                status_code=422, detail="The message has too many parts"
-            )
-        text = "".join(
-            part.get("text", "")
-            for part in parts or []
-            if isinstance(part, dict)
-            and part.get("type") == "text"
-            and isinstance(part.get("text"), str)
-        )
+        if not isinstance(parts, list) or any(
+            not isinstance(part, dict)
+            or part.get("type") != "text"
+            or not isinstance(part.get("text"), str)
+            for part in parts
+        ):
+            raise HTTPException(status_code=422, detail="Message parts must be text")
+        text = "".join(part["text"] for part in parts)
         if not text.strip():
             raise HTTPException(status_code=422, detail="A text message is required")
 
+        try:
+            agent_parts, release = agent.admit(conversation_id, UserMessage(text))
+        except Exception as error:
+            if isinstance(error, (RuntimeError, ValueError)):
+                if str(error) == "Hermes API key is not configured":
+                    return _chat_error_response("Hermes API key is not configured.")
+                if str(error) == "Conversation is already streaming":
+                    return _chat_error_response(
+                        "This conversation is already responding."
+                    )
+            _log_chat_failure(
+                "Chat admission failed", error, conversation_id, session_id
+            )
+            return _chat_error_response(
+                "The agent could not start this turn. Check Hermes and try again."
+            )
+
+        try:
+            save_message(conversation_store, conversation_id, session_id, "user", text)
+        except Exception:
+            release()
+            raise
+
         async def relay():
             answer = []
-            user_saved = False
             text_part_id = None
+            render_calls = set()
+            rendered_spec_ids = []
             try:
-                async for event in stream_sse(
-                    agent, conversation_id, UserMessage(text)
-                ):
+                async for event in stream_parts_sse(agent_parts):
                     for line in event.splitlines():
                         if not line.startswith("data: ") or line[6:] == "[DONE]":
                             continue
@@ -162,15 +236,6 @@ def create_app(
                             part = json.loads(line[6:])
                         except json.JSONDecodeError:
                             continue
-                        if not user_saved:
-                            save_message(
-                                conversation_store,
-                                conversation_id,
-                                session_id,
-                                "user",
-                                text,
-                            )
-                            user_saved = True
                         if part.get("type") == "text-delta":
                             if text_part_id is not None and text_part_id != part.get(
                                 "id"
@@ -178,37 +243,43 @@ def create_app(
                                 answer.append("\n\n")
                             answer.append(part.get("delta", ""))
                             text_part_id = part.get("id")
-                        if part.get("type") == "tool-output-available":
-                            result = part.get("output")
-                            if isinstance(result, dict):
-                                structured = result.get("structuredContent") or {}
-                                spec_id = result.get("id") or structured.get("id")
-                                if isinstance(spec_id, str):
-                                    rendered_spec_ids.append(spec_id)
-                            elif isinstance(result, list):
-                                for item in result:
-                                    if isinstance(item, dict) and isinstance(
-                                        item.get("text"), str
-                                    ):
-                                        try:
-                                            spec_id = json.loads(item["text"]).get("id")
-                                        except (json.JSONDecodeError, AttributeError):
-                                            continue
-                                        if isinstance(spec_id, str):
-                                            rendered_spec_ids.append(spec_id)
+                        if part.get("type") in {
+                            "tool-input-start",
+                            "tool-input-available",
+                        }:
+                            tool_name = str(part.get("toolName", ""))
+                            if (
+                                tool_name.casefold().split("__")[-1].split(".")[-1]
+                                == "render"
+                            ):
+                                render_calls.add(part.get("toolCallId"))
+                        if (
+                            part.get("type") == "tool-output-available"
+                            and part.get("toolCallId") in render_calls
+                            and not rendered_spec_ids
+                        ):
+                            spec_id = _rendered_spec_id(part.get("output"))
+                            if spec_id:
+                                rendered_spec_ids.append(spec_id)
                     yield event
             except asyncio.CancelledError:
                 agent.cancel(conversation_id)
                 raise
             except Exception as error:
-                message = (
-                    "Hermes API key is not configured."
-                    if str(error) == "Hermes API key is not configured"
-                    else (
-                        "The agent could not start this turn. "
-                        "Check Hermes and try again."
+                if str(error) in {
+                    "Hermes API key is not configured",
+                    "Conversation is already streaming",
+                }:
+                    message = (
+                        "Hermes API key is not configured."
+                        if str(error) == "Hermes API key is not configured"
+                        else "This conversation is already responding."
                     )
-                )
+                else:
+                    _log_chat_failure(
+                        "Chat relay failed", error, conversation_id, session_id
+                    )
+                    message = "The answer could not be loaded. Try again."
                 for part in (
                     {"type": "error", "errorText": message},
                     {"type": "finish"},
@@ -216,26 +287,29 @@ def create_app(
                     yield f"data: {json.dumps(part, separators=(',', ':'))}\n\n"
                 yield "data: [DONE]\n\n"
             finally:
-                if answer:
-                    assistant_message = save_message(
-                        conversation_store,
-                        conversation_id,
-                        session_id,
-                        "assistant",
-                        "".join(answer),
-                    )
-                    for spec_id in dict.fromkeys(rendered_spec_ids):
-                        try:
+                release()
+                if answer or rendered_spec_ids:
+                    try:
+                        assistant_message = save_message(
+                            conversation_store,
+                            conversation_id,
+                            session_id,
+                            "assistant",
+                            "".join(answer),
+                        )
+                        if rendered_spec_ids:
                             attach_message_spec(
-                                assistant_message.id, spec_id, conversation_store
+                                assistant_message.id,
+                                rendered_spec_ids[0],
+                                conversation_store,
                             )
-                        except ValueError:
-                            logger.warning(
-                                "Could not attach rendered message spec to "
-                                "assistant message"
-                            )
-
-        rendered_spec_ids = []
+                    except Exception:
+                        logger.exception(
+                            "Could not persist assistant result for conversation %s "
+                            "session %s",
+                            conversation_id,
+                            session_id,
+                        )
 
         return StreamingResponse(
             relay(), media_type="text/event-stream", headers=AI_SDK_STREAM_HEADERS

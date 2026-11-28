@@ -30,12 +30,12 @@ function tableData(children: ReactNode) {
     .filter(isValidElement<ElementWithChildren>)
     .map((cell) => cell.props.children ?? null));
   const values = cells.map((row) => row.map(textContent));
-  return { columns: values[0] ?? [], rows: values.slice(1), renderedRows: cells.slice(1) };
+  return { columns: values[0] ?? [], renderedColumns: cells[0] ?? [], rows: values.slice(1), renderedRows: cells.slice(1) };
 }
 
 function MarkdownTable({ children }: ComponentProps<"table">) {
-  const { columns, rows, renderedRows } = tableData(children ?? null);
-  return <DataTable columns={columns} rows={rows} renderedRows={renderedRows} chartValues={undefined} form="table" state="default" />;
+  const { columns, renderedColumns, rows, renderedRows } = tableData(children ?? null);
+  return <DataTable columns={columns} renderedColumns={renderedColumns} rows={rows} renderedRows={renderedRows} showEmptyHeaders chartValues={undefined} form="table" state="default" />;
 }
 
 const markdownComponents: Components = {
@@ -145,18 +145,16 @@ export function MessageBody({ content, streaming = false, initiallyOpen = false,
   }
   const lead = blocks.slice(0, leadEnd).join("") + (definitions.length ? `\n\n${definitions.join("")}` : "");
   const visibleContent = !isLong || displayedState === "open" ? content : lead;
-  return <div ref={isLong ? undefined : shortSeenRef} className="w-full min-w-0 max-w-full">
+  return <div ref={isLong ? longSeenRef : shortSeenRef} role={isLong ? "region" : undefined} aria-label={isLong ? "Long answer" : undefined} data-slot={isLong ? "long_answer" : undefined} data-state={isLong ? displayedState : undefined} className="w-full min-w-0 max-w-full">
     <Message role="article" from="assistant" aria-label="Message">
       <MessageContent className="w-full min-w-0 max-w-full break-words [&_a]:break-all [&_ol]:my-space-2 [&_ol]:list-decimal [&_ol]:ps-space-6 [&_ul]:my-space-2 [&_ul]:list-disc [&_ul]:ps-space-6 [&_li]:my-space-1 [&_h1]:text-heading-1 [&_h2]:text-heading-2 [&_h3]:text-heading-3 [&_h4]:text-heading-4 [&_h5]:text-heading-5 [&_h6]:text-heading-6">
-        {isLong ? <section ref={longSeenRef} role="region" aria-label="Long answer" data-slot="long_answer" data-state={displayedState}>
-          <Markdown content={visibleContent} />
-          {!streaming && displayedState === "folded"
-            ? <Button variant="ghost" onClick={() => setState("open")}>Show more</Button>
-            : null}
-          {!streaming && displayedState === "open"
-            ? <Button variant="ghost" onClick={() => setState("folded")}>Show less</Button>
-            : null}
-        </section> : <Markdown content={visibleContent} />}
+        <Markdown content={visibleContent} />
+        {isLong && !streaming && displayedState === "folded"
+          ? <Button variant="ghost" onClick={() => setState("open")}>Show more</Button>
+          : null}
+        {isLong && !streaming && displayedState === "open"
+          ? <Button variant="ghost" onClick={() => setState("folded")}>Show less</Button>
+          : null}
       </MessageContent>
     </Message>
   </div>;
