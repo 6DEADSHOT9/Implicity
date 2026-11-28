@@ -9,7 +9,7 @@ export function lengthBucket(length: number, group: LengthGroup): "short" | "med
 
 export function copyShare(copiedCharacters: number, sourceCharacters: number): "some" | "most" | "all" {
   if (sourceCharacters <= 0 || copiedCharacters >= sourceCharacters) return "all";
-  return copiedCharacters * 2 < sourceCharacters ? "some" : "most";
+  return copiedCharacters / sourceCharacters < actions.copy_share_half_threshold ? "some" : "most";
 }
 
 export function isMeaningfulDraft(length: number): boolean {

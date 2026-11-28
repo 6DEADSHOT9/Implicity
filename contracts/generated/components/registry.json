@@ -1,5 +1,5 @@
 {
-  "registry_version": 8,
+  "registry_version": 9,
   "components": [
     "AppShell",
     "ApprovalRequest",

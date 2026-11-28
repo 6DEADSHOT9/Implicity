@@ -1,5 +1,5 @@
 :8000 {
-	@capture path /i/v0 /i/v0/* /capture /capture/* /batch /batch/*
+	@capture path /i/v0 /i/v0/* /capture /capture/* /batch /batch/* /e /e/*
 	handle @capture {
 		reverse_proxy posthog-capture:3000
 	}

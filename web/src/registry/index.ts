@@ -20,7 +20,7 @@ export function createRegistry(entries: readonly SkeletonEntry[], version: numbe
 
 export const registry = createRegistry(entries, registryVersion);
 export const getSkeleton = (id: string) => registry.getSkeleton(id);
-export { BrowserCaptureProvider, CaptureProvider, createPostHogCapture, createValidatedCapture, actionMeasurementRules, getInputType, sanitizePostHogEvent, useCapture, recordingCapture } from "./capture";
+export { BrowserCaptureProvider, CaptureProvider, createValidatedCapture, getInputType, useCapture, recordingCapture } from "./capture";
 export type { AppIdType, CaptureContextValue, CaptureRegistry, CaptureSink, CapturedEvent, EventName } from "./capture";
 export { attachmentType, copyShare, isMeaningfulDraft, lengthBucket } from "./action-measurements";
 export { SEEN_VISIBLE_RATIO, SEEN_VISIBLE_SECONDS, useSeen } from "./use-seen";

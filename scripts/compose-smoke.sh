@@ -222,8 +222,13 @@ base = f"http://127.0.0.1:{os.environ['POSTHOG_PORT']}"
 credentials = json.loads(os.environ["SMOKE_CREDENTIALS"])
 event = "implicity_compose_smoke"
 distinct_id = "compose-smoke-" + str(time.time_ns())
-payload = json.dumps({"api_key": credentials["project_token"], "event": event, "distinct_id": distinct_id, "properties": {"source": "compose-smoke"}}).encode()
-request = urllib.request.Request(base + "/i/v0/e/", data=payload, headers={"Content-Type": "application/json"}, method="POST")
+preflight = urllib.request.Request(base + "/e/", headers={"Origin": "http://127.0.0.1:4311", "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "content-type"}, method="OPTIONS")
+with urllib.request.urlopen(preflight, timeout=15) as response:
+    assert response.status == 200, response.status
+    assert response.headers.get("Access-Control-Allow-Origin") == "http://127.0.0.1:4311", response.headers
+print("SDK /e/ cross-origin preflight: PASS")
+payload = json.dumps({"token": credentials["project_token"], "event": event, "distinct_id": distinct_id, "properties": {"source": "compose-smoke"}}).encode()
+request = urllib.request.Request(base + "/e/", data=payload, headers={"Content-Type": "application/json", "Origin": "http://127.0.0.1:4311"}, method="POST")
 with urllib.request.urlopen(request, timeout=15) as response:
     assert response.status == 200, response.status
 sent_at = time.monotonic()

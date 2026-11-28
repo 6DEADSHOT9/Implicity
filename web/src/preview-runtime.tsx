@@ -4,7 +4,6 @@ import type { SkeletonEntry } from "./registry";
 import type { propsSchema } from "./registry/WidgetPicker/schema";
 import type { z } from "zod";
 import { ChangeNoticeToastHost } from "./components/change-notice-toast-host";
-import { BrowserCaptureProvider } from "./registry/capture";
 import { registryVersion } from "./registry/version";
 import type { CaptureRegistry } from "./registry/capture";
 
@@ -149,9 +148,17 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
     });
     document.body.className = "gallery-preview-root";
     document.body.dataset.previewState = state?.id;
-    root.render(<BrowserCaptureProvider registry={captureRegistry} lifecycle={false}><PreviewMounted onMounted={onMounted} version={version}>{entry && state
+    const preview = <PreviewMounted onMounted={onMounted} version={version}>{entry && state
       ? <PreviewExample entry={entry} props={state.props} slots={state.slots ?? {}} label={`${entry.id} · ${state.id}`} />
-      : <p role="alert">Preview unavailable</p>}<ChangeNoticeToastHost mode={config.mode === "dark" ? "dark" : "light"} /></PreviewMounted></BrowserCaptureProvider>);
+      : <p role="alert">Preview unavailable</p>}<ChangeNoticeToastHost mode={config.mode === "dark" ? "dark" : "light"} /></PreviewMounted>;
+    if (import.meta.env.VITE_GALLERY_CAPTURE_ENABLED !== "true") {
+      root.render(preview);
+      return;
+    }
+    void import("./registry/capture").then(({ BrowserCaptureProvider }) => {
+      if (version !== renderVersion) return;
+      root.render(<BrowserCaptureProvider registry={captureRegistry} lifecycle={false} enabled>{preview}</BrowserCaptureProvider>);
+    });
   };
   window.addEventListener("message", (event: MessageEvent<unknown>) => {
     if (event.origin !== location.origin || event.source !== window.parent || !event.data || typeof event.data !== "object" || !("styles" in event.data) || typeof event.data.styles !== "string" || !("texture" in event.data) || typeof event.data.texture !== "string" || !("look" in event.data) || typeof event.data.look !== "string" || !("mode" in event.data) || typeof event.data.mode !== "string" || !("density" in event.data) || typeof event.data.density !== "string" || !("textSize" in event.data) || typeof event.data.textSize !== "string" || !("deviceClass" in event.data) || typeof event.data.deviceClass !== "string") return;
