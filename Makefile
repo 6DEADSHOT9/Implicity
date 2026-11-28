@@ -21,10 +21,12 @@ test: contracts-check contracts-runtime-check token-styles-check test-python tes
 contracts-generate:
 	uv run --locked python scripts/generate-contracts.py
 	$(PNPM) exec $(NODE) web/scripts/generate-registry-schemas.mjs
+	$(PNPM) exec $(NODE) web/scripts/generate-event-validator.mjs
 
 contracts-check:
 	uv run --locked python scripts/generate-contracts.py --check
 	$(PNPM) exec $(NODE) web/scripts/generate-registry-schemas.mjs --check
+	$(PNPM) exec $(NODE) web/scripts/generate-event-validator.mjs --check
 
 registry-generate:
 	$(PNPM) exec $(NODE) web/scripts/generate-registry-schemas.mjs

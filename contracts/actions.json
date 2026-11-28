@@ -1,0 +1,12 @@
+{
+  "length_cutoffs": {
+    "message_and_draft": { "medium": 80, "long": 400 },
+    "answer": { "medium": 600, "long": 2500 }
+  },
+  "copy_share_half_threshold": 0.5,
+  "meaningful_draft_characters": 40,
+  "component_seen": { "visible_ratio": 0.5, "visible_seconds": 3 },
+  "device_class_breakpoint": 1024,
+  "seconds_decimal_places": 1,
+  "session_idle_milliseconds": 1800000
+}

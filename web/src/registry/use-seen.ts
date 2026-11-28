@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useCapture } from "./capture";
+import { SEEN_VISIBLE_RATIO, SEEN_VISIBLE_SECONDS } from "./capture-rules";
 
-export const SEEN_VISIBLE_RATIO = 0.5;
-export const SEEN_VISIBLE_SECONDS = 3;
+export { SEEN_VISIBLE_RATIO, SEEN_VISIBLE_SECONDS } from "./capture-rules";
 
 type SeenRef = ((node: Element | null) => void) & { reportVisible(): boolean };
 

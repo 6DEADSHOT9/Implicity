@@ -39,6 +39,9 @@ stores its project key in `VITE_POSTHOG_API_KEY` for the app. If Hermes reports
 `openai-codex: logged out`, run
 `hermes auth add openai-codex` inside its container, finish sign-in and rerun
 setup.
+The gallery capture is disabled by default. To send gallery events to a
+throwaway PostHog project, set `VITE_GALLERY_CAPTURE_ENABLED=true` and
+`VITE_POSTHOG_HOST=http://127.0.0.1:18000` in the repository-root `.env`.
 The PostHog page opens only in an interactive terminal; set
 `IMPLICITY_SETUP_NO_BROWSER=1` to keep it closed (also suppressed when `CI` is
 `1`, `true` or `yes`, case-insensitive).

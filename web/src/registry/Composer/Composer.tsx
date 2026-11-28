@@ -16,7 +16,7 @@ function PendingAttachments({ onChange }: { onChange?: Props["onAttachmentsChang
 }
 
 export function Composer({ attachments, shortcuts, onSubmit, onShortcut, onAttachmentsChange }: Props) {
-  const { emit } = useCapture<(typeof events)[number]>();
+  const { emit } = useCapture<(typeof events)[number]>("Composer");
   const emitRef = useRef(emit);
   emitRef.current = emit;
   const inputId = useId();

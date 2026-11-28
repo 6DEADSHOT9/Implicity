@@ -3,7 +3,7 @@ import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import { CaptureProvider, recordingCapture, registry } from "../index";
+import { CaptureProvider, createValidatedCapture, recordingCapture, registry } from "../index";
 import { meta } from "./meta";
 import { propsSchema } from "./schema";
 import { WidgetPicker } from "./WidgetPicker";
@@ -59,6 +59,28 @@ describe("WidgetPicker", () => {
       { name: "setting_changed", dimension: "home_widgets", value: "off", component: "ResumeWidget" },
       { name: "setting_changed", dimension: "home_widgets", value: "on", component: "ResumeWidget" },
     ]);
+  });
+
+  it("sends one setting_changed through the real validator and registry for an accepted, displayed toggle, and none for a refusal", async () => {
+    const send = vi.fn();
+    const sink = createValidatedCapture({ context: { session_id: "123e4567-e89b-42d3-a456-426614174000", layout_version: 1 }, registry, send, ids: { has: () => false } });
+    const user = userEvent.setup();
+    const props = meta.galleryStates[1].props;
+    let accept = false;
+    function Parent() {
+      const [widgets, setWidgets] = useState(props.widgets);
+      return <WidgetPicker {...props} widgets={widgets} onWidgetChange={(id, enabled) => {
+        if (accept) setWidgets((current) => current.map((widget) => widget.widgetId === id ? { ...widget, enabled } : widget));
+        return accept;
+      }} />;
+    }
+    render(<CaptureProvider sink={sink}><Parent /></CaptureProvider>);
+    await user.click(screen.getByRole("switch", { name: "Resume" }));
+    const settings = () => send.mock.calls.map(([event]) => event).filter(({ name }) => name === "setting_changed");
+    expect(settings()).toEqual([]);
+    accept = true;
+    await user.click(screen.getByRole("switch", { name: "Resume" }));
+    expect(settings()).toEqual([expect.objectContaining({ dimension: "home_widgets", value: "off", component: "ResumeWidget", registry_version: registry.version })]);
   });
 
   it("distinguishes widgets that share a component and ignores app-driven changes", async () => {
