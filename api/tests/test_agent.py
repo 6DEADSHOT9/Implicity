@@ -78,7 +78,6 @@ def fake_hermes():
     async def responses(request: Request):
         payload = await request.json()
         received.append((dict(request.headers), payload))
-        stream_started.set()
         if not payload.get("stream"):
             return JSONResponse(
                 {
@@ -187,11 +186,16 @@ def fake_hermes():
         ]
 
         async def body():
-            if payload["input"] == "slow":
-                created = {"type": "response.created", "response": {"id": "slow"}}
-                yield f"data: {json.dumps(created)}\n\n"
+            if payload["input"] in {"slow", "held"}:
                 try:
-                    await asyncio.sleep(30)
+                    if payload["input"] == "slow":
+                        created = {
+                            "type": "response.created",
+                            "response": {"id": "slow"},
+                        }
+                        yield f"data: {json.dumps(created)}\n\n"
+                    stream_started.set()
+                    await asyncio.Future()
                 except asyncio.CancelledError:
                     stream_closed.set()
                     raise
@@ -271,8 +275,11 @@ def test_agent_streams_parts_and_reuses_its_hermes_conversation(fake_hermes, tmp
     assert request["conversation"] != conversation_id
 
 
-def test_cancel_ends_the_agent_stream(fake_hermes, tmp_path):
-    base_url, _, _, stream_closed = fake_hermes
+@pytest.mark.parametrize(
+    "message", ["slow", "held"], ids=["after-start", "before-start"]
+)
+def test_cancel_ends_the_agent_stream(fake_hermes, tmp_path, message):
+    base_url, _, stream_started, stream_closed = fake_hermes
     bind = create_engine(f"sqlite:///{tmp_path / 'cancel.db'}")
     Base.metadata.create_all(bind)
     store = create_store("agent", bind)
@@ -281,10 +288,20 @@ def test_cancel_ends_the_agent_stream(fake_hermes, tmp_path):
     agent.start_conversation(conversation_id)
 
     async def cancel():
-        async with aclosing(agent.send(conversation_id, UserMessage("slow"))) as stream:
-            assert (await anext(stream))["type"] == "start"
-            agent.cancel(conversation_id)
-            return [part async for part in stream]
+        stream = agent.send(conversation_id, UserMessage(message))
+        async with aclosing(stream):
+            if message == "slow":
+                assert (await anext(stream))["type"] == "start"
+
+            async def collect():
+                return [part async for part in stream]
+
+            async with asyncio.TaskGroup() as tasks:
+                parts = tasks.create_task(collect())
+                if message == "held":
+                    assert await asyncio.to_thread(stream_started.wait, 3)
+                agent.cancel(conversation_id)
+                return await asyncio.wait_for(parts, timeout=3)
 
     parts = asyncio.run(cancel())
     assert [part["type"] for part in parts] == ["abort", "finish"]
