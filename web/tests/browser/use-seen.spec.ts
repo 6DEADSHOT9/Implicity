@@ -58,34 +58,41 @@ test("unrelated class changes do not restart visible time", async ({ page }) => 
 });
 
 test("a scroll exit before a blocked deadline cancels the occasion", async ({ page }) => {
+  await page.clock.install({ time: 0 });
+  await page.clock.pauseAt(60_000);
   await page.addInitScript(() => {
     const NativeObserver = window.IntersectionObserver;
+    window.seenObserverReady = false;
     window.delaySeenObserver = false;
     window.pendingSeenObserverCallbacks = [];
     window.IntersectionObserver = class extends NativeObserver {
       constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
         super((entries, observer) => {
+          // Native entries need to share the clock used by the hook's timer.
+          for (const entry of entries) Object.defineProperty(entry, "time", { value: performance.now() });
           if (window.delaySeenObserver) window.pendingSeenObserverCallbacks.push(() => callback(entries, observer));
-          else callback(entries, observer);
+          else {
+            callback(entries, observer);
+            window.seenObserverReady = entries.some((entry) => entry.isIntersecting && entry.intersectionRatio >= 0.5);
+          }
         }, options);
       }
       takeRecords() { return []; }
     };
   });
   await page.goto("/tests/browser/use-seen.html");
-  await page.locator("#seen-target").waitFor();
-  await page.waitForTimeout(100);
-  await page.evaluate(() => { window.delaySeenObserver = true; });
-  await page.waitForTimeout(2700);
+  await expect.poll(() => page.evaluate(() => window.seenObserverReady)).toBe(true);
+  await page.clock.runFor(2700);
   await page.evaluate(() => {
+    window.delaySeenObserver = true;
     window.scrollTo(0, 1500);
-    const startedAt = performance.now();
-    while (performance.now() - startedAt < 600) { /* hold the event loop */ }
   });
   expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(1000);
-  await page.waitForTimeout(100);
+  await expect.poll(() => page.evaluate(() => window.pendingSeenObserverCallbacks.length)).toBe(1);
+  await page.clock.runFor(600);
   expect(await page.evaluate(() => window.seenEvents)).toEqual([]);
-  expect(await page.evaluate(() => window.pendingSeenObserverCallbacks.length)).toBeGreaterThan(0);
+  // The deadline requests a fresh sample while the exit callback is still held.
+  await expect.poll(() => page.evaluate(() => window.pendingSeenObserverCallbacks.length)).toBe(2);
   await page.evaluate(() => {
     window.delaySeenObserver = false;
     for (const notify of window.pendingSeenObserverCallbacks.splice(0)) notify();

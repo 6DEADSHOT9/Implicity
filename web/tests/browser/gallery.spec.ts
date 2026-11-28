@@ -442,12 +442,15 @@ test("screen and container breakpoint variants match token thresholds", async ({
 
 test("Resizable handles change panel sizes with keyboard input", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto("/tests/browser/gallery.html");
-  const separator = page.locator('[data-slot="resizable-handle"]');
-  const before = await separator.getAttribute("aria-valuenow");
+  // Use the built gallery without Skeleton previews so a dev-server reload cannot reset focus.
+  await page.goto(builtPreviewUrl("/tests/browser/shell-gallery.html?only="));
+  const separator = page.getByRole("region", { name: "Base primitives" }).getByRole("separator");
+  // The library publishes the initial ARIA value after registering the layout and key listener.
+  await expect(separator).toHaveAttribute("aria-valuenow", "50");
   await separator.focus();
-  await page.keyboard.press("ArrowRight");
-  await expect(separator).not.toHaveAttribute("aria-valuenow", before ?? "");
+  await expect(separator).toBeFocused();
+  await separator.press("ArrowRight");
+  await expect(separator).toHaveAttribute("aria-valuenow", "55");
 });
 
 test("token animation utilities honor reduced motion", async ({ page }) => {

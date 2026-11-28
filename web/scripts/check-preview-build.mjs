@@ -23,6 +23,7 @@ try {
       contentFixture: resolve(web, "tests/browser/content-gallery.html"),
       conversationFixture: resolve(web, "tests/browser/conversation-gallery.html"),
       shellFixture: resolve(web, "tests/browser/shell-gallery.html"),
+      changeNoticeVisibilityFixture: resolve(web, "tests/browser/change-notice-visibility.html"),
     } } },
   });
 
