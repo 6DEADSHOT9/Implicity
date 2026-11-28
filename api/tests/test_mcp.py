@@ -142,8 +142,14 @@ def test_mcp_is_reachable_from_the_api_over_streamable_http(monkeypatch):
                     "render",
                 }
 
-    with TestClient(app):
-        anyio.run(check)
+    async def check_lifespan():
+        async with app.router.lifespan_context(app):
+            async with anyio.create_task_group() as clients:
+                clients.start_soon(check)
+                clients.start_soon(check)
+
+    anyio.run(check_lifespan)
+    anyio.run(check_lifespan)
 
 
 def test_api_discards_expired_specs_at_startup(monkeypatch):

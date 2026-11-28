@@ -377,12 +377,14 @@ version = "0.1.0"
 source = { editable = "api" }
 dependencies = [
     { name = "alembic" },
+    { name = "anyio" },
     { name = "fastapi" },
     { name = "httpx" },
     { name = "implicity-contracts" },
     { name = "jsonschema" },
     { name = "mcp" },
     { name = "sqlalchemy" },
+    { name = "starlette" },
     { name = "uvicorn" },
 ]
 
@@ -394,12 +396,14 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "alembic", specifier = "==1.17.2" },
+    { name = "anyio", specifier = "==4.16.0" },
     { name = "fastapi", specifier = "==0.121.3" },
     { name = "httpx", specifier = "==0.28.1" },
     { name = "implicity-contracts", editable = "contracts/python" },
     { name = "jsonschema", specifier = "==4.26.0" },
     { name = "mcp", specifier = "==2.3.0" },
     { name = "sqlalchemy", specifier = "==2.0.44" },
+    { name = "starlette", specifier = "==0.50.0" },
     { name = "uvicorn", specifier = "==0.38.0" },
 ]
 

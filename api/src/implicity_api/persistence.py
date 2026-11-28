@@ -1,10 +1,6 @@
 import json
 from typing import Any
 
-from implicity_contracts.codec import decode_contract, encode_contract
-from implicity_contracts.generated import Decision as ContractDecision
-from implicity_contracts.generated import Spec as ContractSpec
-from jsonschema.exceptions import ValidationError as JSONSchemaValidationError
 from sqlalchemy import delete, event, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -26,10 +22,6 @@ TABLE_OWNERS = {
 }
 OWNER_BY_METADATA = {metadata: owner for owner, metadata in METADATA.items()}
 SESSION_REQUIRED = (Message, AgentSession)
-CONTRACT_PAYLOADS = {
-    Decision: ContractDecision,
-    MessageSpec: ContractSpec,
-}
 
 
 class _OwnedSession(Session):
@@ -145,8 +137,15 @@ class ModuleStore:
         _check_model(model, self.__owner)
         if isinstance(row, SESSION_REQUIRED) and not row.session_id:
             raise ValueError(f"{model.__tablename__} requires session_id")
-        contract = CONTRACT_PAYLOADS.get(model)
-        if contract:
+        if model in (Decision, MessageSpec):
+            from implicity_contracts.codec import decode_contract, encode_contract
+            from implicity_contracts.generated import Decision as ContractDecision
+            from implicity_contracts.generated import Spec as ContractSpec
+            from jsonschema.exceptions import (
+                ValidationError as JSONSchemaValidationError,
+            )
+
+            contract = ContractDecision if model is Decision else ContractSpec
             try:
                 value = decode_contract(json.dumps(row.data, allow_nan=False))
                 if not isinstance(value, contract):
