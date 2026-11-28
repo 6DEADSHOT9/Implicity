@@ -16,13 +16,14 @@ export function useSeen({ component, defaultState, slot, onVisible }: { componen
   const notifiedVisibleRef = useRef(false);
   const observedElementRef = useRef<Element | null>(null);
   const intersectionVisibleRef = useRef(false);
+  const rootVisibleRef = useRef(true);
   const emittedRef = useRef(false);
   emitRef.current = emit;
   fieldsRef.current = { component, defaultState, slot };
   onVisibleRef.current = onVisible;
   const [element, setElement] = useState<Element | null>(null);
   const reportVisible = useCallback(() => {
-    const visible = intersectionVisibleRef.current && !!observedElementRef.current?.checkVisibility({ opacityProperty: true, visibilityProperty: true });
+    const visible = intersectionVisibleRef.current && rootVisibleRef.current && !!observedElementRef.current?.checkVisibility({ opacityProperty: true, visibilityProperty: true });
     if (visible && !notifiedVisibleRef.current) {
       notifiedVisibleRef.current = true;
       onVisibleRef.current?.();
@@ -45,6 +46,10 @@ export function useSeen({ component, defaultState, slot, onVisible }: { componen
     let intersectionVisible = false;
     let needsFreshSample = false;
     let observer: IntersectionObserver;
+    let rootObserver: IntersectionObserver | undefined;
+    let scrollRoot: Element | null = null;
+    let rootVisible = true;
+    let resizeObserver: ResizeObserver;
     const clearTimer = () => {
       clearTimeout(timer);
       timer = undefined;
@@ -88,7 +93,7 @@ export function useSeen({ component, defaultState, slot, onVisible }: { componen
         const rootBounds = entry.rootBounds;
         const tall = rootBounds && entry.boundingClientRect.height > rootBounds.height;
         const coversHalfRoot = tall && entry.intersectionRect.width * entry.intersectionRect.height >= rootBounds.width * rootBounds.height / 2;
-        intersectionVisible = entry.isIntersecting && (entry.intersectionRatio >= SEEN_VISIBLE_RATIO || !!(tall && coversHalfRoot));
+        intersectionVisible = entry.isIntersecting && rootVisible && (entry.intersectionRatio >= SEEN_VISIBLE_RATIO || !!(tall && coversHalfRoot));
         intersectionVisibleRef.current = intersectionVisible;
         if (!intersectionVisible) {
           resetStretch();
@@ -139,14 +144,39 @@ export function useSeen({ component, defaultState, slot, onVisible }: { componen
       requestFreshSample();
     }
 
-    const scrollRoot = (() => {
+    const findScrollRoot = () => {
       for (let parent = observedElement.parentElement; parent; parent = parent.parentElement) {
         const { overflowY } = getComputedStyle(parent);
-        if (/(auto|scroll|overlay)/.test(overflowY) && parent.scrollHeight > parent.clientHeight) return parent;
+        if (/(auto|scroll|overlay)/.test(overflowY)) return parent;
       }
       return null;
-    })();
+    };
     const observe = () => {
+      const nextScrollRoot = findScrollRoot();
+      if (nextScrollRoot !== scrollRoot) {
+        if (scrollRoot) resizeObserver?.unobserve(scrollRoot);
+        scrollRoot = nextScrollRoot;
+        rootObserver?.disconnect();
+        rootVisible = !scrollRoot;
+        if (scrollRoot) rootVisible = false;
+        rootVisibleRef.current = rootVisible;
+        if (scrollRoot) {
+          rootObserver = new IntersectionObserver((entries) => {
+            const wasVisible = rootVisible;
+            rootVisible = entries.at(-1)?.isIntersecting ?? false;
+            rootVisibleRef.current = rootVisible;
+            if (!rootVisible) {
+              intersectionVisibleRef.current = false;
+              resetStretch();
+            } else if (!wasVisible) {
+              observer.unobserve(observedElement);
+              observer.observe(observedElement);
+            }
+          }, { threshold: 0 });
+          rootObserver.observe(scrollRoot);
+          resizeObserver?.observe(scrollRoot);
+        }
+      }
       observer?.disconnect();
       const rect = observedElement.getBoundingClientRect();
       const rootBounds = scrollRoot?.getBoundingClientRect();
@@ -158,14 +188,14 @@ export function useSeen({ component, defaultState, slot, onVisible }: { componen
       observer = new IntersectionObserver((entries) => applyEntries(entries), { root: scrollRoot, threshold: [...new Set([0, threshold, SEEN_VISIBLE_RATIO])].sort((a, b) => a - b) });
       observer.observe(observedElement);
     };
-    const resizeObserver = new ResizeObserver(observe);
+    resizeObserver = new ResizeObserver(observe);
     resizeObserver.observe(observedElement);
-    if (scrollRoot) resizeObserver.observe(scrollRoot);
     window.addEventListener("resize", observe);
     observe();
     return () => {
       clearTimer();
       observer.disconnect();
+      rootObserver?.disconnect();
       resizeObserver.disconnect();
       window.removeEventListener("resize", observe);
     };

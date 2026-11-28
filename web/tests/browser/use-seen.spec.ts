@@ -29,6 +29,17 @@ test("a tall narrow component counts when half of the component is visible", asy
   await expect.poll(() => page.evaluate(() => window.seenEvents.length), { timeout: 5000 }).toBe(1);
 });
 
+test("an offscreen scroll area is not seen until it enters the window", async ({ page }) => {
+  await page.goto("/tests/browser/offscreen-scroll-seen.html");
+  await expect.poll(() => page.evaluate(() => window.offscreenRootVisible)).toBe(false);
+  const startedAt = await page.evaluate(() => performance.now());
+  await expect.poll(() => page.evaluate((start) => performance.now() - start, startedAt), { timeout: 5000 }).toBeGreaterThanOrEqual(3200);
+  expect(await page.evaluate(() => window.seenEvents)).toEqual([]);
+  await page.evaluate(() => window.scrollTo(0, 1200));
+  await expect.poll(() => page.evaluate(() => window.offscreenRootVisible)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.seenEvents.length), { timeout: 6500 }).toBe(1);
+});
+
 test("a hidden data-visible ancestor is not seen and starts a new stretch after reveal", async ({ page }) => {
   await page.goto("/tests/browser/use-seen.html");
   await page.locator("#seen-target").waitFor();

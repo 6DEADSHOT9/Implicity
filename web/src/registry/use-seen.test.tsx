@@ -63,7 +63,7 @@ function ActionProbe({ captureRef, onVisible }: { captureRef: (ref: ReturnType<t
 }
 
 function ScrollProbe() {
-  return <div ref={(node) => { if (node) Object.defineProperties(node, { scrollHeight: { value: 500 }, clientHeight: { value: 100 } }); }} data-scroll-root style={{ overflowY: "auto", height: 100 }}><div style={{ height: 500 }}><Probe /></div></div>;
+  return <div ref={(node) => { if (node) Object.defineProperties(node, { scrollHeight: { value: 100 }, clientHeight: { value: 100 } }); }} data-scroll-root style={{ overflowY: "auto", height: 100 }}><div style={{ height: 500 }}><Probe /></div></div>;
 }
 
 function setup(slot?: string) {

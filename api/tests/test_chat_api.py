@@ -8,7 +8,7 @@ from implicity_api.app import create_app
 from implicity_api.models import METADATA
 from implicity_api.models.app import Message, MessageSpec
 from implicity_api.modules.agent import Quota, QuotaWindow
-from implicity_api.modules.app import save_message_spec
+from implicity_api.modules.app import attach_message_spec, save_message_spec
 from implicity_api.modules.app.chat import create_conversation, save_message
 from implicity_api.persistence import create_store
 from sqlalchemy import create_engine, event
@@ -147,6 +147,15 @@ def test_assistant_write_failure_is_sanitized_and_reported_to_the_client(
         loaded = client.get(f"/api/conversations/{conversation_id}").json()["messages"]
     assert '"type":"error"' in response.text
     assert "Could not save the answer" in response.text
+    terminal_parts = [
+        json.loads(line[6:])
+        for line in response.text.splitlines()
+        if line.startswith("data: {")
+    ]
+    terminal_types = [part["type"] for part in terminal_parts]
+    assert terminal_types.count("finish") == 1
+    assert terminal_types.index("error") < terminal_types.index("finish")
+    assert terminal_types[-1] == "finish"
     assert [(row["role"], row["content"]) for row in loaded] == [("user", "Hello")]
     assert "Hi" not in caplog.text and "Hello" not in caplog.text
 
@@ -390,7 +399,7 @@ def test_render_result_is_attached_to_the_saved_assistant_message(tmp_path):
                 yield {
                     "type": "tool-input-start",
                     "toolCallId": "render-1",
-                    "toolName": "mcp__render",
+                    "toolName": "mcp__implicity__render",
                 }
                 yield {
                     "type": "tool-output-available",
@@ -405,7 +414,7 @@ def test_render_result_is_attached_to_the_saved_assistant_message(tmp_path):
                 yield {
                     "type": "tool-input-start",
                     "toolCallId": "render-2",
-                    "toolName": "mcp__render",
+                    "toolName": "mcp__implicity__render",
                 }
                 yield {
                     "type": "tool-output-available",
@@ -461,6 +470,17 @@ def test_render_attachment_skips_missing_first_candidate_and_ignores_name_collis
     valid_spec = save_message_spec(
         {"registry_version": 2, "root": "card", "elements": {}}, app_store
     )
+    unrelated_spec = save_message_spec(
+        {"registry_version": 2, "root": "card", "elements": {}}, app_store
+    )
+    claimed_spec = save_message_spec(
+        {"registry_version": 2, "root": "card", "elements": {}}, app_store
+    )
+    existing_conversation = create_conversation(app_store)
+    existing_message = save_message(
+        app_store, existing_conversation.id, SESSION_ID, "assistant", "Existing"
+    )
+    attach_message_spec(existing_message.id, claimed_spec, app_store)
 
     class CandidateAgent(FakeAgent):
         def send(self, _conversation_id, _message):
@@ -473,12 +493,12 @@ def test_render_attachment_skips_missing_first_candidate_and_ignores_name_collis
                 yield {
                     "type": "tool-output-available",
                     "toolCallId": "bad",
-                    "output": {"id": "missing-spec"},
+                    "output": {"id": unrelated_spec},
                 }
                 yield {
                     "type": "tool-input-start",
                     "toolCallId": "first",
-                    "toolName": "mcp__render",
+                    "toolName": "mcp__implicity__render",
                 }
                 yield {
                     "type": "tool-output-available",
@@ -487,8 +507,18 @@ def test_render_attachment_skips_missing_first_candidate_and_ignores_name_collis
                 }
                 yield {
                     "type": "tool-input-start",
+                    "toolCallId": "claimed",
+                    "toolName": "mcp__implicity__render",
+                }
+                yield {
+                    "type": "tool-output-available",
+                    "toolCallId": "claimed",
+                    "output": {"id": claimed_spec},
+                }
+                yield {
+                    "type": "tool-input-start",
                     "toolCallId": "second",
-                    "toolName": "mcp__render",
+                    "toolName": "mcp__implicity__render",
                 }
                 yield {
                     "type": "tool-output-available",
@@ -519,6 +549,8 @@ def test_render_attachment_skips_missing_first_candidate_and_ignores_name_collis
     assert (
         app_store.get(Message, messages[-1]["id"]).data["message_spec_id"] == valid_spec
     )
+    assert app_store.get(MessageSpec, unrelated_spec).session_id is None
+    assert app_store.get(MessageSpec, claimed_spec).session_id == SESSION_ID
 
 
 def test_render_only_turn_saves_an_empty_assistant_message(tmp_path):
@@ -536,7 +568,7 @@ def test_render_only_turn_saves_an_empty_assistant_message(tmp_path):
                 yield {
                     "type": "tool-input-start",
                     "toolCallId": "render-1",
-                    "toolName": "mcp__render",
+                    "toolName": "mcp__implicity__render",
                 }
                 yield {
                     "type": "tool-output-available",
@@ -665,6 +697,9 @@ def test_api_disconnect_saves_partial_answer_and_allows_another_turn(tmp_path):
     for metadata in METADATA.values():
         metadata.create_all(bind)
     app_store = create_store("app", bind)
+    spec_id = save_message_spec(
+        {"registry_version": 2, "root": "card", "elements": {}}, app_store
+    )
 
     class DisconnectAgent(FakeAgent):
         def __init__(self):
@@ -676,6 +711,16 @@ def test_api_disconnect_saves_partial_answer_and_allows_another_turn(tmp_path):
             self.calls += 1
 
             async def parts():
+                yield {
+                    "type": "tool-input-start",
+                    "toolCallId": "render-1",
+                    "toolName": "mcp__implicity__render",
+                }
+                yield {
+                    "type": "tool-output-available",
+                    "toolCallId": "render-1",
+                    "output": {"id": spec_id},
+                }
                 yield {"type": "start", "messageId": f"assistant-{self.calls}"}
                 yield {
                     "type": "text-delta",
@@ -745,6 +790,8 @@ def test_api_disconnect_saves_partial_answer_and_allows_another_turn(tmp_path):
         assert agent.cancelled
         messages = app_store.get(Message, app_store.list(Message)[-1].id)
         assert messages.data["content"] == "Partial"
+        assert messages.data["message_spec_id"] == spec_id
+        assert app_store.get(MessageSpec, spec_id).session_id == SESSION_ID
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="http://test"
         ) as client:

@@ -20,6 +20,8 @@ from implicity_api.modules.agent import (
     stream_parts_sse,
 )
 from implicity_api.modules.app import (
+    MessageAlreadyHasSpecError,
+    MessageSpecAlreadyAttachedError,
     MessageSpecNotFoundError,
     attach_message_spec,
     discard_unattached_message_specs,
@@ -241,7 +243,28 @@ def create_app(
             render_calls = set()
             rendered_spec_ids = []
             completed = False
-            failed = False
+
+            def save_result():
+                assistant_message = save_message(
+                    conversation_store,
+                    conversation_id,
+                    session_id,
+                    "assistant",
+                    "".join(answer),
+                )
+                for spec_id in rendered_spec_ids:
+                    try:
+                        attach_message_spec(
+                            assistant_message.id, spec_id, conversation_store
+                        )
+                        break
+                    except (
+                        MessageSpecNotFoundError,
+                        MessageSpecAlreadyAttachedError,
+                        MessageAlreadyHasSpecError,
+                    ):
+                        continue
+
             try:
                 async for event in stream_parts_sse(agent_parts):
                     terminal = False
@@ -270,7 +293,7 @@ def create_app(
                             "tool-input-available",
                         }:
                             tool_name = str(part.get("toolName", ""))
-                            if tool_name == "mcp__render":
+                            if tool_name == "mcp__implicity__render":
                                 render_calls.add(part.get("toolCallId"))
                         if (
                             part.get("type") == "tool-output-available"
@@ -285,9 +308,18 @@ def create_app(
                     yield event
             except asyncio.CancelledError:
                 agent.cancel(conversation_id)
+                if answer or rendered_spec_ids:
+                    try:
+                        save_result()
+                    except Exception as error:
+                        _log_chat_failure(
+                            "Could not persist partial assistant result",
+                            error,
+                            conversation_id,
+                            session_id,
+                        )
                 raise
             except Exception as error:
-                failed = True
                 if str(error) in {
                     "Hermes API key is not configured",
                     "Conversation is already streaming",
@@ -302,67 +334,33 @@ def create_app(
                         "Chat relay failed", error, conversation_id, session_id
                     )
                     message = "The answer could not be loaded. Try again."
+                stream_error = message
+            else:
+                stream_error = None
+
+            persistence_failed = False
+            if answer or rendered_spec_ids:
+                try:
+                    save_result()
+                except Exception as error:
+                    persistence_failed = True
+                    _log_chat_failure(
+                        "Could not persist assistant result",
+                        error,
+                        conversation_id,
+                        session_id,
+                    )
+            release()
+            if persistence_failed:
+                stream_error = "Could not save the answer. Try again."
+            if stream_error:
                 for part in (
-                    {"type": "error", "errorText": message},
+                    {"type": "error", "errorText": stream_error},
                     {"type": "finish"},
                 ):
                     yield f"data: {json.dumps(part, separators=(',', ':'))}\n\n"
                 yield "data: [DONE]\n\n"
-            finally:
-                if completed and (answer or rendered_spec_ids):
-                    try:
-                        assistant_message = save_message(
-                            conversation_store,
-                            conversation_id,
-                            session_id,
-                            "assistant",
-                            "".join(answer),
-                        )
-                        for spec_id in rendered_spec_ids:
-                            try:
-                                attach_message_spec(
-                                    assistant_message.id, spec_id, conversation_store
-                                )
-                                break
-                            except MessageSpecNotFoundError:
-                                continue
-                    except Exception as error:
-                        _log_chat_failure(
-                            "Could not persist assistant result",
-                            error,
-                            conversation_id,
-                            session_id,
-                        )
-                        for part in (
-                            {
-                                "type": "error",
-                                "errorText": "Could not save the answer. Try again.",
-                            },
-                            {"type": "finish"},
-                        ):
-                            yield f"data: {json.dumps(part, separators=(',', ':'))}\n\n"
-                        yield "data: [DONE]\n\n"
-                        return
-                elif not completed and (answer or rendered_spec_ids):
-                    try:
-                        save_message(
-                            conversation_store,
-                            conversation_id,
-                            session_id,
-                            "assistant",
-                            "".join(answer),
-                        )
-                    except Exception as error:
-                        _log_chat_failure(
-                            "Could not persist partial assistant result",
-                            error,
-                            conversation_id,
-                            session_id,
-                        )
-                    return
-                if failed:
-                    return
-                release()
+            elif completed:
                 yield 'data: {"type":"finish"}\n\n'
                 yield "data: [DONE]\n\n"
 

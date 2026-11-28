@@ -9,6 +9,7 @@ declare global {
     delaySeenObserver: boolean;
     pendingSeenObserverCallbacks: Array<() => void>;
     chatSeenEvents: CapturedEvent[];
+    offscreenRootVisible: boolean;
   }
 }
 

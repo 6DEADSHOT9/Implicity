@@ -15,10 +15,14 @@ type Props = z.infer<typeof propsSchema>;
 
 export function DataTable({ columns, rows, renderedColumns, renderedRows, showEmptyHeaders = false, chartValues, form, state, onAction }: Props & { renderedColumns?: ReactNode[]; renderedRows?: ReactNode[][]; showEmptyHeaders?: boolean; onAction?: (action: string, value?: string | number | boolean) => void }) {
   const capture = useCapture<(typeof events)[number]>();
+  const canShowRows = (state === "default" || state === "long_content") && columns.length > 0 && (rows.length > 0 || showEmptyHeaders);
+  const displayedForm: "table" | "chart" | undefined = canShowRows
+    ? form === "chart" && chartValues?.length ? "chart" : "table"
+    : undefined;
   const displayedState = state === "default"
-    ? !columns.length || !rows.length && !showEmptyHeaders || form === "chart" && !chartValues?.length ? "empty" : form === "chart" ? "chart" : "table"
+    ? !columns.length || !rows.length && !showEmptyHeaders ? "empty" : displayedForm ?? "empty"
     : state;
-  const displayedForm: "table" | "chart" | undefined = displayedState === "table" || displayedState === "chart" ? displayedState : undefined;
+  const canShowChart = !!chartValues?.length && rows.length > 0;
   const root = useSkeletonCapture(capture, "DataTable", displayedState);
   const previousForm = useRef(displayedForm);
   const emit = useRef(capture.emit);
@@ -34,9 +38,9 @@ export function DataTable({ columns, rows, renderedColumns, renderedRows, showEm
   const switchView = (to: "table" | "chart") => onAction?.("representation", to);
 
   return <section ref={root} className="space-y-space-3">
-    {rows.length > 0 && chartValues?.length ? <ButtonGroup aria-label="Data representation">
-      <Button variant={form === "table" ? "default" : "outline"} aria-pressed={form === "table"} onClick={() => switchView("table")}>Table</Button>
-      <Button variant={form === "chart" ? "default" : "outline"} aria-pressed={form === "chart"} onClick={() => switchView("chart")}>Chart</Button>
+    {canShowRows && (canShowChart || form === "chart") ? <ButtonGroup aria-label="Data representation">
+      <Button variant={displayedForm === "table" ? "default" : "outline"} aria-pressed={displayedForm === "table"} onClick={() => switchView("table")}>Table</Button>
+      {canShowChart ? <Button variant={displayedForm === "chart" ? "default" : "outline"} aria-pressed={displayedForm === "chart"} onClick={() => switchView("chart")}>Chart</Button> : null}
     </ButtonGroup> : null}
     {state === "loading" ? <p aria-busy="true">Loading data</p>
       : state === "error" ? <p role="alert">Data could not be loaded</p>

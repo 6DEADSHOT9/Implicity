@@ -110,7 +110,7 @@ describe("DataTable public registry entry", () => {
   const declared = new Set(entry.meta.defaultStates);
   for (const props of [
     { columns: [], rows: [] },
-    { columns: ["A"], rows: [["1"]], form: "chart" },
+    { columns: ["A"], rows: [["1"]], chartValues: [1], form: "chart", state: "empty" },
   ]) {
     act(() => root.unmount());
     recorder.events.length = 0;
@@ -160,6 +160,23 @@ describe("DataTable public registry entry", () => {
   act(() => root.render(render("chart")));
   expect(host.textContent).toContain("No data");
   expect(recorder.events.some(({ name }) => name === "representation_switched")).toBe(false);
+  act(() => root.unmount());
+ });
+ it("shows and records chart selection in long content and falls back to a table when charts are unavailable", () => {
+  const recorder = recordingCapture();
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  const props = { columns: ["Name", "Value"], rows: [["A", "1"]], chartValues: [1], form: "table" as const, state: "long_content" as const };
+  const render = (value: { columns: string[]; rows: string[][]; chartValues?: number[]; form: "table" | "chart"; state: "long_content" }) => <CaptureProvider sink={recorder.sink}><entry.Component props={value} slots={{}} /></CaptureProvider>;
+  act(() => root.render(render(props)));
+  act(() => root.render(render({ ...props, form: "chart" })));
+  expect(host.querySelector('[aria-label="Data representation"] button[aria-pressed="true"]')?.textContent).toBe("Chart");
+  expect(host.querySelector("table")).toBeNull();
+  expect(recorder.events).toContainEqual({ name: "representation_switched", dimension: "data_form", from: "table", to: "chart" });
+  act(() => root.render(render({ ...props, form: "chart", chartValues: undefined })));
+  expect(host.querySelector("table")).toBeTruthy();
+  expect(host.querySelector('[aria-label="Data representation"] button[aria-pressed="true"]')?.textContent).toBe("Table");
+  expect(host.querySelector('[aria-label="Data representation"] button')).toBeTruthy();
   act(() => root.unmount());
  });
  it("keeps the primary content accessible", () => {

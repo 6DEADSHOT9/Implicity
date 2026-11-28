@@ -121,6 +121,38 @@ test("an open long answer in the desktop chat is seen against the message list",
   await expect.poll(() => page.evaluate(() => window.chatSeenEvents.filter((event) => event.name === "component_seen" && event.slot === "long_answer" && event.default_state === "open").length), { timeout: 6500 }).toBe(1);
 });
 
+for (const { label, width, height } of [
+  { label: "phone", width: 375, height: 812 },
+  { label: "desktop", width: 1280, height: 800 },
+]) {
+  test(`expanding the first long answer creates overflow and uses the message list at ${label}`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    const id = `550e8400-e29b-41d4-a716-${width === 375 ? "000000000051" : "000000000052"}`;
+    const answer = `Short lead.\n\n${"A long paragraph remains in the chat viewport. ".repeat(520)}`;
+    const prompt = width === 375 ? "A short prompt." : "A previous prompt stays in the list. ".repeat(40);
+    await page.route("**/api/conversations", (route) => route.fulfill({ json: [{ id, title: "New chat" }] }));
+    await page.route(`**/api/conversations/${id}`, (route) => route.fulfill({ json: { id, title: "New chat", messages: [
+      { id: "user-1", role: "user", content: prompt },
+      { id: "assistant-1", role: "assistant", content: answer },
+    ] } }));
+    await stubQuota(page);
+    await page.goto("/tests/browser/chat-seen-fixture.html");
+    const slot = page.locator('[data-slot="long_answer"]');
+    const messageScroller = page.getByRole("list", { name: "Conversation messages" }).locator("xpath=..");
+    await expect(slot).toHaveAttribute("data-state", "folded");
+    expect(await messageScroller.evaluate((element) => element.scrollHeight)).toBeLessThanOrEqual(await messageScroller.evaluate((element) => element.clientHeight));
+    await page.getByRole("button", { name: "Show more" }).click();
+    await expect(slot).toHaveAttribute("data-state", "open");
+    await expect.poll(() => messageScroller.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
+    await messageScroller.evaluate((element) => { element.scrollTop = 0; });
+    const coverage = await chatCoverage(slot);
+    expect(coverage.coversList, JSON.stringify(coverage)).toBe(true);
+    expect(coverage.coversWindow, JSON.stringify(coverage)).toBe(false);
+    await expect.poll(() => page.evaluate(() => window.chatSeenEvents.filter((event) => event.name === "component_seen" && event.slot === "long_answer" && event.default_state === "open").length), { timeout: 6500 }).toBe(1);
+    expect(await page.evaluate(() => window.chatSeenEvents.filter((event) => event.name === "component_seen" && event.slot === "long_answer" && event.default_state === "open").length)).toBe(1);
+  });
+}
+
 test("mobile navigation leaves the chat and its first and last actions reachable", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   let count = 0;
