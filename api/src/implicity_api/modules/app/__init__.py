@@ -1,10 +1,12 @@
-from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
-from implicity_api.models.app import MessageSpec
-from implicity_api.stores.app import store
+from implicity_api.models.app import Message, MessageSpec
+from implicity_api.stores.app import (
+    UNATTACHED_MESSAGE_SPEC_RETENTION as UNATTACHED_MESSAGE_SPEC_RETENTION,
+)
+from implicity_api.stores.app import create_app_store, expiry_cutoff
 
-UNATTACHED_MESSAGE_SPEC_RETENTION = timedelta(days=1)
+store = create_app_store()
 
 
 class MessageNotFoundError(ValueError):
@@ -47,5 +49,4 @@ def attach_message_spec(message_id: str, spec_id: str, app_store=store) -> None:
 
 
 def discard_unattached_message_specs(app_store=store, now=None) -> int:
-    cutoff = (now or datetime.now(timezone.utc)) - UNATTACHED_MESSAGE_SPEC_RETENTION
-    return app_store.delete_unattached_message_specs_before(cutoff)
+    return app_store.delete_unattached_message_specs_before(expiry_cutoff(now))

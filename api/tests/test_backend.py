@@ -17,10 +17,10 @@ from alembic.config import Config
 from implicity_api import backup
 from implicity_api.backup import backup_database, database_path
 from implicity_api.db import PROJECT_ROOT, database_url
-from implicity_api.models import METADATA
 from implicity_api.models.agent import AgentSession
 from implicity_api.models.app import Conversation, Message, MessageSpec
 from implicity_api.models.engine import Decision
+from implicity_api.models.metadata import METADATA
 from implicity_api.persistence import create_store
 from sqlalchemy import (
     column,
