@@ -87,7 +87,7 @@ Other widgets, such as a CI tracker or supplier watch, are a DataTable, DataChar
 
 | Component | What it is | shadcn/ui base | Build |
 | --- | --- | --- | --- |
-| ChangeNotice | "This changed because…" with Keep and Undo | Marker inside a conversation, Toast outside one | Composed |
+| ChangeNotice | "This changed because…" with Keep and Undo. Its behaviour (`shown` on visibility, the Keep gate, Undo, errors) comes from the engine package's `useChangeNotice` hook; this skeleton keeps its own presentation and capture events (ADR 0029) | Marker inside a conversation, Toast outside one | Composed |
 | ProposalCard | A proposed look, widget, workflow, schedule, kind of chat or setting change, with Keep and Dismiss and a preview. The preview is required: an offer without one is rejected by the schema, and every gallery state shows one | Card, Button | Composed |
 | Nudge | The once-a-day in-app prompt at session start. Stage 1 builds the skeleton only, with `onAction` and `onLater` callbacks and the `component_shown` and `component_seen` events; its action and dismissal events arrive with the nudges feature (Later) | Alert, Button | Composed |
 
