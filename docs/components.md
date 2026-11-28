@@ -25,7 +25,7 @@ These never move. Only additions, such as a new shortcut chip, are allowed.
 | AppShell | The frame: sidebar, main area, optional docked panel. It always fills the window, and its layout follows the window's width through the breakpoint tokens. It is never placed inside a narrower container, so a container narrower than the window is not a case it handles | Sidebar, Resizable | Composed |
 | ConversationNavigation | Sidebar with Home, New chat, Search, chat list, recent work, projects, and the quota indicator in its footer | Sidebar, Item, Kbd, Avatar | Composed |
 | Composer | Input with attachments and shortcut chips | Prompt Input | Direct |
-| ChatHeader | Title, kind-of-chat badge, settings | Badge, Button, Dropdown Menu | Composed |
+| ChatHeader | Title, kind-of-chat badge, settings. The badge is hidden until kinds of chat exist (Stage 3). Conversation titles are a separate ticket; until then a conversation is titled "New chat" | Badge, Button, Dropdown Menu | Composed |
 | Search | Search across chats, also the command palette | Command (the shadcn/ui component) | Direct |
 | Settings | Preferences, locks, "What Implicity notices", change history, quota detail | Dialog or Sheet, Tabs, Field, Switch, Table | Composed |
 
