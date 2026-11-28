@@ -94,6 +94,24 @@ describe("session lifecycle across pages and tabs", () => {
     expect(sent.filter(({ name }) => name === "session_ended").map(({ session_id }) => session_id)).toEqual([closed.holder.id]);
   });
 
+  it("rotates on the clock even while the end claim is still waiting for the cross-tab lock", () => {
+    const queue: Array<() => void> = [];
+    const deferred: SessionLock = (_name, critical) => { queue.push(critical); };
+    const tab = page({ lock: deferred });
+    tab.holder.ensureActive();
+    const first = tab.holder.id;
+    const lastActivity = Date.now();
+    vi.advanceTimersByTime(idle);
+    tab.holder.expireIdle();
+    // An event with no input arrives before the browser runs the queued claim.
+    tab.holder.ensureActive();
+    tab.holder.recordEvent();
+    expect(tab.holder.id).not.toBe(first);
+    queue.splice(0).forEach((critical) => critical());
+    expect(names()).toEqual(["session_started 01", "session_started 02", "session_ended 01"]);
+    expect(sent[2].timestamp).toBe(lastActivity);
+  });
+
   it("gives a duplicated tab its own id, with one start per id", () => {
     const original = page();
     original.holder.ensureActive();

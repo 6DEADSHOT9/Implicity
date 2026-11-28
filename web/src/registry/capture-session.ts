@@ -156,8 +156,10 @@ export function createSessionHolder({ tab, shared, emit, now = () => Date.now(),
       sync();
       holder.expireIdle();
       const record = readAll()[current];
-      if (record && !record.ended) return;
-      if (record?.ended || readTab()?.started) current = newId();
+      if (record && !record.ended && !isIdle(record)) return;
+      // Rotate on the clock alone: an idle session's end may still be waiting for the cross-tab
+      // lock, and no event may be stamped with its id meanwhile. The claim sends that end later.
+      if (record || readTab()?.started) current = newId();
       const at = now();
       const started: SessionRecord = { id: current, localHourBucket: localHourBucket(new Date(at)), ...display(), lastActivity: at, lastEvent: at, ended: false };
       writeAll({ ...readAll(), [current]: started });
