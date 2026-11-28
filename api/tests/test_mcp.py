@@ -353,7 +353,12 @@ def test_app_attaches_rendered_spec_to_assistant_message_atomically(tmp_path):
         metadata.create_all(bind)
     app_store = create_store("app", bind)
     app_store.insert(
-        Message(id="message-1", session_id="session-1", data={"text": "Hello"})
+        Message(
+            id="message-1",
+            session_id="session-1",
+            conversation_id="conversation-1",
+            data={"role": "assistant", "text": "Hello"},
+        )
     )
     spec_id = app_module.save_message_spec(
         {"registry_version": 2, "root": "card", "elements": {}}, app_store
@@ -374,11 +379,18 @@ def test_app_attach_refuses_reuse_and_overwrite_with_distinct_errors(tmp_path):
         metadata.create_all(bind)
     app_store = create_store("app", bind)
     for message_id, session_id, data in (
-        ("m1", "s1", {}),
-        ("m2", "s1", {}),
-        ("m3", "s2", {}),
+        ("m1", "s1", {"role": "assistant"}),
+        ("m2", "s1", {"role": "assistant"}),
+        ("m3", "s2", {"role": "assistant"}),
     ):
-        app_store.insert(Message(id=message_id, session_id=session_id, data=data))
+        app_store.insert(
+            Message(
+                id=message_id,
+                session_id=session_id,
+                conversation_id="conversation-1",
+                data=data,
+            )
+        )
     first = app_module.save_message_spec(
         {"registry_version": 2, "root": "card", "elements": {}}, app_store
     )
@@ -396,8 +408,76 @@ def test_app_attach_refuses_reuse_and_overwrite_with_distinct_errors(tmp_path):
             app_module.attach_message_spec(message_id, first, app_store)
     with pytest.raises(app_module.MessageAlreadyHasSpecError):
         app_module.attach_message_spec("m1", second, app_store)
-    assert app_store.get(Message, "m2").data == {}
-    assert app_store.get(Message, "m3").data == {}
+    assert app_store.get(Message, "m2").data == {"role": "assistant"}
+    assert app_store.get(Message, "m3").data == {"role": "assistant"}
+
+
+def test_app_attach_refuses_user_messages(tmp_path):
+    bind = create_engine(f"sqlite:///{tmp_path / 'attach-user.db'}")
+    for metadata in METADATA.values():
+        metadata.create_all(bind)
+    app_store = create_store("app", bind)
+    app_store.insert(
+        Message(
+            id="user-message",
+            session_id="session-1",
+            conversation_id="conversation-1",
+            data={"role": "user"},
+        )
+    )
+    spec_id = app_module.save_message_spec(
+        {"registry_version": 2, "root": "card", "elements": {}}, app_store
+    )
+    with pytest.raises(app_module.MessageNotAssistantError):
+        app_module.attach_message_spec("user-message", spec_id, app_store)
+    assert app_store.get(Message, "user-message").data == {"role": "user"}
+    assert app_store.get(MessageSpec, spec_id).session_id is None
+
+
+def test_app_attach_wins_only_one_racing_claim_for_a_spec(tmp_path):
+    bind = create_engine(f"sqlite:///{tmp_path / 'attach-race.db'}")
+    for metadata in METADATA.values():
+        metadata.create_all(bind)
+    app_store = create_store("app", bind)
+    app_store.insert(
+        Message(
+            id="m1",
+            session_id="s1",
+            conversation_id="conversation-1",
+            data={"role": "assistant"},
+        )
+    )
+    app_store.insert(
+        Message(
+            id="m2",
+            session_id="s2",
+            conversation_id="conversation-1",
+            data={"role": "assistant"},
+        )
+    )
+    spec_id = app_module.save_message_spec(
+        {"registry_version": 2, "root": "card", "elements": {}}, app_store
+    )
+    competing_claim = False
+
+    def claim_between_read_and_update(
+        _connection, _cursor, statement, _parameters, _context, _many
+    ):
+        nonlocal competing_claim
+        if statement.upper().startswith("UPDATE MESSAGE_SPECS") and not competing_claim:
+            competing_claim = True
+            app_module.attach_message_spec("m2", spec_id, app_store)
+
+    event.listen(bind, "before_cursor_execute", claim_between_read_and_update)
+    try:
+        with pytest.raises(app_module.MessageSpecAlreadyAttachedError):
+            app_module.attach_message_spec("m1", spec_id, app_store)
+    finally:
+        event.remove(bind, "before_cursor_execute", claim_between_read_and_update)
+
+    assert app_store.get(Message, "m1").data == {"role": "assistant"}
+    assert app_store.get(Message, "m2").data["message_spec_id"] == spec_id
+    assert app_store.get(MessageSpec, spec_id).session_id == "s2"
 
 
 def test_app_attach_rolls_back_both_rows_when_second_write_fails(tmp_path):
@@ -405,7 +485,12 @@ def test_app_attach_rolls_back_both_rows_when_second_write_fails(tmp_path):
     for metadata in METADATA.values():
         metadata.create_all(bind)
     app_store = create_store("app", bind)
-    message = Message(id="m1", session_id="s1", data={"text": "answer"})
+    message = Message(
+        id="m1",
+        session_id="s1",
+        conversation_id="conversation-1",
+        data={"role": "assistant", "text": "answer"},
+    )
     app_store.insert(message)
     spec_id = app_module.save_message_spec(
         {"registry_version": 2, "root": "card", "elements": {}}, app_store
@@ -429,7 +514,7 @@ def test_app_attach_rolls_back_both_rows_when_second_write_fails(tmp_path):
         event.remove(bind, "before_cursor_execute", fail_second_write)
 
     assert updates == 2
-    assert app_store.get(Message, "m1").data == {"text": "answer"}
+    assert app_store.get(Message, "m1").data == {"role": "assistant", "text": "answer"}
     assert app_store.get(MessageSpec, spec_id).session_id is None
 
 
@@ -466,7 +551,14 @@ def test_app_discards_only_expired_unattached_specs(tmp_path):
             created_at=now,
         )
     )
-    app_store.insert(Message(id="race-message", session_id="s-race", data={}))
+    app_store.insert(
+        Message(
+            id="race-message",
+            session_id="s-race",
+            conversation_id="conversation-1",
+            data={"role": "assistant"},
+        )
+    )
     app_store.insert(
         MessageSpec(
             id="race",

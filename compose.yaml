@@ -9,7 +9,7 @@ x-web-build: &web-build
     COPY web/package.json web/package.json
     COPY engine/react/package.json engine/react/package.json
     COPY engine/demo/package.json engine/demo/package.json
-    RUN npx --yes pnpm@12.23.0 install --frozen-lockfile
+    RUN npm install --global pnpm@12.23.0 && pnpm install --frozen-lockfile
     CMD ["sleep", "infinity"]
 
 x-api-build: &api-build
@@ -42,6 +42,15 @@ services:
     environment:
       VITE_POSTHOG_API_KEY: ${VITE_POSTHOG_API_KEY:-}
       VITE_API_TARGET: http://api-development:8000
+    command: ["pnpm", "--filter", "@implicity/web", "dev", "--host", "0.0.0.0"]
+    ports:
+      - "127.0.0.1:${WEB_PORT:-5173}:5173"
+    volumes:
+      - .:/workspace
+      - web-node-modules:/workspace/node_modules
+      - web-package-node-modules:/workspace/web/node_modules
+      - engine-react-node-modules:/workspace/engine/react/node_modules
+      - engine-demo-node-modules:/workspace/engine/demo/node_modules
     networks: [app]
     healthcheck:
       <<: *app-healthcheck
@@ -63,6 +72,7 @@ services:
     command: [uv, run, --locked, uvicorn, implicity_api.app:app, --app-dir, api/src, --host, 0.0.0.0, --port, "8000", --reload]
     environment:
       MCP_ALLOWED_HOSTS: api-development:8000
+      HERMES_API_KEY: ${HERMES_API_KEY:?Set HERMES_API_KEY in .env}
       TZ: ${TZ:-UTC}
     volumes:
       - ./api/src:/workspace/api/src
@@ -80,6 +90,7 @@ services:
       - api-data:/workspace/data
     environment:
       MCP_ALLOWED_HOSTS: api-production:8000
+      HERMES_API_KEY: ${HERMES_API_KEY:?Set HERMES_API_KEY in .env}
       TZ: ${TZ:-UTC}
     networks: [app]
     healthcheck:
@@ -391,6 +402,10 @@ services:
 
 volumes:
   api-data:
+  web-node-modules:
+  web-package-node-modules:
+  engine-react-node-modules:
+  engine-demo-node-modules:
   hermes-data:
   posthog-db:
   posthog-redis:

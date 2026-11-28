@@ -26,16 +26,34 @@ function tableData(children: ReactNode) {
     if (!isValidElement<ElementWithChildren>(section)) return [];
     return Children.toArray(section.props.children).filter(isValidElement<ElementWithChildren>);
   });
-  const values = rows.map((row) => Children.toArray(row.props.children)
+  const cells = rows.map((row) => Children.toArray(row.props.children)
     .filter(isValidElement<ElementWithChildren>)
-    .map((cell) => textContent(cell.props.children)));
-  return { columns: values[0] ?? [], rows: values.slice(1) };
+    .map((cell) => cell.props.children ?? null));
+  const values = cells.map((row) => row.map(textContent));
+  return { columns: values[0] ?? [], rows: values.slice(1), renderedRows: cells.slice(1) };
 }
 
 function MarkdownTable({ children }: ComponentProps<"table">) {
-  const { columns, rows } = tableData(children ?? null);
-  return <DataTable columns={columns} rows={rows} chartValues={undefined} form="table" state="default" />;
+  const { columns, rows, renderedRows } = tableData(children ?? null);
+  return <DataTable columns={columns} rows={rows} renderedRows={renderedRows} chartValues={undefined} form="table" state="default" />;
 }
+
+const markdownComponents: Components = {
+  a: ({ href, children }) => <a href={href} target="_blank" rel="noreferrer" className="break-all font-medium text-primary">{children}</a>,
+  code: ({ children, className }) => <code className={className ? "font-mono text-sm" : "rounded-md bg-muted px-space-2 py-space-1 font-mono text-sm"}>{children}</code>,
+  blockquote: ({ children }) => <blockquote className="my-space-4 token-border-s ps-space-3 text-muted-foreground">{children}</blockquote>,
+  hr: () => <hr className="my-space-4 token-border-b border-border" />,
+  pre: ({ children }) => {
+    const code = Children.only(children);
+    const props = isValidElement<ElementWithChildren>(code) ? code.props : {};
+    const language = props.className?.match(/language-([^\s]+)/)?.[1] ?? "text";
+    return <CodeBlock code={textContent(props.children)} language={language} variant="code" state="default" />;
+  },
+  table: MarkdownTable as Components["table"],
+  th: ({ children }) => <th scope="col" className="token-border px-space-3 py-space-2 text-start font-medium">{children}</th>,
+  td: ({ children }) => <td className="token-border px-space-3 py-space-2 align-top">{children}</td>,
+  img: ({ src, alt }) => <RemoteImage src={typeof src === "string" ? src : undefined} alt={alt} />,
+};
 
 function rawHtmlAsText() {
   return (tree: MarkdownNode) => {
@@ -68,15 +86,17 @@ function RemoteImage({ src, alt }: { src?: string; alt?: string }) {
 function markdownBlocks(content: string) {
   let spacing = "";
   const blocks: string[] = [];
+  const definitions: string[] = [];
   for (const token of marked.lexer(content)) {
     if (token.type === "space") spacing += token.raw;
+    else if (token.type === "def") definitions.push(token.raw);
     else {
       blocks.push(spacing + token.raw);
       spacing = "";
     }
   }
   if (spacing && blocks.length) blocks[blocks.length - 1] += spacing;
-  return blocks;
+  return { blocks, definitions };
 }
 
 function Markdown({ content }: { content: string }) {
@@ -87,22 +107,7 @@ function Markdown({ content }: { content: string }) {
     linkSafety={{ enabled: false }}
     codeBlockMaxHeight={0}
     tableMaxHeight={0}
-    components={{
-      a: ({ href, children }) => <a href={href} target="_blank" rel="noreferrer" className="break-all font-medium text-primary">{children}</a>,
-      code: ({ children, className }) => <code className={className ? "font-mono text-sm" : "rounded-md bg-muted px-space-2 py-space-1 font-mono text-sm"}>{children}</code>,
-      blockquote: ({ children }) => <blockquote className="my-space-4 token-border-s ps-space-3 text-muted-foreground">{children}</blockquote>,
-      hr: () => <hr className="my-space-4 token-border-b border-border" />,
-      pre: ({ children }) => {
-        const code = Children.only(children);
-        const props = isValidElement<ElementWithChildren>(code) ? code.props : {};
-        const language = props.className?.match(/language-([^\s]+)/)?.[1] ?? "text";
-        return <CodeBlock code={textContent(props.children)} language={language} variant="code" state="default" />;
-      },
-      table: MarkdownTable as Components["table"],
-      th: ({ children }) => <th scope="col" className="token-border px-space-3 py-space-2 text-start font-medium">{children}</th>,
-      td: ({ children }) => <td className="token-border px-space-3 py-space-2 align-top">{children}</td>,
-      img: ({ src, alt }) => <RemoteImage src={typeof src === "string" ? src : undefined} alt={alt} />,
-    }}
+    components={markdownComponents}
   >{content}</Streamdown>;
 }
 
@@ -126,10 +131,10 @@ export function MessageBody({ content, streaming = false, initiallyOpen = false,
   }, []);
   useEffect(() => {
     if (!isLong || previousState.current === displayedState) return;
-    emitRef.current(displayedState === "open" ? "section_expanded" : "section_collapsed", { component: "MessageBody", slot: "long_answer" });
+    if (previousState.current !== "message") emitRef.current(displayedState === "open" ? "section_expanded" : "section_collapsed", { component: "MessageBody", slot: "long_answer" });
     previousState.current = displayedState;
   }, [displayedState, isLong]);
-  const blocks = isLong ? markdownBlocks(content) : [];
+  const { blocks, definitions } = isLong ? markdownBlocks(content) : { blocks: [], definitions: [] };
   let leadLength = 0;
   let leadEnd = 0;
   for (const block of blocks) {
@@ -138,11 +143,11 @@ export function MessageBody({ content, streaming = false, initiallyOpen = false,
     leadEnd++;
     if (leadLength >= actions.length_cutoffs.answer.medium) break;
   }
-  const lead = blocks.slice(0, leadEnd).join("");
+  const lead = blocks.slice(0, leadEnd).join("") + (definitions.length ? `\n\n${definitions.join("")}` : "");
   const visibleContent = !isLong || displayedState === "open" ? content : lead;
-  return <div ref={isLong ? undefined : shortSeenRef} className="min-w-0 max-w-full">
+  return <div ref={isLong ? undefined : shortSeenRef} className="w-full min-w-0 max-w-full">
     <Message role="article" from="assistant" aria-label="Message">
-      <MessageContent className="min-w-0 max-w-full break-words [&_a]:break-all [&_ol]:my-space-2 [&_ol]:list-decimal [&_ol]:ps-space-6 [&_ul]:my-space-2 [&_ul]:list-disc [&_ul]:ps-space-6 [&_li]:my-space-1 [&_h1]:text-heading-1 [&_h2]:text-heading-2 [&_h3]:text-heading-3 [&_h4]:text-heading-4 [&_h5]:text-heading-5 [&_h6]:text-heading-6">
+      <MessageContent className="w-full min-w-0 max-w-full break-words [&_a]:break-all [&_ol]:my-space-2 [&_ol]:list-decimal [&_ol]:ps-space-6 [&_ul]:my-space-2 [&_ul]:list-disc [&_ul]:ps-space-6 [&_li]:my-space-1 [&_h1]:text-heading-1 [&_h2]:text-heading-2 [&_h3]:text-heading-3 [&_h4]:text-heading-4 [&_h5]:text-heading-5 [&_h6]:text-heading-6">
         {isLong ? <section ref={longSeenRef} role="region" aria-label="Long answer" data-slot="long_answer" data-state={displayedState}>
           <Markdown content={visibleContent} />
           {!streaming && displayedState === "folded"

@@ -382,7 +382,6 @@
         },
         "required": [
           "title",
-          "kind",
           "settingsOpen"
         ],
         "additionalProperties": false
@@ -608,6 +607,12 @@
               ],
               "additionalProperties": false
             }
+          },
+          "disabled": {
+            "type": "boolean"
+          },
+          "attachmentsEnabled": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -1246,6 +1251,7 @@
         "type": "object",
         "properties": {
           "long_answer": {
+            "maxItems": 0,
             "type": "array",
             "items": {
               "type": "string",

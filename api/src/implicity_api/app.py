@@ -18,7 +18,10 @@ from implicity_api.modules.agent import (
     UserMessage,
     stream_sse,
 )
-from implicity_api.modules.app import discard_unattached_message_specs
+from implicity_api.modules.app import (
+    attach_message_spec,
+    discard_unattached_message_specs,
+)
 from implicity_api.modules.app.chat import (
     create_conversation,
     get_conversation,
@@ -117,6 +120,10 @@ def create_app(
             raise HTTPException(
                 status_code=422, detail="Invalid conversation id"
             ) from error
+        try:
+            session_id = str(uuid.UUID(body.get("session_id", "")))
+        except (AttributeError, TypeError, ValueError) as error:
+            raise HTTPException(status_code=422, detail="Invalid session id") from error
         if get_conversation(conversation_store, conversation_id) is None:
             raise HTTPException(status_code=404, detail="Conversation does not exist")
         messages = body.get("messages")
@@ -126,6 +133,10 @@ def create_app(
                 status_code=422, detail="The last message must be from the user"
             )
         parts = last.get("parts")
+        if not isinstance(parts, list) or len(parts) > 4:
+            raise HTTPException(
+                status_code=422, detail="The message has too many parts"
+            )
         text = "".join(
             part.get("text", "")
             for part in parts or []
@@ -135,10 +146,11 @@ def create_app(
         )
         if not text.strip():
             raise HTTPException(status_code=422, detail="A text message is required")
-        save_message(conversation_store, conversation_id, "user", text)
 
         async def relay():
             answer = []
+            user_saved = False
+            text_part_id = None
             try:
                 async for event in stream_sse(
                     agent, conversation_id, UserMessage(text)
@@ -150,20 +162,80 @@ def create_app(
                             part = json.loads(line[6:])
                         except json.JSONDecodeError:
                             continue
+                        if not user_saved:
+                            save_message(
+                                conversation_store,
+                                conversation_id,
+                                session_id,
+                                "user",
+                                text,
+                            )
+                            user_saved = True
                         if part.get("type") == "text-delta":
+                            if text_part_id is not None and text_part_id != part.get(
+                                "id"
+                            ):
+                                answer.append("\n\n")
                             answer.append(part.get("delta", ""))
+                            text_part_id = part.get("id")
+                        if part.get("type") == "tool-output-available":
+                            result = part.get("output")
+                            if isinstance(result, dict):
+                                structured = result.get("structuredContent") or {}
+                                spec_id = result.get("id") or structured.get("id")
+                                if isinstance(spec_id, str):
+                                    rendered_spec_ids.append(spec_id)
+                            elif isinstance(result, list):
+                                for item in result:
+                                    if isinstance(item, dict) and isinstance(
+                                        item.get("text"), str
+                                    ):
+                                        try:
+                                            spec_id = json.loads(item["text"]).get("id")
+                                        except (json.JSONDecodeError, AttributeError):
+                                            continue
+                                        if isinstance(spec_id, str):
+                                            rendered_spec_ids.append(spec_id)
                     yield event
             except asyncio.CancelledError:
                 agent.cancel(conversation_id)
                 raise
+            except Exception as error:
+                message = (
+                    "Hermes API key is not configured."
+                    if str(error) == "Hermes API key is not configured"
+                    else (
+                        "The agent could not start this turn. "
+                        "Check Hermes and try again."
+                    )
+                )
+                for part in (
+                    {"type": "error", "errorText": message},
+                    {"type": "finish"},
+                ):
+                    yield f"data: {json.dumps(part, separators=(',', ':'))}\n\n"
+                yield "data: [DONE]\n\n"
             finally:
                 if answer:
-                    save_message(
+                    assistant_message = save_message(
                         conversation_store,
                         conversation_id,
+                        session_id,
                         "assistant",
                         "".join(answer),
                     )
+                    for spec_id in dict.fromkeys(rendered_spec_ids):
+                        try:
+                            attach_message_spec(
+                                assistant_message.id, spec_id, conversation_store
+                            )
+                        except ValueError:
+                            logger.warning(
+                                "Could not attach rendered message spec to "
+                                "assistant message"
+                            )
+
+        rendered_spec_ids = []
 
         return StreamingResponse(
             relay(), media_type="text/event-stream", headers=AI_SDK_STREAM_HEADERS

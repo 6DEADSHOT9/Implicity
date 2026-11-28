@@ -5,5 +5,5 @@ const named = z.object({ id: commandId, label: z.string() }).strict();
 const shortcuts = z.array(named).superRefine((items, context) => {
   if (new Set(items.map(({ id }) => id)).size !== items.length) context.addIssue({ code: "custom", message: "Shortcut ids must be unique" });
 });
-export const propsSchema = z.object({ attachments: z.array(z.string()), shortcuts }).strict();
+export const propsSchema = z.object({ attachments: z.array(z.string()), shortcuts, disabled: z.boolean().optional(), attachmentsEnabled: z.boolean().optional() }).strict();
 export const slotsSchema = z.object({}).strict();

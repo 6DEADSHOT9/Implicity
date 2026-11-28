@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
 
+import anyio
 import pytest
 import uvicorn
 from fastapi import FastAPI, Request
@@ -471,6 +472,32 @@ def test_closing_the_public_stream_closes_hermes_http_response(fake_hermes, tmp_
 
     asyncio.run(close())
     assert stream_closed.wait(timeout=3)
+
+
+def test_disconnect_during_answer_allows_the_next_turn(fake_hermes, tmp_path):
+    base_url, _, _, _ = fake_hermes
+    bind = create_engine(f"sqlite:///{tmp_path / 'disconnect-reuse.db'}")
+    Base.metadata.create_all(bind)
+    agent = HermesAgent(create_store("agent", bind), base_url, "test-key")
+    conversation_id = "550e8400-e29b-41d4-a716-446655440007"
+    agent.start_conversation(conversation_id)
+
+    async def check():
+        stream = agent.send(conversation_id, UserMessage("slow"))
+        assert (await anext(stream))["type"] == "start"
+        with anyio.CancelScope() as scope:
+
+            async def disconnect():
+                await anext(stream)
+
+            async with anyio.create_task_group() as tasks:
+                tasks.start_soon(disconnect)
+                scope.cancel()
+        await stream.aclose()
+        return [part async for part in agent.send(conversation_id, UserMessage("Hi"))]
+
+    parts = anyio.run(check)
+    assert any(part["type"] == "text-delta" for part in parts)
 
 
 @pytest.fixture

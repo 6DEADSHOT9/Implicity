@@ -39,6 +39,11 @@ describe("ChatHeader", () => {
     expect(onOpenSettings).toHaveBeenCalledTimes(1);
     expect(onSettingsOpenChange.mock.calls).toEqual([[true], [false], [true], [false]]);
   });
+  it("omits the kind badge when the host does not know a chat kind yet", () => {
+    render(<CaptureProvider sink={recordingCapture().sink}><ChatHeader title="New chat" /></CaptureProvider>);
+    expect(screen.getByRole("heading", { name: "New chat" })).toBeTruthy();
+    expect(screen.queryByText("coding")).toBeNull();
+  });
   it("exports strict props and slots schemas", () => {
     expect(propsSchema.safeParse(entry.meta.galleryStates[0].props).success).toBe(true);
     expect(propsSchema.safeParse({ ...entry.meta.galleryStates[0].props, unexpected: true }).success).toBe(false);

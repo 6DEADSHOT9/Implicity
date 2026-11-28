@@ -675,6 +675,9 @@ class HermesAgent:
             }
             yield {"type": "finish"}
         finally:
+            with self._active_lock:
+                if self._active.get(conversation_id) is cancelled:
+                    self._active.pop(conversation_id, None)
             cancel_task.cancel()
             if read_task and not read_task.done():
                 read_task.cancel()
@@ -683,9 +686,6 @@ class HermesAgent:
                 *(task for task in (read_task,) if task is not None),
                 return_exceptions=True,
             )
-            with self._active_lock:
-                if self._active.get(conversation_id) is cancelled:
-                    self._active.pop(conversation_id, None)
 
 
 async def stream_sse(

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
+import type { ReactNode } from "react";
 import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from "@tanstack/react-table";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -12,11 +13,11 @@ import { propsSchema } from "./schema";
 
 type Props = z.infer<typeof propsSchema>;
 
-export function DataTable({ columns, rows, chartValues, form, state, onAction }: Props & { onAction?: (action: string, value?: string | number | boolean) => void }) {
+export function DataTable({ columns, rows, renderedRows, chartValues, form, state, onAction }: Props & { renderedRows?: ReactNode[][]; onAction?: (action: string, value?: string | number | boolean) => void }) {
   const capture = useCapture<(typeof events)[number]>();
-  const displayedForm = (state === "default" || state === "long_content") && rows.length > 0 && (form !== "chart" || !!chartValues?.length) ? form : undefined;
+  const displayedForm = (state === "default" || state === "long_content") && (rows.length > 0 || columns.length > 0) && (form !== "chart" || !!chartValues?.length) ? form : undefined;
   const displayedState = state === "default"
-    ? !rows.length || form === "chart" && !chartValues?.length ? "empty" : form
+    ? !columns.length || form === "chart" && !chartValues?.length ? "empty" : form
     : state;
   const root = useSkeletonCapture(capture, "DataTable", displayedState);
   const previousForm = useRef(displayedForm);
@@ -33,20 +34,20 @@ export function DataTable({ columns, rows, chartValues, form, state, onAction }:
   const switchView = (to: "table" | "chart") => onAction?.("representation", to);
 
   return <section ref={root} className="space-y-space-3">
-    {chartValues?.length ? <ButtonGroup aria-label="Data representation">
+    {chartValues?.length || form === "chart" ? <ButtonGroup aria-label="Data representation">
       <Button variant={form === "table" ? "default" : "outline"} aria-pressed={form === "table"} onClick={() => switchView("table")}>Table</Button>
       <Button variant={form === "chart" ? "default" : "outline"} aria-pressed={form === "chart"} onClick={() => switchView("chart")}>Chart</Button>
     </ButtonGroup> : null}
     {state === "loading" ? <p aria-busy="true">Loading data</p>
       : state === "error" ? <p role="alert">Data could not be loaded</p>
-        : state === "empty" || !rows.length ? <p>No data</p>
+      : state === "empty" || !columns.length ? <p>No data</p>
           : form === "chart" ? chartValues?.length
             ? <DataChart title={columns[1] ?? "Data"} labels={rows.map((row, index) => row[0] ?? `Series ${index + 1}`)} values={chartValues} chartType="bar" state="default" />
             : <p>No chart data</p>
             : <Table>
               <TableCaption>Data</TableCaption>
               <TableHeader>{table.getHeaderGroups().map((group) => <TableRow key={group.id}>{group.headers.map((header) => <TableHead scope="col" key={header.id}>{flexRender(header.column.columnDef.header, header.getContext())}</TableHead>)}</TableRow>)}</TableHeader>
-              <TableBody>{table.getRowModel().rows.map((row) => <TableRow key={row.id}>{Array.from({ length: Math.max(columns.length, row.original.length) }, (_, index) => <TableCell key={index}>{row.original[index] ?? ""}</TableCell>)}</TableRow>)}</TableBody>
+              <TableBody>{table.getRowModel().rows.map((row) => <TableRow key={row.id}>{Array.from({ length: Math.max(columns.length, row.original.length) }, (_, index) => <TableCell className={renderedRows ? "whitespace-normal break-words" : "whitespace-nowrap"} key={index}>{renderedRows?.[row.index]?.[index] ?? row.original[index] ?? ""}</TableCell>)}</TableRow>)}</TableBody>
             </Table>}
   </section>;
 }

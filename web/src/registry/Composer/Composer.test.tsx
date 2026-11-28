@@ -59,6 +59,12 @@ describe("Composer", () => {
     expect(entry.events).toContain("component_shown");
     expect(entry.events).toContain("component_seen");
   });
+  it("can keep drafts editable while preventing sends and hiding unsupported attachments", () => {
+    render(<Composer attachments={[]} shortcuts={[]} disabled attachmentsEnabled={false} />);
+    expect(screen.getByRole("textbox", { name: "Message" }).hasAttribute("disabled")).toBe(false);
+    expect(screen.getByRole("button", { name: "Submit" }).hasAttribute("disabled")).toBe(true);
+    expect(screen.queryByRole("button", { name: "Add attachment" })).toBeNull();
+  });
   it("accepts declared built-in and app-minted workflow Commands only, without duplicate ids", () => {
     const builtIn = "search";
     const workflow = "cmd_550e8400-e29b-41d4-a716-446655440010";

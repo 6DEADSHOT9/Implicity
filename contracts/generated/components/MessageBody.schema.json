@@ -26,6 +26,7 @@
       "type": "object",
       "properties": {
         "long_answer": {
+          "maxItems": 0,
           "type": "array",
           "items": {
             "type": "string",

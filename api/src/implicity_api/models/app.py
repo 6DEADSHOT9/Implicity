@@ -21,6 +21,7 @@ class Conversation(OwnedRow, Base):
 class Message(OwnedRow, Base):
     __tablename__ = "messages"
     session_id: Mapped[str] = mapped_column(String, nullable=False)
+    conversation_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
 
 
 class MessageSpec(OwnedRow, Base):

@@ -29,7 +29,7 @@ def get_conversation(app_store, conversation_id: str) -> dict | None:
     if conversation is None:
         return None
     messages = [
-        row for row in app_store.list(Message) if row.session_id == conversation_id
+        row for row in app_store.list(Message) if row.conversation_id == conversation_id
     ]
     messages.sort(key=lambda row: (row.data["created_at"], row.id))
     return {
@@ -39,8 +39,11 @@ def get_conversation(app_store, conversation_id: str) -> dict | None:
     }
 
 
-def save_message(app_store, conversation_id: str, role: str, content: str) -> Message:
+def save_message(
+    app_store, conversation_id: str, session_id: str, role: str, content: str
+) -> Message:
     conversation_id = str(UUID(conversation_id))
+    session_id = str(UUID(session_id))
     if role not in {"user", "assistant"}:
         raise ValueError("Invalid message role")
     if app_store.get(Conversation, conversation_id) is None:
@@ -48,7 +51,8 @@ def save_message(app_store, conversation_id: str, role: str, content: str) -> Me
     return app_store.insert(
         Message(
             id=str(uuid4()),
-            session_id=conversation_id,
+            session_id=session_id,
+            conversation_id=conversation_id,
             data={
                 "role": role,
                 "content": content,

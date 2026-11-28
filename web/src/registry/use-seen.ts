@@ -44,6 +44,7 @@ export function useSeen({ component, defaultState, slot, onVisible }: { componen
     let visibleSince: number | undefined;
     let intersectionVisible = false;
     let needsFreshSample = false;
+    let observer: IntersectionObserver;
     const clearTimer = () => {
       clearTimeout(timer);
       timer = undefined;
@@ -84,7 +85,10 @@ export function useSeen({ component, defaultState, slot, onVisible }: { componen
       const currentEntries = entries.filter(({ target }) => target === observedElement).sort((a, b) => a.time - b.time);
       let latestVisible = false;
       for (const entry of currentEntries) {
-        intersectionVisible = entry.isIntersecting && entry.intersectionRatio >= SEEN_VISIBLE_RATIO;
+        const viewport = entry.rootBounds;
+        const tall = viewport && entry.boundingClientRect.height > viewport.height;
+        const coversHalfViewport = tall && entry.intersectionRect.width * entry.intersectionRect.height >= viewport.width * viewport.height / 2;
+        intersectionVisible = entry.isIntersecting && (tall ? !!coversHalfViewport : entry.intersectionRatio >= SEEN_VISIBLE_RATIO);
         intersectionVisibleRef.current = intersectionVisible;
         if (!intersectionVisible) {
           resetStretch();
@@ -116,7 +120,7 @@ export function useSeen({ component, defaultState, slot, onVisible }: { componen
     };
     function onTimer() {
       timer = undefined;
-      applyEntries(observer.takeRecords());
+      applyEntries(observer?.takeRecords() ?? []);
       if (emittedRef.current || !intersectionVisible) return;
       if (!observedElement.checkVisibility({ opacityProperty: true, visibilityProperty: true })) {
         visibleSince = undefined;
@@ -135,11 +139,25 @@ export function useSeen({ component, defaultState, slot, onVisible }: { componen
       requestFreshSample();
     }
 
-    const observer = new IntersectionObserver((entries) => applyEntries(entries), { threshold: [0, SEEN_VISIBLE_RATIO] });
-    observer.observe(observedElement);
+    const observe = () => {
+      observer?.disconnect();
+      const rect = observedElement.getBoundingClientRect();
+      const viewportArea = window.innerWidth * window.innerHeight;
+      const threshold = rect.height > window.innerHeight
+        ? Math.min(1, viewportArea / (2 * rect.width * rect.height))
+        : SEEN_VISIBLE_RATIO;
+      observer = new IntersectionObserver((entries) => applyEntries(entries), { threshold: [...new Set([0, threshold, SEEN_VISIBLE_RATIO])].sort((a, b) => a - b) });
+      observer.observe(observedElement);
+    };
+    const resizeObserver = new ResizeObserver(observe);
+    resizeObserver.observe(observedElement);
+    window.addEventListener("resize", observe);
+    observe();
     return () => {
       clearTimer();
       observer.disconnect();
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", observe);
     };
   }, [element]);
 

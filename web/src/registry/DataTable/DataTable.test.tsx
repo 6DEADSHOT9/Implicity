@@ -108,7 +108,7 @@ describe("DataTable public registry entry", () => {
   let root = createRoot(host);
   const declared = new Set(entry.meta.defaultStates);
   for (const props of [
-    { columns: ["A"], rows: [] },
+    { columns: [], rows: [] },
     { columns: ["A"], rows: [["1"]], form: "chart" },
   ]) {
     act(() => root.unmount());
@@ -120,6 +120,15 @@ describe("DataTable public registry entry", () => {
     expect(declared.has(event.default_state)).toBe(true);
     expect(event.default_state).toBe("empty");
   }
+  act(() => root.unmount());
+ });
+ it("shows headers while rows are empty and keeps the chart switcher available", () => {
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  act(() => root.render(<entry.Component props={{ columns: ["Name", "Value"], rows: [], form: "table" }} slots={{}} />));
+  expect(Array.from(host.querySelectorAll("thead th"), (cell) => cell.textContent)).toEqual(["Name", "Value"]);
+  act(() => root.render(<entry.Component props={{ columns: ["Name", "Value"], rows: [["A", "1"]], form: "chart" }} slots={{}} />));
+  expect(host.querySelector('[aria-label="Data representation"]')).toBeTruthy();
   act(() => root.unmount());
  });
  it("keeps the primary content accessible", () => {

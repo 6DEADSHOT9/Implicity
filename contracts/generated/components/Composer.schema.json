@@ -47,6 +47,12 @@
             ],
             "additionalProperties": false
           }
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "attachmentsEnabled": {
+          "type": "boolean"
         }
       },
       "required": [
