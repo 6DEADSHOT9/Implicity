@@ -24,6 +24,7 @@ try {
       conversationFixture: resolve(web, "tests/browser/conversation-gallery.html"),
       focusedFixture: resolve(web, "tests/browser/focused-gallery.html"),
       shellFixture: resolve(web, "tests/browser/shell-gallery.html"),
+      systemMessageFixture: resolve(web, "tests/browser/system-messages.html"),
     } } },
   });
 

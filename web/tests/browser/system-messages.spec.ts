@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import registrySnapshot from "../../../contracts/generated/components/registry.json" with { type: "json" };
 import { measureContrast } from "./contrast";
+import { builtPreviewUrl } from "./gallery-test-helpers";
 
 async function expectPanelsInsideFrames(page: import("@playwright/test").Page, previews: readonly (readonly [string, string])[]) {
   for (const [id, state] of previews) {
@@ -224,12 +225,8 @@ for (const cohort of galleryCohorts) {
 }
 
 test("ChangeNotice shown events follow native disclosure and completed opacity reveals", async ({ page }) => {
-  await page.goto("/");
-  await page.evaluate(async () => {
-    const fixtureUrl = "/tests/browser/system-messages-entry.tsx";
-    const { mountVisibilityCases } = await import(/* @vite-ignore */ fixtureUrl) as typeof import("./system-messages-entry");
-    mountVisibilityCases();
-  });
+  await openSystemMessageFixture(page);
+  await page.evaluate(() => window.mountSystemMessageCase("visibility"));
   const events = () => page.evaluate(() => window.systemMessageEvents);
   await expect.poll(async () => (await events()).length).toBe(0);
   await page.locator("#details-case summary").scrollIntoViewIfNeeded();
@@ -247,13 +244,9 @@ test("ChangeNotice shown events follow native disclosure and completed opacity r
 });
 
 test("Keep reports an opacity-revealed toast shown before the action", async ({ page }) => {
-  await page.goto("/");
+  await openSystemMessageFixture(page);
   await page.addStyleTag({ content: "[data-sonner-toaster] { opacity: 0; transition: opacity 180ms linear; }" });
-  await page.evaluate(async () => {
-    const fixtureUrl = "/tests/browser/system-messages-entry.tsx";
-    const { mountOpacityToast } = await import(/* @vite-ignore */ fixtureUrl) as typeof import("./system-messages-entry");
-    mountOpacityToast();
-  });
+  await page.evaluate(() => window.mountSystemMessageCase("opacity"));
   const host = page.locator("[data-sonner-toaster]").first();
   await expect(host).toHaveCount(1);
   const notice = page.getByRole("status", { name: "Opacity toast" });
@@ -271,17 +264,13 @@ test("Keep reports an opacity-revealed toast shown before the action", async ({ 
 });
 
 async function openSystemMessageFixture(page: import("@playwright/test").Page) {
-  await page.goto("/tests/browser/content-gallery.html?preview=");
+  await page.goto(builtPreviewUrl("/tests/browser/system-messages.html"), { waitUntil: "domcontentloaded" });
   await expect(page.locator("html")).toHaveAttribute("data-look", "default");
 }
 
 test("shown inline actions work when only 38% of the notice remains visible", async ({ page }) => {
   await openSystemMessageFixture(page);
-  await page.evaluate(async () => {
-    const fixtureUrl = "/tests/browser/system-messages-entry.tsx";
-    const { mountPartialInlineNotice } = await import(/* @vite-ignore */ fixtureUrl) as typeof import("./system-messages-entry");
-    mountPartialInlineNotice();
-  });
+  await page.evaluate(() => window.mountSystemMessageCase("partial"));
   const notice = page.getByRole("status", { name: "Partial inline notice" });
   await notice.scrollIntoViewIfNeeded();
   await expect.poll(() => page.evaluate(() => window.systemMessageEvents.some((event) => event.name === "change_shown" && "decision_id" in event && event.decision_id === "dec_623e4567-e89b-42d3-a456-426614174000"))).toBe(true);
@@ -320,11 +309,7 @@ test("shown inline actions work when only 38% of the notice remains visible", as
 
 test("concurrent Decision toasts stack and route each pointer action to its own Decision", async ({ page }) => {
   await openSystemMessageFixture(page);
-  await page.evaluate(async () => {
-    const fixtureUrl = "/tests/browser/system-messages-entry.tsx";
-    const { mountConcurrentNotices } = await import(/* @vite-ignore */ fixtureUrl) as typeof import("./system-messages-entry");
-    mountConcurrentNotices();
-  });
+  await page.evaluate(() => window.mountSystemMessageCase("concurrent"));
   const first = page.getByRole("status", { name: "First decision" });
   const second = page.getByRole("status", { name: "Second decision" });
   await expect(first).toBeVisible();
