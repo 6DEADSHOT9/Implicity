@@ -1,6 +1,6 @@
 import { createRoot } from "react-dom/client";
 import { ChangeNotice } from "../../src/registry/ChangeNotice/ChangeNotice";
-import { CaptureProvider, type CapturedEvent } from "../../src/registry";
+import { CaptureProvider, type CapturedEvent } from "../../src/registry/capture";
 
 declare global {
   interface Window {

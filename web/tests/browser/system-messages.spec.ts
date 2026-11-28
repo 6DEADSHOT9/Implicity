@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import registrySnapshot from "../../../contracts/generated/components/registry.json" with { type: "json" };
+import { SEEN_VISIBLE_RATIO } from "../../src/registry/use-seen";
 import { measureContrast } from "./contrast";
 
 async function expectPanelsInsideFrames(page: import("@playwright/test").Page, previews: readonly (readonly [string, string])[]) {
@@ -224,26 +225,31 @@ for (const cohort of galleryCohorts) {
 }
 
 test("ChangeNotice shown events follow native disclosure and completed opacity reveals", async ({ page }) => {
-  await page.goto("/");
-  await page.evaluate(async () => {
-    const fixtureUrl = "/tests/browser/system-messages-entry.tsx";
-    const { mountVisibilityCases } = await import(/* @vite-ignore */ fixtureUrl) as typeof import("./system-messages-entry");
-    mountVisibilityCases();
-  });
-  const events = () => page.evaluate(() => window.systemMessageEvents);
-  await expect.poll(async () => (await events()).length).toBe(0);
-  await page.locator("#details-case summary").scrollIntoViewIfNeeded();
-  await page.locator("#details-case summary").click();
-  await page.locator("#details-case [role='status']").scrollIntoViewIfNeeded();
-  await expect.poll(async () => (await events()).some((event) => event.name === "change_shown" && event.decision_id === "dec_323e4567-e89b-42d3-a456-426614174000")).toBe(true);
+  const previewPort = Number((globalThis as typeof globalThis & { process?: { env?: Record<string, string | undefined> } }).process?.env?.GALLERY_PREVIEW_PORT ?? 4174);
+  await page.goto(`http://127.0.0.1:${previewPort}/tests/browser/change-notice-visibility.html`);
+  const disclosure = page.locator("#details-case summary");
+  const opacityCase = page.locator("#opacity-case");
+  const disclosedDecision = "dec_323e4567-e89b-42d3-a456-426614174000";
+  const opacityDecision = "dec_423e4567-e89b-42d3-a456-426614174000";
+  const shownDecisions = () => page.evaluate(() => window.systemMessageEvents.flatMap((event) => event.name === "change_shown" ? [event.decision_id] : []));
 
-  await page.locator("#opacity-case [role='status']").scrollIntoViewIfNeeded();
-  await page.evaluate(() => new Promise<void>((resolve) => {
-    const element = document.querySelector<HTMLElement>("#opacity-case")!;
-    element.addEventListener("transitionend", () => resolve(), { once: true });
+  await expect(opacityCase.locator("[role='status']")).toBeInViewport({ ratio: SEEN_VISIBLE_RATIO });
+  await expect(opacityCase).toHaveCSS("opacity", "0");
+  expect(await page.evaluate(() => window.systemMessageEvents)).toEqual([]);
+  await disclosure.click();
+  await expect.poll(shownDecisions).toEqual([disclosedDecision]);
+
+  await opacityCase.evaluate((element: HTMLDivElement) => new Promise<void>((resolve) => {
+    const onTransitionEnd = (event: TransitionEvent) => {
+      if (event.target !== element || event.propertyName !== "opacity") return;
+      element.removeEventListener("transitionend", onTransitionEnd);
+      resolve();
+    };
+    element.addEventListener("transitionend", onTransitionEnd);
     window.revealOpacity();
   }));
-  await expect.poll(async () => (await events()).some((event) => event.name === "change_shown" && event.decision_id === "dec_423e4567-e89b-42d3-a456-426614174000")).toBe(true);
+  await expect(opacityCase).toHaveCSS("opacity", "1");
+  await expect.poll(shownDecisions).toEqual([disclosedDecision, opacityDecision]);
 });
 
 test("Keep reports an opacity-revealed toast shown before the action", async ({ page }) => {
