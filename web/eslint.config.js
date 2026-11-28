@@ -3,7 +3,7 @@ import globals from "globals";
 import tsParser from "@typescript-eslint/parser";
 
 export default [
-  { ignores: ["node_modules/**", "**/dist/**"] },
+  { ignores: ["node_modules/**", "**/dist/**", "src/contracts/event-validator.js"] },
   js.configs.recommended,
   {
     files: ["**/*.{js,ts,tsx}"],

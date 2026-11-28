@@ -1,15 +1,14 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import validateEvent from "../../../contracts/generated/event-validator.js";
+import validateEvent from "../contracts/event-validator.js";
 import schema from "../../../contracts/schemas/index.json" with { type: "json" };
-import actions from "../../../contracts/actions.json" with { type: "json" };
 import type { Event } from "../contracts/generated";
 import type { SkeletonEntry } from "./define-skeleton";
 import { deviceClass, SECONDS_DECIMAL_PLACES } from "./capture-rules";
+import { createSessionHolder, safeSessionStore, watchSession } from "./capture-session";
 
 type SharedField = "event_id" | "timestamp" | "contracts_version" | "session_id" | "conversation_id" | "kind" | "layout_version" | "registry_version" | "device_class" | "input_type";
 export type EventName = Event["name"];
 export type CapturedEvent<N extends EventName = EventName> = N extends EventName ? Omit<Extract<Event, { name: N }>, SharedField> : never;
-type SessionCaptureEvent = CapturedEvent<"session_started" | "session_ended">;
 export type CaptureSink = (event: CapturedEvent, producer?: string) => void;
 export type AppIdType = "command" | "kind" | "proposal" | "decision";
 export type CaptureRegistry = { version: number; entries: ReadonlyMap<string, { meta: Pick<SkeletonEntry["meta"], "slots" | "defaultStates" | "commands"> }> };
@@ -38,8 +37,9 @@ export function getInputType(pointer: string | undefined): "mouse" | "touch" | "
   return pointer === "fine" ? "mouse" : pointer === "coarse" ? "touch" : "none";
 }
 
-export function createValidatedCapture({ context, registry, send, ids }: {
-  context: CaptureContextValue;
+export function createValidatedCapture({ context: contextSource, registry, send, ids }: {
+  /** The shared context, or a getter read when each event is stamped. */
+  context: CaptureContextValue | (() => CaptureContextValue);
   registry: CaptureRegistry;
   send: (event: Event, producer?: string) => void;
   ids: { has: (type: AppIdType, id: string) => boolean };
@@ -54,6 +54,7 @@ export function createValidatedCapture({ context, registry, send, ids }: {
   }
   return (fields: CapturedEvent, producer?: string) => {
     if (isExcludedEvent(fields.name)) return false;
+    const context = typeof contextSource === "function" ? contextSource() : contextSource;
     const event = {
       ...roundSeconds(fields),
       event_id: crypto.randomUUID(),
@@ -85,11 +86,14 @@ function hasRegistryValues(event: Event, registry: CaptureRegistry, ids: { has: 
   if ("slot" in event && event.slot && !("component" in event && event.component)) return false;
   if ("command" in event && event.command) {
     const command = event.command;
-    const owner = producer ?? ("component" in event ? event.component : undefined);
-    const isRegistryCommand = owner === "ShortcutChips"
+    // A named component owns its Commands; ShortcutChips may carry any declared built-in.
+    // A skeleton that names no component passes its own id as the producer. App code that
+    // names neither may send any declared built-in. Workflow Commands are app-minted ids.
+    const owner = ("component" in event ? event.component : undefined) ?? producer;
+    const declared = owner === undefined || owner === "ShortcutChips"
       ? [...registry.entries.values()].some(({ meta }) => meta.commands.includes(command))
-      : owner ? registry.entries.get(owner)?.meta.commands.includes(command) ?? false : false;
-    if (!isRegistryCommand && !ids.has("command", command)) return false;
+      : registry.entries.get(owner)?.meta.commands.includes(command) ?? false;
+    if (!declared && !ids.has("command", command)) return false;
   }
   if ("kinds" in event && event.kinds.some((kind) => !coreKinds.has(kind) && !ids.has("kind", kind))) return false;
   if ("kind" in event && typeof event.kind === "string" && !coreKinds.has(event.kind) && !ids.has("kind", event.kind)) return false;
@@ -102,7 +106,7 @@ export function CaptureProvider({ sink, children }: { sink: CaptureSink; childre
   return <CaptureContext.Provider value={sink}>{children}</CaptureContext.Provider>;
 }
 
-export function BrowserCaptureProvider({ children, registry, ids = emptyIds, temporary = false, lifecycle = true, enabled = false, layoutVersion = 1, conversationId, kind }: {
+export function BrowserCaptureProvider({ children, registry, ids = emptyIds, temporary = false, lifecycle = true, enabled = true, layoutVersion = 1, conversationId, kind }: {
   children: ReactNode;
   registry: CaptureRegistry;
   ids?: { has: (type: AppIdType, id: string) => boolean };
@@ -113,94 +117,26 @@ export function BrowserCaptureProvider({ children, registry, ids = emptyIds, tem
   conversationId?: string;
   kind?: string;
 }) {
-  const [session, setSession] = useState(readSession);
-  const sink = useMemo(() => temporary || !enabled ? () => {} : createPostHogCapture({ session_id: session.id, layout_version: layoutVersion, ...(conversationId ? { conversation_id: conversationId } : {}), ...(kind ? { kind } : {}) }, registry, ids), [temporary, enabled, session.id, layoutVersion, conversationId, kind, registry, ids]);
-  const sinkRef = useRef(sink);
-  sinkRef.current = sink;
+  const active = enabled && !temporary;
+  const captureRef = useRef<CaptureSink>(() => {});
+  const [holder] = useState(() => createSessionHolder({ store: safeSessionStore(), emit: (event) => captureRef.current(event) }));
+  const sink = useMemo<CaptureSink>(() => {
+    if (!active) {
+      captureRef.current = () => {};
+      return () => {};
+    }
+    const capture = createPostHogCapture(() => ({ session_id: holder.id, layout_version: layoutVersion, ...(conversationId ? { conversation_id: conversationId } : {}), ...(kind ? { kind } : {}) }), registry, ids);
+    captureRef.current = capture;
+    return (event, producer) => {
+      if (lifecycle && event.name !== "session_started" && event.name !== "session_ended") holder.ensureActive();
+      capture(event, producer);
+    };
+  }, [active, lifecycle, holder, layoutVersion, conversationId, kind, registry, ids]);
   useEffect(() => {
-    if (temporary || !lifecycle || !enabled) return;
-    return startSessionLifecycle(session, (event) => sinkRef.current(event));
-  }, [session, temporary, lifecycle, enabled]);
+    if (!active || !lifecycle) return;
+    return watchSession(holder);
+  }, [active, lifecycle, holder]);
   return <CaptureProvider sink={sink}>{children}</CaptureProvider>;
-}
-
-type Session = { id: string; localHourBucket: "night" | "morning" | "afternoon" | "evening"; mode: "light" | "dark"; textScale: number };
-
-function newSession(): Session {
-  const now = new Date();
-  const hour = now.getHours();
-  const root = document.querySelector<HTMLElement>("[data-gallery-root]") ?? document.documentElement;
-  const mode = root.dataset.mode === "dark" ? "dark" : "light";
-  const textScale = Math.min(5, Math.max(1, Number(root.dataset.textSize || 3)));
-  const session = { id: crypto.randomUUID(), localHourBucket: hour < 6 ? "night" : hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening", mode, textScale } as const;
-  try {
-    sessionStorage.setItem("implicity.session_id", session.id);
-    sessionStorage.setItem(`implicity.session.values.${session.id}`, JSON.stringify({ localHourBucket: session.localHourBucket, mode: session.mode, textScale: session.textScale }));
-  } catch { /* session storage can be unavailable in embedded contexts */ }
-  return session;
-}
-
-function readSession(): Session {
-  try {
-    const id = sessionStorage.getItem("implicity.session_id");
-    if (id && sessionStorage.getItem(`implicity.session.ended.${id}`) !== "true") {
-      const saved = sessionStorage.getItem(`implicity.session.values.${id}`);
-      if (saved) return { id, ...JSON.parse(saved) as Omit<Session, "id"> };
-      const fresh = newSession();
-      const existing = { ...fresh, id };
-      sessionStorage.setItem(`implicity.session_id`, id);
-      sessionStorage.setItem(`implicity.session.values.${id}`, JSON.stringify({ localHourBucket: existing.localHourBucket, mode: existing.mode, textScale: existing.textScale }));
-      return existing;
-    }
-  } catch { /* session storage can be unavailable in embedded contexts */ }
-  const session = newSession();
-  try { sessionStorage.setItem(`implicity.session.values.${session.id}`, JSON.stringify({ localHourBucket: session.localHourBucket, mode: session.mode, textScale: session.textScale })); } catch { /* session storage can be unavailable in embedded contexts */ }
-  return session;
-}
-
-export function startSessionLifecycle(session: Session, emit: (event: SessionCaptureEvent) => void, target: Window = window, storage: Storage = sessionStorage, onNewSession: (session: Session) => void = () => {}) {
-  const active = { ...session };
-  const startedKey = `implicity.session.started.${active.id}`;
-  const endedKey = `implicity.session.ended.${active.id}`;
-  if (storage.getItem(startedKey) !== "true") {
-    emit({ name: "session_started", mode: active.mode, text_scale: active.textScale, local_hour_bucket: active.localHourBucket });
-    storage.setItem(startedKey, "true");
-  }
-  let idleTimer = 0;
-  const end = () => {
-    if (storage.getItem(endedKey) === "true") return;
-    emit({ name: "session_ended", mode: active.mode, text_scale: active.textScale, local_hour_bucket: active.localHourBucket });
-    storage.setItem(endedKey, "true");
-  };
-  const resetIdle = () => {
-    target.clearTimeout(idleTimer);
-    if (storage.getItem(endedKey) === "true") {
-      const next = newSession();
-      onNewSession(next);
-      return;
-    }
-    idleTimer = target.setTimeout(end, actions.session_idle_milliseconds);
-  };
-  const onPageHide = (event: PageTransitionEvent) => { if (!event.persisted) end(); };
-  const onPageShow = (event: PageTransitionEvent) => { if (event.persisted) resetIdle(); };
-  target.addEventListener("pointerdown", resetIdle, { passive: true });
-  target.addEventListener("keydown", resetIdle, { passive: true });
-  target.addEventListener("touchstart", resetIdle, { passive: true });
-  target.addEventListener("scroll", resetIdle, { passive: true });
-  target.addEventListener("click", resetIdle, { passive: true });
-  target.addEventListener("pagehide", onPageHide);
-  target.addEventListener("pageshow", onPageShow);
-  resetIdle();
-  return () => {
-    target.clearTimeout(idleTimer);
-    target.removeEventListener("pointerdown", resetIdle);
-    target.removeEventListener("keydown", resetIdle);
-    target.removeEventListener("touchstart", resetIdle);
-    target.removeEventListener("scroll", resetIdle);
-    target.removeEventListener("click", resetIdle);
-    target.removeEventListener("pagehide", onPageHide);
-    target.removeEventListener("pageshow", onPageShow);
-  };
 }
 
 export function useCaptureSink() { return useContext(CaptureContext); }
@@ -217,7 +153,7 @@ export function recordingCapture() {
   return { events, sink: (event: CapturedEvent) => void events.push(event) };
 }
 
-export function createPostHogCapture(context: CaptureContextValue, registry: CaptureRegistry, ids: { has: (type: AppIdType, id: string) => boolean }, config = { apiKey: import.meta.env.VITE_POSTHOG_API_KEY, apiHost: import.meta.env.VITE_POSTHOG_HOST || "http://127.0.0.1:18000" }): CaptureSink {
+export function createPostHogCapture(context: CaptureContextValue | (() => CaptureContextValue), registry: CaptureRegistry, ids: { has: (type: AppIdType, id: string) => boolean }, config = { apiKey: import.meta.env.VITE_POSTHOG_API_KEY, apiHost: import.meta.env.VITE_POSTHOG_HOST || "http://127.0.0.1:18000" }): CaptureSink {
   const { apiKey, apiHost } = config;
   if (!apiKey) return () => {};
   posthogClient ??= import("posthog-js").then(({ default: client }) => {

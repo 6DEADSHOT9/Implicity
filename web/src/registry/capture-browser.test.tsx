@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
-import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { BrowserCaptureProvider, CaptureProvider, createValidatedCapture, getInputType, useCapture, type CaptureRegistry } from "./capture";
+import { createValidatedCapture, type CaptureRegistry } from "./capture";
 import { deviceClass } from "./capture-rules";
 
 const registry: CaptureRegistry = { version: 7, entries: new Map([
@@ -9,11 +8,6 @@ const registry: CaptureRegistry = { version: 7, entries: new Map([
   ["Composer", { meta: { slots: [], defaultStates: ["empty"], commands: ["search"] } }],
 ]) };
 const context = { session_id: "123e4567-e89b-42d3-a456-426614174000", layout_version: 1 };
-
-function Probe() {
-  const { emit } = useCapture<"search_used">();
-  return <button onClick={() => emit("search_used", {})}>Emit</button>;
-}
 
 describe("browser capture", () => {
   it("classifies both sides of the shared desktop breakpoint", () => {
@@ -30,18 +24,6 @@ describe("browser capture", () => {
     window.dispatchEvent(pointer);
     expect(capture({ name: "search_used" })).toBe(true);
     expect(send.mock.calls[0][0]).toEqual(expect.objectContaining({ input_type: "touch", device_class: "tablet" }));
-  });
-
-  it("keeps gallery capture and temporary chat silent by default", async () => {
-    const fetch = vi.fn();
-    vi.stubGlobal("fetch", fetch);
-    const first = render(<BrowserCaptureProvider registry={registry}><Probe /></BrowserCaptureProvider>);
-    await screen.findByRole("button", { name: "Emit" });
-    screen.getByRole("button", { name: "Emit" }).click();
-    first.unmount();
-    render(<BrowserCaptureProvider registry={registry} enabled temporary><Probe /></BrowserCaptureProvider>);
-    screen.getByRole("button", { name: "Emit" }).click();
-    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("validates the named component, each app kind, and app-minted decision ids", () => {

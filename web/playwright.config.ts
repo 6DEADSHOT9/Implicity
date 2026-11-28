@@ -7,7 +7,8 @@ export default defineConfig({
   testDir: "./tests/browser",
   use: { baseURL: `http://127.0.0.1:${testPort}`, browserName: "chromium", viewport: { width: 1201, height: 900 } },
   webServer: [
-    { command: `pnpm exec vite --host 127.0.0.1 --port ${testPort} --strictPort`, url: `http://127.0.0.1:${testPort}`, reuseExistingServer: false },
+    // A fake key and an intercepted host, with the gallery opt-in off, so gallery-capture.spec.ts can prove the gallery stays silent.
+    { command: `pnpm exec vite --host 127.0.0.1 --port ${testPort} --strictPort`, url: `http://127.0.0.1:${testPort}`, reuseExistingServer: false, env: { VITE_POSTHOG_API_KEY: "phc_browser_test_key", VITE_POSTHOG_HOST: "http://posthog.invalid", VITE_GALLERY_CAPTURE_ENABLED: "false" } },
     { command: `pnpm exec vite preview --config tests/browser/preview-vite.config.ts --host 127.0.0.1 --port ${previewPort} --strictPort`, url: `http://127.0.0.1:${previewPort}`, reuseExistingServer: false },
   ],
 });

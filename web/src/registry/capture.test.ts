@@ -17,7 +17,7 @@ describe("validated capture", () => {
     expect(["widget_seen", "widget_used", "widget_pinned", "widget_dismissed", "media_played", "media_paused", "media_seeked", "media_replayed"].every(isExcludedEvent)).toBe(true);
   });
 
-  it("adds shared fields and rejects malformed or content-bearing events", () => {
+  it("adds shared fields to an accepted event", () => {
     const send = vi.fn();
     const capture = createValidatedCapture({ context, registry, send, ids: { has: () => false } });
     expect(capture({ name: "search_used" })).toBe(true);
@@ -25,15 +25,36 @@ describe("validated capture", () => {
       name: "search_used", session_id: context.session_id, layout_version: 1,
       contracts_version: 1, registry_version: 7, device_class: expect.any(String), input_type: expect.any(String),
     }));
-    expect(capture({ name: "message_sent", message: "private text", length_bucket: "short", command: "search" } as never)).toBe(false);
-    expect(capture({ name: "attachment_added", attachment_id: "123e4567-e89b-42d3-a456-426614174000", type: "image", filename: "private.png" } as never)).toBe(false);
-    expect(capture({ name: "shortcut_used", command: "copy", key: "Control+C" } as never, "ShortcutChips")).toBe(false);
-    expect(capture({ name: "media_played" } as never)).toBe(false);
+  });
+
+  // Each case starts from a base event shown to be accepted, then adds exactly one bad field.
+  it.each([
+    ["message text", { name: "message_sent", length_bucket: "short", attachment_count: 0 }, undefined, { message: "private text" }],
+    ["the key pressed", { name: "shortcut_used", command: "copy_answer" }, "ShortcutChips", { key: "Control+C" }],
+    ["a file name", { name: "attachment_added", type: "image" }, undefined, { filename: "private.png" }],
+  ] as const)("rejects %s added to an otherwise valid event", (_label, base, producer, bad) => {
+    const send = vi.fn();
+    const capture = createValidatedCapture({ context, registry, send, ids: { has: () => false } });
+    expect(capture(base as never, producer)).toBe(true);
+    expect(capture({ ...base, ...bad } as never, producer)).toBe(false);
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects a slot that names no component, from an accepted base event", () => {
+    const capture = createValidatedCapture({ context, registry, send: vi.fn(), ids: { has: () => false } });
     for (const [name, slot] of [["search_used", "my-bank-password-hunter2"], ["message_sent", "tell_alice_i_am_leaving"], ["attachment_added", "divorce-papers_pdf"], ["shortcut_used", "ctrl-shift-k"]] as const) {
       const base = name === "message_sent" ? { length_bucket: "short", attachment_count: 0 } : name === "attachment_added" ? { type: "document" } : name === "shortcut_used" ? { command: "search" } : {};
       expect(capture({ name, ...base } as never, name === "shortcut_used" ? "ShortcutChips" : undefined)).toBe(true);
       expect(capture({ name, ...base, slot } as never, name === "shortcut_used" ? "ShortcutChips" : undefined)).toBe(false);
     }
+  });
+
+  it("rejects an unknown custom kind in the shared kind field unless the app minted it", () => {
+    const customKind = "kind_123e4567-e89b-42d3-a456-426614174000";
+    const known = createValidatedCapture({ context: { ...context, kind: customKind }, registry, send: vi.fn(), ids: { has: (type, id) => type === "kind" && id === customKind } });
+    expect(known({ name: "search_used" })).toBe(true);
+    const unknown = createValidatedCapture({ context: { ...context, kind: customKind }, registry, send: vi.fn(), ids: { has: () => false } });
+    expect(unknown({ name: "search_used" })).toBe(false);
   });
 
   it("passes the shared conversation and kind fields through validation", () => {
@@ -59,6 +80,24 @@ describe("validated capture", () => {
     expect(send).toHaveBeenCalledTimes(5);
   });
 
+  it("checks a Command against the component the event names, whatever producer is passed", () => {
+    const capture = createValidatedCapture({ context, registry, send: vi.fn(), ids: { has: () => false } });
+    expect(capture({ name: "shortcut_used", component: "Composer", command: "search" }, "ShortcutChips")).toBe(true);
+    expect(capture({ name: "shortcut_used", component: "Details", command: "search" }, "ShortcutChips")).toBe(false);
+    expect(capture({ name: "shortcut_used", component: "Details", command: "search" }, "Composer")).toBe(false);
+    expect(capture({ name: "shortcut_used", component: "ShortcutChips", command: "search" }, "Composer")).toBe(true);
+  });
+
+  it("lets app code that names no component or producer send any declared built-in or app-minted Command", () => {
+    const workflow = "cmd_123e4567-e89b-42d3-a456-426614174000";
+    const capture = createValidatedCapture({ context, registry, send: vi.fn(), ids: { has: (type, id) => type === "command" && id === workflow } });
+    expect(capture({ name: "message_sent", length_bucket: "short", attachment_count: 0, command: "copy_answer" })).toBe(true);
+    expect(capture({ name: "shortcut_used", command: "search" })).toBe(true);
+    expect(capture({ name: "setting_changed", dimension: "shortcut_chips", value: "on", command: workflow } as never)).toBe(true);
+    expect(capture({ name: "shortcut_used", command: "not_declared" })).toBe(false);
+    expect(capture({ name: "setting_changed", dimension: "shortcut_chips", value: "on", command: "not_declared" } as never)).toBe(false);
+  });
+
   it("strips SDK-added properties and revalidates the final event", () => {
     const event = { properties: { name: "search_used", event_id: "123e4567-e89b-42d3-a456-426614174000", timestamp: "2026-11-28T00:00:00.000Z", contracts_version: 1, session_id: context.session_id, layout_version: 1, registry_version: 7, device_class: "desktop", input_type: "none", token: "test-token", distinct_id: "test-id", $current_url: "/private-message", filename: "private.png", key: "Control+C" }, $set: { email: "secret" }, $set_once: { email: "secret" } };
     expect(sanitizePostHogEvent(event)).toBe(event);
@@ -68,7 +107,14 @@ describe("validated capture", () => {
     expect(event.properties).toMatchObject({ token: "test-token", distinct_id: "test-id" });
     expect(event).not.toHaveProperty("$set");
     expect(event).not.toHaveProperty("$set_once");
-    expect(sanitizePostHogEvent({ properties: { name: "search_used", message: "private text" } })).toBeNull();
+  });
+
+  it("strips message text from a valid event and drops an event that is invalid without it", () => {
+    const valid = { name: "message_sent", event_id: "123e4567-e89b-42d3-a456-426614174000", timestamp: "2026-11-28T00:00:00.000Z", contracts_version: 1, session_id: context.session_id, layout_version: 1, registry_version: 7, device_class: "desktop", input_type: "none", length_bucket: "short", attachment_count: 0 };
+    expect(sanitizePostHogEvent({ properties: { ...valid } })?.properties).toEqual(valid);
+    expect(sanitizePostHogEvent({ properties: { ...valid, message: "private text" } })?.properties).toEqual(valid);
+    const { length_bucket: _dropped, ...incomplete } = valid;
+    expect(sanitizePostHogEvent({ properties: { ...incomplete, message: "private text" } })).toBeNull();
   });
 
   it("checks every custom kind in a session summary and proposal and decision ids", () => {

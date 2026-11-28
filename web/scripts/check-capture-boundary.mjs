@@ -2,9 +2,9 @@ import { readdir, readFile } from "node:fs/promises";
 import console from "node:console";
 import process from "node:process";
 import { relative, resolve } from "node:path";
-import { URL } from "node:url";
+import { fileURLToPath, URL } from "node:url";
 
-const root = resolve(new URL("../src", import.meta.url).pathname);
+const root = fileURLToPath(new URL("../src", import.meta.url));
 const violations = [];
 
 async function visit(path) {
