@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import tokens from "../../../contracts/looks/tokens.json" with { type: "json" };
 import defaultLook from "../../../contracts/looks/default.json" with { type: "json" };
@@ -601,10 +602,6 @@ test("waits for the requested fixture before sending its first height", async ({
 });
 
 test("waits for fonts requested by a new look before reporting height", async ({ page }) => {
-  let releaseFont!: () => void;
-  let sourceSerifRequested!: () => void;
-  const heldFont = new Promise<void>((resolve) => { releaseFont = resolve; });
-  const fontRequested = new Promise<void>((resolve) => { sourceSerifRequested = resolve; });
   await page.addInitScript(() => {
     const messages: { source: MessageEventSource | null; height: number }[] = [];
     window.addEventListener("message", (event: MessageEvent) => {
@@ -612,33 +609,44 @@ test("waits for fonts requested by a new look before reporting height", async ({
     });
     (window as Window & { __previewHeightMessages?: typeof messages }).__previewHeightMessages = messages;
   });
-  await page.route("**/fonts/source-serif-4/SourceSerif4.ttf", async (route) => {
-    const response = await route.fetch();
-    sourceSerifRequested();
-    await heldFont;
-    await route.fulfill({ response });
-  });
-  await page.goto("/tests/browser/gallery.html");
-  const frame = page.locator("iframe[title='ReviewPanel · plain']");
-  await expect(frame.contentFrame().locator(".review-panel")).toBeVisible();
+  await page.goto(contentGalleryUrl(["List · default"]));
+  const frame = page.locator("iframe[title='List · default']");
+  await expect(frame.contentFrame().getByText("First item")).toBeVisible();
   await waitForStableHeight(frame);
-  const messageCount = () => page.evaluate(() => {
-    const iframe = document.querySelector("iframe[title='ReviewPanel · plain']") as HTMLIFrameElement;
-    return (window as Window & { __previewHeightMessages?: { source: MessageEventSource | null; height: number }[] }).__previewHeightMessages?.filter(({ source }) => source === iframe.contentWindow).length ?? 0;
+  const messageCount = () => frame.evaluate((element) => {
+    const sourceWindow = (element as HTMLIFrameElement).contentWindow;
+    return (window as Window & { __previewHeightMessages?: { source: MessageEventSource | null; height: number }[] }).__previewHeightMessages?.filter(({ source }) => source === sourceWindow).length ?? 0;
   });
   const initialMessageCount = await messageCount();
-  await page.getByLabel("Look").selectOption("notebook");
-  await fontRequested;
+  const preview = await (await frame.elementHandle()).contentFrame();
+  const fontPath = fileURLToPath(new URL("../../public/fonts/source-serif-4/SourceSerif4.ttf", import.meta.url));
+  let releaseFont!: () => void;
+  let markFontRequested!: () => void;
+  const heldFont = new Promise<void>((resolve) => { releaseFont = resolve; });
+  const fontRequested = new Promise<void>((resolve) => { markFontRequested = resolve; });
+  await page.route("**/fonts/source-serif-4/SourceSerif4.ttf", async (route) => {
+    if (route.request().frame() !== preview) return route.continue();
+    markFontRequested();
+    await heldFont;
+    await route.fulfill({ path: fontPath, contentType: "font/ttf" });
+  });
   const frameRoot = frame.contentFrame().locator("html");
-  await expect(frameRoot).toHaveAttribute("data-look", "notebook");
-  await page.getByLabel("Text size").selectOption("5");
-  await expect(frameRoot).toHaveAttribute("data-text-size", "5");
-  expect(await frame.evaluate((element) => (element as HTMLIFrameElement).contentDocument?.fonts.status)).toBe("loading");
-  await frame.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
-  expect(await messageCount()).toBe(initialMessageCount);
-  releaseFont();
-  await expect.poll(() => frame.evaluate((element) => (element as HTMLIFrameElement).contentDocument?.fonts.status)).toBe("loaded");
-  expect(await messageCount()).toBeGreaterThan(initialMessageCount);
+  const fontStatus = () => frameRoot.evaluate((element) => element.ownerDocument.fonts.status);
+  try {
+    await page.getByLabel("Look").selectOption("notebook");
+    await fontRequested;
+    await expect(frameRoot).toHaveAttribute("data-look", "notebook");
+    await page.getByLabel("Text size").selectOption("5");
+    await expect(frameRoot).toHaveAttribute("data-text-size", "5");
+    expect(await fontStatus()).toBe("loading");
+    await frame.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    expect(await messageCount()).toBe(initialMessageCount);
+  } finally {
+    releaseFont();
+    await page.unrouteAll({ behavior: "wait" });
+  }
+  await expect.poll(fontStatus).toBe("loaded");
+  await expect.poll(messageCount).toBeGreaterThan(initialMessageCount);
   const sample = await waitForStableHeight(frame);
   expect(Math.abs(sample.height - sample.contentHeight)).toBeLessThanOrEqual(1);
 });

@@ -1,6 +1,6 @@
 from alembic import context
 from implicity_api.db import database_url
-from implicity_api.models import METADATA
+from implicity_api.models.metadata import METADATA
 from sqlalchemy import engine_from_config, pool
 
 config = context.config

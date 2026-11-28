@@ -1,11 +1,11 @@
-from datetime import datetime, timezone
-
-from sqlalchemy import JSON, DateTime, String
+from sqlalchemy import JSON, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+from implicity_api.models.message_spec import app_metadata, message_specs
 
 
 class Base(DeclarativeBase):
-    pass
+    metadata = app_metadata
 
 
 class OwnedRow:
@@ -23,11 +23,9 @@ class Message(OwnedRow, Base):
     session_id: Mapped[str] = mapped_column(String, nullable=False)
 
 
-class MessageSpec(OwnedRow, Base):
-    __tablename__ = "message_specs"
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
-    )
+class MessageSpec(Base):
+    __table__ = message_specs
+    __tablename__ = message_specs.name
 
 
 class Kind(OwnedRow, Base):

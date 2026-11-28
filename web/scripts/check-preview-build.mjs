@@ -23,6 +23,7 @@ try {
       contentFixture: resolve(web, "tests/browser/content-gallery.html"),
       conversationFixture: resolve(web, "tests/browser/conversation-gallery.html"),
       focusedFixture: resolve(web, "tests/browser/focused-gallery.html"),
+      panelFixture: resolve(web, "tests/browser/panel-gallery.html"),
       shellFixture: resolve(web, "tests/browser/shell-gallery.html"),
       systemMessageFixture: resolve(web, "tests/browser/system-messages.html"),
       changeNoticeVisibilityFixture: resolve(web, "tests/browser/change-notice-visibility.html"),
