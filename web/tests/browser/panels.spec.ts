@@ -125,7 +125,7 @@ async function panelMatrix(page: Page, look: string, mode: string, device: strin
         await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
         status = checkPreviews(expected);
       }
-      if (status !== "ok") return { ...expected, status };
+      if (performance.now() >= deadline) return { ...expected, status, failure: "Preview readiness exceeded 5000ms" };
     }
     return "ok";
   }, { names: titles, contentByTitle: expectedContent, look, mode, width: device === "desktop" ? 1440 : 800, densities, textSizes });

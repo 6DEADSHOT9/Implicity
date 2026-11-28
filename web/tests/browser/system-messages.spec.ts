@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import registrySnapshot from "../../../contracts/generated/components/registry.json" with { type: "json" };
+import { SEEN_VISIBLE_RATIO } from "../../src/registry/use-seen";
 import { measureContrast } from "./contrast";
 import { builtPreviewUrl } from "./gallery-test-helpers";
 
@@ -225,22 +226,30 @@ for (const cohort of galleryCohorts) {
 }
 
 test("ChangeNotice shown events follow native disclosure and completed opacity reveals", async ({ page }) => {
-  await openSystemMessageFixture(page);
-  await page.evaluate(() => window.mountSystemMessageCase("visibility"));
-  const events = () => page.evaluate(() => window.systemMessageEvents);
-  await expect.poll(async () => (await events()).length).toBe(0);
-  await page.locator("#details-case summary").scrollIntoViewIfNeeded();
-  await page.locator("#details-case summary").click();
-  await page.locator("#details-case [role='status']").scrollIntoViewIfNeeded();
-  await expect.poll(async () => (await events()).some((event) => event.name === "change_shown" && event.decision_id === "dec_323e4567-e89b-42d3-a456-426614174000")).toBe(true);
+  await page.goto(builtPreviewUrl("/tests/browser/change-notice-visibility.html"));
+  const disclosure = page.locator("#details-case summary");
+  const opacityCase = page.locator("#opacity-case");
+  const disclosedDecision = "dec_323e4567-e89b-42d3-a456-426614174000";
+  const opacityDecision = "dec_423e4567-e89b-42d3-a456-426614174000";
+  const shownDecisions = () => page.evaluate(() => window.systemMessageEvents.flatMap((event) => event.name === "change_shown" ? [event.decision_id] : []));
 
-  await page.locator("#opacity-case [role='status']").scrollIntoViewIfNeeded();
-  await page.evaluate(() => new Promise<void>((resolve) => {
-    const element = document.querySelector<HTMLElement>("#opacity-case")!;
-    element.addEventListener("transitionend", () => resolve(), { once: true });
+  await expect(opacityCase.locator("[role='status']")).toBeInViewport({ ratio: SEEN_VISIBLE_RATIO });
+  await expect(opacityCase).toHaveCSS("opacity", "0");
+  expect(await page.evaluate(() => window.systemMessageEvents)).toEqual([]);
+  await disclosure.click();
+  await expect.poll(shownDecisions).toEqual([disclosedDecision]);
+
+  await opacityCase.evaluate((element: HTMLDivElement) => new Promise<void>((resolve) => {
+    const onTransitionEnd = (event: TransitionEvent) => {
+      if (event.target !== element || event.propertyName !== "opacity") return;
+      element.removeEventListener("transitionend", onTransitionEnd);
+      resolve();
+    };
+    element.addEventListener("transitionend", onTransitionEnd);
     window.revealOpacity();
   }));
-  await expect.poll(async () => (await events()).some((event) => event.name === "change_shown" && event.decision_id === "dec_423e4567-e89b-42d3-a456-426614174000")).toBe(true);
+  await expect(opacityCase).toHaveCSS("opacity", "1");
+  await expect.poll(shownDecisions).toEqual([disclosedDecision, opacityDecision]);
 });
 
 test("Keep reports an opacity-revealed toast shown before the action", async ({ page }) => {
@@ -251,6 +260,15 @@ test("Keep reports an opacity-revealed toast shown before the action", async ({ 
   await expect(host).toHaveCount(1);
   const notice = page.getByRole("status", { name: "Opacity toast" });
   await expect(notice).toBeVisible();
+  // Let the visibility observer sample the toast while its host is still transparent.
+  await notice.evaluate((element) => new Promise<void>((resolve) => {
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.intersectionRatio < 0.5) return;
+      observer.disconnect();
+      requestAnimationFrame(() => resolve());
+    }, { threshold: [0, 0.5] });
+    observer.observe(element);
+  }));
   await expect.poll(() => page.evaluate(() => window.systemMessageEvents.length)).toBe(0);
   await page.evaluate(() => new Promise<void>((resolve) => {
     const toaster = document.querySelector<HTMLElement>("[data-sonner-toaster]")!;
@@ -258,7 +276,9 @@ test("Keep reports an opacity-revealed toast shown before the action", async ({ 
     requestAnimationFrame(() => { toaster.style.opacity = "1"; });
   }));
   await notice.getByRole("button", { name: "Keep" }).click();
-  const names = await page.evaluate(() => window.systemMessageEvents.map((event) => event.name));
+  const names = await page.evaluate(() => window.systemMessageEvents
+    .filter(({ name }) => name !== "component_seen")
+    .map(({ name }) => name));
   expect(names).toEqual(["component_shown", "change_shown", "change_kept"]);
   expect(await page.evaluate(() => window.noticeActions)).toEqual(["opacity:keep"]);
 });

@@ -1,5 +1,4 @@
 import { createRoot } from "react-dom/client";
-import { Gallery } from "../../src/gallery";
 import { ChangeNotice } from "../../src/registry/ChangeNotice/ChangeNotice";
 import { CaptureProvider, type CapturedEvent } from "../../src/registry/capture";
 
@@ -8,11 +7,10 @@ declare global {
     noticeActions: string[];
     systemMessageEvents: CapturedEvent[];
     revealOpacity(): void;
-    mountSystemMessageCase(name: keyof typeof cases): void;
   }
 }
 
-function mountConcurrentNotices() {
+export function mountConcurrentNotices() {
   window.noticeActions = [];
   const root = document.createElement("div");
   document.body.append(root);
@@ -22,7 +20,7 @@ function mountConcurrentNotices() {
   </CaptureProvider>);
 }
 
-function mountVisibilityCases() {
+export function mountVisibilityCases() {
   window.systemMessageEvents = [];
   const root = document.createElement("div");
   document.body.append(root);
@@ -33,7 +31,7 @@ function mountVisibilityCases() {
   window.revealOpacity = () => requestAnimationFrame(() => { document.querySelector<HTMLElement>("#opacity-case")!.style.opacity = "1"; });
 }
 
-function mountOpacityToast() {
+export function mountOpacityToast() {
   window.systemMessageEvents = [];
   window.noticeActions = [];
   const root = document.createElement("div");
@@ -43,7 +41,7 @@ function mountOpacityToast() {
   </CaptureProvider>);
 }
 
-function mountPartialInlineNotice() {
+export function mountPartialInlineNotice() {
   window.systemMessageEvents = [];
   window.noticeActions = [];
   const root = document.createElement("div");
@@ -53,14 +51,3 @@ function mountPartialInlineNotice() {
     <ChangeNotice decision_id="dec_623e4567-e89b-42d3-a456-426614174000" title="Partial inline notice" reason="Actions should remain available after it has been shown." presentation="inline" onKeep={() => window.noticeActions.push("keep")} onUndo={() => window.noticeActions.push("undo")} />
   </CaptureProvider>);
 }
-
-const cases = {
-  concurrent: mountConcurrentNotices,
-  visibility: mountVisibilityCases,
-  opacity: mountOpacityToast,
-  partial: mountPartialInlineNotice,
-};
-
-window.mountSystemMessageCase = (name) => cases[name]();
-const registry = { entries: new Map() };
-createRoot(document.getElementById("root")!).render(<Gallery registry={registry} />);
