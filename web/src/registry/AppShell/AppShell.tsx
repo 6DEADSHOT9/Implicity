@@ -48,7 +48,7 @@ export function AppShell({ panelOpen, slots = {} }: Props) {
   useEffect(() => { emitRef.current("component_shown", { component: "AppShell", default_state: panelOpen ? "docked" : "default" }); }, []);
   return <div ref={seenRef} className="h-svh min-w-0 overflow-hidden">
     <SidebarProvider keyboardShortcut={false} className="flex h-svh min-h-0 min-w-0 flex-col md:flex-row">
-      <Sidebar className="h-1/4 min-h-0 w-full shrink-0 md:h-svh md:max-h-none md:w-sidebar" collapsible="none"><SidebarContent className="min-h-0 overflow-hidden">{slots.navigation}</SidebarContent></Sidebar>
+      <Sidebar className="h-1/2 min-h-0 w-full shrink-0 md:h-svh md:max-h-none md:w-sidebar" collapsible="none"><SidebarContent className="min-h-0 overflow-hidden">{slots.navigation}</SidebarContent></Sidebar>
       <SidebarInset className="h-0 min-h-0 min-w-0 flex-1 md:h-full">
         <ResizablePanelGroup elementRef={groupRef} orientation={narrow ? "vertical" : "horizontal"} className="h-full min-h-0 min-w-0">
           <ResizablePanel defaultSize={panelOpen ? "70" : "100"} minSize={panelOpen ? narrow ? "52" : layout.mainMin : "100"}><div ref={mainSlotRef} className="h-full min-h-0 min-w-0 overflow-hidden bg-background p-space-4 text-foreground">{slots.main}</div></ResizablePanel>

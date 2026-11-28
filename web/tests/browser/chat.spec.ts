@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { createServer } from "node:http";
+import defaultLook from "../../../contracts/looks/default.json" with { type: "json" };
+import focusedLook from "../../../contracts/looks/focused.json" with { type: "json" };
+import notebookLook from "../../../contracts/looks/notebook.json" with { type: "json" };
+import { lookTokenValues } from "../../src/look-tokens";
 
 async function stubQuota(page: import("@playwright/test").Page) {
   await page.route("**/api/quota", (route) => route.fulfill({ json: {
@@ -8,6 +12,21 @@ async function stubQuota(page: import("@playwright/test").Page) {
     resets_at: null,
     checked_at: "2026-11-28T00:00:00Z",
   } }));
+}
+
+async function chatCoverage(element: import("@playwright/test").Locator) {
+  return element.evaluate((node) => {
+    const rect = node.getBoundingClientRect();
+    let root: HTMLElement | null = node.parentElement;
+    while (root && !/(auto|scroll|overlay)/.test(getComputedStyle(root).overflowY)) root = root.parentElement;
+    if (!root) throw new Error("Chat message list was not scrollable");
+    const bounds = root.getBoundingClientRect();
+    const width = Math.max(0, Math.min(rect.right, bounds.right) - Math.max(rect.left, bounds.left));
+    const height = Math.max(0, Math.min(rect.bottom, bounds.bottom) - Math.max(rect.top, bounds.top));
+    const visibleWidth = Math.max(0, Math.min(width, innerWidth - Math.max(0, bounds.left)));
+    const visibleHeight = Math.max(0, Math.min(height, innerHeight - Math.max(0, bounds.top)));
+    return { coversList: width * height > bounds.width * bounds.height / 2, coversWindow: visibleWidth * visibleHeight >= innerWidth * innerHeight / 2, list: [width, height, bounds.width, bounds.height], window: [visibleWidth, visibleHeight, innerWidth, innerHeight] };
+  });
 }
 
 test("chat page applies the default look to the document root", async ({ page }) => {
@@ -39,6 +58,17 @@ test("an open long answer counts as seen when it covers half a 375px viewport", 
   await page.waitForFunction(() => Boolean((window.seenEvents as Array<{ name: string; slot?: string }>).some((event) => event.name === "component_seen" && event.slot === "long_answer")), null, { timeout: 5000 });
 });
 
+test("a tall narrow component counts when half of the component is visible", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto("/tests/browser/tall-narrow-seen.html");
+  const visible = await page.locator("body > #root > div").first().evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return rect.width * Math.min(rect.height, innerHeight) >= rect.width * rect.height / 2;
+  });
+  expect(visible).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.seenEvents.filter((event) => event.name === "component_seen" && event.component === "TallNarrowProbe").length), { timeout: 5000 }).toBe(1);
+});
+
 test("an open long answer in the 375px chat is seen", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   const id = "550e8400-e29b-41d4-a716-446655440050";
@@ -56,9 +86,39 @@ test("an open long answer in the 375px chat is seen", async ({ page }) => {
   await page.getByRole("button", { name: "Show more" }).click();
   await expect(slot).toHaveAttribute("data-state", "open");
   await slot.evaluate((element) => element.scrollIntoView({ block: "start" }));
+  await slot.evaluate((element) => {
+    let root = element.parentElement;
+    while (root && !/(auto|scroll|overlay)/.test(getComputedStyle(root).overflowY)) root = root.parentElement;
+    if (root) root.scrollTop += root.clientHeight * 0.4;
+  });
+  const coverage = await chatCoverage(slot);
+  expect(coverage.coversList, JSON.stringify(coverage)).toBe(true);
+  expect(coverage.coversWindow, JSON.stringify(coverage)).toBe(false);
   await expect.poll(() => page.evaluate(() => window.chatSeenEvents.filter((event) => event.name === "component_seen" && event.slot === "long_answer" && event.default_state === "open").length), { timeout: 6500 }).toBe(1);
   await expect(page.getByRole("heading", { name: "New chat" })).toBeInViewport();
   await expect(page.getByRole("textbox", { name: "Message" })).toBeInViewport();
+});
+
+test("an open long answer in the desktop chat is seen against the message list", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const id = "550e8400-e29b-41d4-a716-446655440050";
+  const messages = [{ id: "assistant-1", role: "assistant", content: `Long answer.\n\n${"A long paragraph remains in the chat viewport. ".repeat(520)}` }];
+  await page.route("**/api/conversations", (route) => route.fulfill({ json: [{ id, title: "New chat" }] }));
+  await page.route(`**/api/conversations/${id}`, (route) => route.fulfill({ json: { id, title: "New chat", messages } }));
+  await stubQuota(page);
+  await page.goto("/tests/browser/chat-seen-fixture.html");
+  const slot = page.locator('[data-slot="long_answer"]');
+  await page.getByRole("button", { name: "Show more" }).click();
+  await expect(slot).toHaveAttribute("data-state", "open");
+  await slot.evaluate((element) => element.scrollIntoView({ block: "start" }));
+  await slot.evaluate((element) => {
+    let root = element.parentElement;
+    while (root && !/(auto|scroll|overlay)/.test(getComputedStyle(root).overflowY)) root = root.parentElement;
+    if (root) root.scrollTop += root.clientHeight * 0.4;
+  });
+  const coverage = await chatCoverage(slot);
+  expect(coverage.coversList, JSON.stringify(coverage)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.chatSeenEvents.filter((event) => event.name === "component_seen" && event.slot === "long_answer" && event.default_state === "open").length), { timeout: 6500 }).toBe(1);
 });
 
 test("mobile navigation leaves the chat and its first and last actions reachable", async ({ page }) => {
@@ -121,6 +181,61 @@ test("mobile navigation leaves the chat and its first and last actions reachable
   await page.getByRole("button", { name: "Stop" }).click();
   streamServer.closeAllConnections();
   await new Promise<void>((resolve, reject) => streamServer.close((error) => error ? reject(error) : resolve()));
+});
+
+test("mobile navigation keeps the first run, rows, controls, and quota readable in every look", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  const ids = Array.from({ length: 12 }, (_, index) => `550e8400-e29b-41d4-a716-${String(index + 1).padStart(12, "0")}`);
+  let count = 0;
+  await page.route("**/api/conversations", (route) => route.fulfill({ json: route.request().method() === "POST" ? { id: ids[0], title: "New chat" } : ids.slice(0, count).map((id) => ({ id, title: "New chat" })) }));
+  await page.route("**/api/conversations/*", (route) => route.fulfill({ json: { id: new URL(route.request().url()).pathname.split("/").at(-1), title: "New chat", messages: [] } }));
+  await page.route("**/api/quota", (route) => route.fulfill({ json: { state: "ok", windows: [{ label: "Weekly", used_percent: 28, resets_at: null }, { label: "Daily", used_percent: 82, resets_at: null }], resets_at: null, checked_at: "2026-11-28T00:00:00Z" } }));
+  const looks = [defaultLook, focusedLook, notebookLook];
+  const applyLook = async (look: typeof defaultLook) => {
+    const values = lookTokenValues(look, "light", look.density, String(look.text_size));
+    await page.evaluate(({ lookId, values }) => {
+      for (const [name, value] of Object.entries(values)) document.documentElement.style.setProperty(name.startsWith("--") ? name : `--${name}`, value);
+      document.documentElement.dataset.look = lookId;
+    }, { lookId: look.id, values });
+  };
+  await page.goto("/chat.html");
+  const nav = page.getByRole("navigation", { name: "Conversations" });
+  for (const look of looks) {
+    await applyLook(look);
+    const firstRun = nav.getByRole("button", { name: "New chat", exact: true });
+    await expect(firstRun).toBeInViewport();
+    await expect(page.locator("main").getByRole("button", { name: "New chat", exact: true })).toBeInViewport();
+    const navBounds = await nav.boundingBox();
+    for (const label of ["Home", "New chat", "Search"]) {
+      const bounds = await nav.getByRole("button", { name: label, exact: true }).boundingBox();
+      expect(bounds && navBounds && bounds.x >= navBounds.x && bounds.x + bounds.width <= navBounds.x + navBounds.width).toBe(true);
+    }
+    await expect(nav.getByText(/Quota:/)).toContainText("Weekly: 72% remaining · Daily: 18% remaining");
+  }
+  await page.locator("main").getByRole("button", { name: "New chat", exact: true }).click();
+  const chats = nav.getByRole("button", { name: "N New chat" });
+  await expect(chats).toHaveCount(1);
+  for (const look of looks) {
+    await applyLook(look);
+    await expect(chats.first()).toBeInViewport();
+    await expect(page.getByRole("heading", { name: "New chat" })).toBeInViewport();
+    await expect(page.getByRole("textbox", { name: "Message" })).toBeInViewport();
+  }
+  count = 12;
+  await page.reload();
+  for (const look of looks) {
+    await applyLook(look);
+    const last = nav.getByRole("button", { name: "N New chat" }).last();
+    const metrics = await last.evaluate((element) => {
+      const list = element.closest("ul")!;
+      list.scrollTop = list.scrollHeight;
+      const listRect = list.getBoundingClientRect();
+      const rowRect = element.getBoundingClientRect();
+      return { top: rowRect.top >= listRect.top, bottom: rowRect.bottom <= listRect.bottom, listHeight: list.clientHeight, rowHeight: rowRect.height, listBottom: listRect.bottom, rowBottom: rowRect.bottom };
+    });
+    expect(metrics, `${look.id}: ${JSON.stringify(metrics)}`).toMatchObject({ top: true, bottom: true });
+    await expect(last).toBeInViewport();
+  }
 });
 
 test("chat rejects pasted and dropped files without clearing the draft", async ({ page }) => {

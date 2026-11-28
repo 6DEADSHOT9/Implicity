@@ -141,13 +141,25 @@ describe("DataTable public registry entry", () => {
   const onAction = vi.fn();
   act(() => root.render(<entry.Component props={{ columns: ["Name"], rows: [["A"]], form: "table" }} slots={{}} onAction={onAction} />));
   expect(host.querySelector('[aria-label="Data representation"]')).toBeNull();
-  act(() => root.render(<entry.Component props={{ columns: ["Name"], rows: [["A"]], form: "chart" }} slots={{}} onAction={onAction} />));
+  act(() => root.render(<entry.Component props={{ columns: ["Name"], rows: [["A"]], chartValues: [1], form: "chart" }} slots={{}} onAction={onAction} />));
   expect(host.querySelector('[aria-label="Data representation"]')).toBeTruthy();
   act(() => (host.querySelector('[aria-label="Data representation"] button') as HTMLButtonElement).click());
   expect(onAction).toHaveBeenCalledWith("representation", "table");
-  act(() => root.render(<entry.Component props={{ columns: ["Name"], rows: [["A"]], form: "chart" }} slots={{}} onAction={onAction} />));
-  expect(host.textContent).toContain("No data");
+  act(() => root.render(<entry.Component props={{ columns: ["Name"], rows: [["A"]], chartValues: [1], form: "chart" }} slots={{}} onAction={onAction} />));
+  expect(host.textContent).toContain("A: 1");
   expect(host.querySelector('[aria-label="Data representation"]')).toBeTruthy();
+  act(() => root.unmount());
+ });
+
+ it("does not report a switch between empty screens even when chart values exist", () => {
+  const recorder = recordingCapture();
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  const render = (form: "table" | "chart") => <CaptureProvider sink={recorder.sink}><entry.Component props={{ columns: ["Name"], rows: [], chartValues: [], form }} slots={{}} /></CaptureProvider>;
+  act(() => root.render(render("table")));
+  act(() => root.render(render("chart")));
+  expect(host.textContent).toContain("No data");
+  expect(recorder.events.some(({ name }) => name === "representation_switched")).toBe(false);
   act(() => root.unmount());
  });
  it("keeps the primary content accessible", () => {

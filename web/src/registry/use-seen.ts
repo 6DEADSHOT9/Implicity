@@ -85,10 +85,10 @@ export function useSeen({ component, defaultState, slot, onVisible }: { componen
       const currentEntries = entries.filter(({ target }) => target === observedElement).sort((a, b) => a.time - b.time);
       let latestVisible = false;
       for (const entry of currentEntries) {
-        const viewport = entry.rootBounds;
-        const tall = viewport && entry.boundingClientRect.height > viewport.height;
-        const coversHalfViewport = tall && entry.intersectionRect.width * entry.intersectionRect.height >= viewport.width * viewport.height / 2;
-        intersectionVisible = entry.isIntersecting && (entry.intersectionRatio >= SEEN_VISIBLE_RATIO || !!(tall && coversHalfViewport));
+        const rootBounds = entry.rootBounds;
+        const tall = rootBounds && entry.boundingClientRect.height > rootBounds.height;
+        const coversHalfRoot = tall && entry.intersectionRect.width * entry.intersectionRect.height >= rootBounds.width * rootBounds.height / 2;
+        intersectionVisible = entry.isIntersecting && (entry.intersectionRatio >= SEEN_VISIBLE_RATIO || !!(tall && coversHalfRoot));
         intersectionVisibleRef.current = intersectionVisible;
         if (!intersectionVisible) {
           resetStretch();
@@ -139,18 +139,28 @@ export function useSeen({ component, defaultState, slot, onVisible }: { componen
       requestFreshSample();
     }
 
+    const scrollRoot = (() => {
+      for (let parent = observedElement.parentElement; parent; parent = parent.parentElement) {
+        const { overflowY } = getComputedStyle(parent);
+        if (/(auto|scroll|overlay)/.test(overflowY) && parent.scrollHeight > parent.clientHeight) return parent;
+      }
+      return null;
+    })();
     const observe = () => {
       observer?.disconnect();
       const rect = observedElement.getBoundingClientRect();
-      const viewportArea = window.innerWidth * window.innerHeight;
-      const threshold = rect.height > window.innerHeight
-        ? Math.min(1, viewportArea / (2 * rect.width * rect.height))
+      const rootBounds = scrollRoot?.getBoundingClientRect();
+      const rootWidth = rootBounds?.width ?? window.innerWidth;
+      const rootHeight = rootBounds?.height ?? window.innerHeight;
+      const threshold = rect.height > rootHeight
+        ? Math.min(1, rootWidth * rootHeight / (2 * rect.width * rect.height))
         : SEEN_VISIBLE_RATIO;
-      observer = new IntersectionObserver((entries) => applyEntries(entries), { threshold: [...new Set([0, threshold, SEEN_VISIBLE_RATIO])].sort((a, b) => a - b) });
+      observer = new IntersectionObserver((entries) => applyEntries(entries), { root: scrollRoot, threshold: [...new Set([0, threshold, SEEN_VISIBLE_RATIO])].sort((a, b) => a - b) });
       observer.observe(observedElement);
     };
     const resizeObserver = new ResizeObserver(observe);
     resizeObserver.observe(observedElement);
+    if (scrollRoot) resizeObserver.observe(scrollRoot);
     window.addEventListener("resize", observe);
     observe();
     return () => {

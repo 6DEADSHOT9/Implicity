@@ -6,7 +6,7 @@ import { CaptureProvider, recordingCapture, SEEN_VISIBLE_RATIO, SEEN_VISIBLE_SEC
 type ObserverOptions = IntersectionObserverInit & { threshold: number[] };
 class TestIntersectionObserver {
   static instances: TestIntersectionObserver[] = [];
-  readonly root = null;
+  readonly root: Element | Document | null;
   readonly rootMargin = "0px";
   readonly thresholds: number[];
   target?: Element;
@@ -14,6 +14,7 @@ class TestIntersectionObserver {
   private nextObserveBatch?: number[];
 
   constructor(private callback: IntersectionObserverCallback, readonly options: ObserverOptions) {
+    this.root = options.root ?? null;
     this.thresholds = Array.isArray(options.threshold) ? options.threshold : [options.threshold];
     TestIntersectionObserver.instances.push(this);
   }
@@ -61,6 +62,10 @@ function ActionProbe({ captureRef, onVisible }: { captureRef: (ref: ReturnType<t
   return <section ref={ref}>action probe</section>;
 }
 
+function ScrollProbe() {
+  return <div ref={(node) => { if (node) Object.defineProperties(node, { scrollHeight: { value: 500 }, clientHeight: { value: 100 } }); }} data-scroll-root style={{ overflowY: "auto", height: 100 }}><div style={{ height: 500 }}><Probe /></div></div>;
+}
+
 function setup(slot?: string) {
   const capture = recordingCapture();
   const view = render(<CaptureProvider sink={capture.sink}><Probe slot={slot} /></CaptureProvider>);
@@ -99,6 +104,12 @@ describe("useSeen", () => {
     await passTime(3000);
     expect(capture.events).toEqual([{ ...seen, slot: "main" }]);
     expect(element.checkVisibility).toHaveBeenCalledWith({ opacityProperty: true, visibilityProperty: true });
+  });
+
+  it("uses the nearest scrollable ancestor as the observer root", () => {
+    const view = render(<CaptureProvider sink={() => undefined}><ScrollProbe /></CaptureProvider>);
+    const root = view.container.querySelector("[data-scroll-root]")!;
+    expect(TestIntersectionObserver.instances.at(-1)?.root).toBe(root);
   });
 
   it("signals first displayability through the same visibility observation", async () => {

@@ -29,8 +29,9 @@ function tableData(children: ReactNode) {
   const cells = rows.map((row) => Children.toArray(row.props.children)
     .filter(isValidElement<ElementWithChildren>)
     .map((cell) => cell.props.children ?? null));
-  const values = cells.map((row) => row.map(textContent));
-  return { columns: values[0] ?? [], renderedColumns: cells[0] ?? [], rows: values.slice(1), renderedRows: cells.slice(1) };
+  // Streamdown requires a body row for a header-only GFM table; remove its parser placeholder.
+  const bodyCells = cells.slice(1).filter((row) => !row.every((cell) => textContent(cell) === "\u200b"));
+  return { columns: cells[0]?.map(textContent) ?? [], renderedColumns: cells[0] ?? [], rows: bodyCells.map((row) => row.map(textContent)), renderedRows: bodyCells };
 }
 
 function MarkdownTable({ children }: ComponentProps<"table">) {
@@ -100,6 +101,9 @@ function markdownBlocks(content: string) {
 }
 
 function Markdown({ content }: { content: string }) {
+  const markdown = marked.lexer(content).map((token) => token.type === "table" && token.rows.length === 0
+    ? `${token.raw}${token.raw.endsWith("\n") ? "" : "\n"}|${token.header.map(() => "\u200b").join("|")}|\n`
+    : token.raw).join("");
   return <Streamdown
     remarkPlugins={[...Object.values(defaultRemarkPlugins), rawHtmlAsText]}
     urlTransform={(url, key, node) => key === "src" ? url : defaultUrlTransform(url, key, node)}
@@ -108,7 +112,7 @@ function Markdown({ content }: { content: string }) {
     codeBlockMaxHeight={0}
     tableMaxHeight={0}
     components={markdownComponents}
-  >{content}</Streamdown>;
+  >{markdown}</Streamdown>;
 }
 
 type LongAnswerState = "folded" | "open";

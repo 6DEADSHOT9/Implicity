@@ -21,6 +21,9 @@ describe("Vite development proxy", () => {
       const webRoot = fileURLToPath(new URL("../../", import.meta.url));
       const workspaceRoot = resolve(webRoot, "..");
       expect(isFileLoadingAllowed(resolved, resolve(workspaceRoot, "data", "synthetic-host-backup.db"))).toBe(false);
+      for (const path of [".env", ".env.local", "private.pem", ".git/config", "data/backups/db.sqlite"]) {
+        expect(isFileLoadingAllowed(resolved, resolve(workspaceRoot, path))).toBe(false);
+      }
       expect(isFileLoadingAllowed(resolved, resolve(webRoot, "src", "chat-app.tsx"))).toBe(true);
       expect(isFileLoadingAllowed(resolved, resolve(workspaceRoot, "contracts", "actions.json"))).toBe(true);
     } finally {

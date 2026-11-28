@@ -197,6 +197,14 @@ describe("MessageBody", () => {
     expect(header.className).toContain("whitespace-normal");
     expect(screen.getByRole("cell").className).toContain("whitespace-normal");
   });
+
+  it("renders header-only Markdown tables through DataTable", async () => {
+    const { container } = render(<MessageBody content={`| Name | Value |
+| --- | --- |`} />);
+    await screen.findByRole("columnheader", { name: "Name" });
+    expect(Array.from(container.querySelectorAll("thead th"), (cell) => cell.textContent)).toEqual(["Name", "Value"]);
+    expect(container.textContent).not.toContain("No data");
+  });
 });
 
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });

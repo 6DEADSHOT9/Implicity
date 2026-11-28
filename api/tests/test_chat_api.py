@@ -1,4 +1,5 @@
 import json
+import logging
 
 import anyio
 import httpx
@@ -10,7 +11,7 @@ from implicity_api.modules.agent import Quota, QuotaWindow
 from implicity_api.modules.app import save_message_spec
 from implicity_api.modules.app.chat import create_conversation, save_message
 from implicity_api.persistence import create_store
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 
 SESSION_ID = "550e8400-e29b-41d4-a716-446655440099"
 
@@ -111,6 +112,45 @@ def test_chat_streams_and_conversation_reloads(tmp_path):
         assert agent.started == [conversation_id]
 
 
+def test_assistant_write_failure_is_sanitized_and_reported_to_the_client(
+    tmp_path, monkeypatch, caplog
+):
+    import implicity_api.app as app_module
+
+    bind = create_engine(f"sqlite:///{tmp_path / 'chat-assistant-write-failure.db'}")
+    for metadata in METADATA.values():
+        metadata.create_all(bind)
+    app_store = create_store("app", bind)
+    original_save = app_module.save_message
+
+    def fail_assistant_write(store, conversation_id, session_id, role, content):
+        if role == "assistant":
+            raise RuntimeError(f"database rejected answer: {content}")
+        return original_save(store, conversation_id, session_id, role, content)
+
+    monkeypatch.setattr(app_module, "save_message", fail_assistant_write)
+    caplog.set_level(logging.ERROR, logger="implicity_api.app")
+    with TestClient(
+        create_app(chat_agent=FakeAgent(), app_store_override=app_store)
+    ) as client:
+        conversation_id = client.post("/api/conversations").json()["id"]
+        response = client.post(
+            "/api/chat",
+            json={
+                "id": conversation_id,
+                "session_id": SESSION_ID,
+                "messages": [
+                    {"role": "user", "parts": [{"type": "text", "text": "Hello"}]}
+                ],
+            },
+        )
+        loaded = client.get(f"/api/conversations/{conversation_id}").json()["messages"]
+    assert '"type":"error"' in response.text
+    assert "Could not save the answer" in response.text
+    assert [(row["role"], row["content"]) for row in loaded] == [("user", "Hello")]
+    assert "Hi" not in caplog.text and "Hello" not in caplog.text
+
+
 def test_conversation_loads_messages_across_session_ids(tmp_path):
     bind = create_engine(f"sqlite:///{tmp_path / 'chat-two-sessions.db'}")
     for metadata in METADATA.values():
@@ -142,18 +182,15 @@ def test_post_chat_checks_conversation_without_listing_messages(tmp_path):
         metadata.create_all(bind)
     inner = create_store("app", bind)
 
-    class StoreProxy:
-        message_list_calls = 0
-
-        def __getattr__(self, name):
-            return getattr(inner, name)
-
-        def list(self, model):
-            if model is Message:
-                self.message_list_calls += 1
-            return inner.list(model)
-
-    app_store = StoreProxy()
+    message_reads = []
+    event.listen(
+        bind,
+        "before_cursor_execute",
+        lambda _conn, _cursor, sql, _params, _context, _many: message_reads.append(sql)
+        if sql.lstrip().upper().startswith("SELECT") and "FROM messages" in sql
+        else None,
+    )
+    app_store = inner
     with TestClient(
         create_app(chat_agent=FakeAgent(), app_store_override=app_store)
     ) as client:
@@ -169,7 +206,7 @@ def test_post_chat_checks_conversation_without_listing_messages(tmp_path):
             },
         )
     assert response.status_code == 200
-    assert app_store.message_list_calls == 0
+    assert message_reads == []
 
 
 def test_chat_rejects_non_user_last_message(tmp_path):
@@ -353,7 +390,7 @@ def test_render_result_is_attached_to_the_saved_assistant_message(tmp_path):
                 yield {
                     "type": "tool-input-start",
                     "toolCallId": "render-1",
-                    "toolName": "render",
+                    "toolName": "mcp__render",
                 }
                 yield {
                     "type": "tool-output-available",
@@ -368,7 +405,7 @@ def test_render_result_is_attached_to_the_saved_assistant_message(tmp_path):
                 yield {
                     "type": "tool-input-start",
                     "toolCallId": "render-2",
-                    "toolName": "render",
+                    "toolName": "mcp__render",
                 }
                 yield {
                     "type": "tool-output-available",
@@ -412,6 +449,76 @@ def test_render_result_is_attached_to_the_saved_assistant_message(tmp_path):
         )
         assert app_store.get(MessageSpec, spec_id).session_id == SESSION_ID
         assert app_store.get(MessageSpec, second_spec_id).session_id is None
+
+
+def test_render_attachment_skips_missing_first_candidate_and_ignores_name_collision(
+    tmp_path,
+):
+    bind = create_engine(f"sqlite:///{tmp_path / 'chat-render-candidates.db'}")
+    for metadata in METADATA.values():
+        metadata.create_all(bind)
+    app_store = create_store("app", bind)
+    valid_spec = save_message_spec(
+        {"registry_version": 2, "root": "card", "elements": {}}, app_store
+    )
+
+    class CandidateAgent(FakeAgent):
+        def send(self, _conversation_id, _message):
+            async def parts():
+                yield {
+                    "type": "tool-input-start",
+                    "toolCallId": "bad",
+                    "toolName": "other__render",
+                }
+                yield {
+                    "type": "tool-output-available",
+                    "toolCallId": "bad",
+                    "output": {"id": "missing-spec"},
+                }
+                yield {
+                    "type": "tool-input-start",
+                    "toolCallId": "first",
+                    "toolName": "mcp__render",
+                }
+                yield {
+                    "type": "tool-output-available",
+                    "toolCallId": "first",
+                    "output": {"id": "missing-spec"},
+                }
+                yield {
+                    "type": "tool-input-start",
+                    "toolCallId": "second",
+                    "toolName": "mcp__render",
+                }
+                yield {
+                    "type": "tool-output-available",
+                    "toolCallId": "second",
+                    "output": {"id": valid_spec},
+                }
+                yield {"type": "finish"}
+
+            return parts()
+
+    with TestClient(
+        create_app(chat_agent=CandidateAgent(), app_store_override=app_store)
+    ) as client:
+        conversation_id = client.post("/api/conversations").json()["id"]
+        client.post(
+            "/api/chat",
+            json={
+                "id": conversation_id,
+                "session_id": SESSION_ID,
+                "messages": [
+                    {"role": "user", "parts": [{"type": "text", "text": "Hello"}]}
+                ],
+            },
+        )
+        messages = client.get(f"/api/conversations/{conversation_id}").json()[
+            "messages"
+        ]
+    assert (
+        app_store.get(Message, messages[-1]["id"]).data["message_spec_id"] == valid_spec
+    )
 
 
 def test_render_only_turn_saves_an_empty_assistant_message(tmp_path):
@@ -731,3 +838,95 @@ def test_api_disconnect_before_first_event_keeps_the_admitted_prompt(tmp_path):
     assert [
         (message.data["role"], message.data["content"]) for message in messages
     ] == [("user", "Keep this prompt")]
+
+
+def test_response_start_failure_releases_the_turn_and_keeps_the_prompt(tmp_path):
+    bind = create_engine(f"sqlite:///{tmp_path / 'chat-response-start-failure.db'}")
+    for metadata in METADATA.values():
+        metadata.create_all(bind)
+    app_store = create_store("app", bind)
+
+    class LockAgent(FakeAgent):
+        active = False
+
+        def admit(self, conversation_id, _message):
+            if self.active:
+                raise RuntimeError("Conversation is already streaming")
+            self.active = True
+
+            async def parts():
+                yield {"type": "finish"}
+
+            def release():
+                self.active = False
+
+            return parts(), release
+
+    agent = LockAgent()
+    app = create_app(chat_agent=agent, app_store_override=app_store)
+    conversation = create_conversation(app_store)
+    agent.start_conversation(conversation.id)
+
+    async def check():
+        body = json.dumps(
+            {
+                "id": conversation.id,
+                "session_id": SESSION_ID,
+                "messages": [
+                    {"role": "user", "parts": [{"type": "text", "text": "Keep prompt"}]}
+                ],
+            }
+        ).encode()
+        sent = False
+
+        async def receive():
+            nonlocal sent
+            if not sent:
+                sent = True
+                return {"type": "http.request", "body": body, "more_body": False}
+            return {"type": "http.disconnect"}
+
+        async def fail_start(message):
+            if message["type"] == "http.response.start":
+                raise RuntimeError("peer closed before headers")
+
+        try:
+            await app(
+                {
+                    "type": "http",
+                    "asgi": {"version": "3.0"},
+                    "http_version": "1.1",
+                    "method": "POST",
+                    "scheme": "http",
+                    "path": "/api/chat",
+                    "raw_path": b"/api/chat",
+                    "query_string": b"",
+                    "headers": [(b"content-type", b"application/json")],
+                    "server": ("test", 80),
+                    "client": ("test", 1234),
+                },
+                receive,
+                fail_start,
+            )
+        except RuntimeError as error:
+            assert str(error) == "peer closed before headers"
+        assert agent.active is False
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await client.post(
+                "/api/chat",
+                json={
+                    "id": conversation.id,
+                    "session_id": SESSION_ID,
+                    "messages": [
+                        {"role": "user", "parts": [{"type": "text", "text": "Hello"}]}
+                    ],
+                },
+            )
+        assert response.status_code == 200
+
+    anyio.run(check)
+    assert [
+        (row.data["role"], row.data["content"]) for row in app_store.list(Message)
+    ] == [("user", "Keep prompt"), ("user", "Hello")]

@@ -15,10 +15,10 @@ type Props = z.infer<typeof propsSchema>;
 
 export function DataTable({ columns, rows, renderedColumns, renderedRows, showEmptyHeaders = false, chartValues, form, state, onAction }: Props & { renderedColumns?: ReactNode[]; renderedRows?: ReactNode[][]; showEmptyHeaders?: boolean; onAction?: (action: string, value?: string | number | boolean) => void }) {
   const capture = useCapture<(typeof events)[number]>();
-  const displayedForm = (state === "default" || state === "long_content") && (rows.length > 0 || columns.length > 0) && (form !== "chart" || !!chartValues?.length) ? form : undefined;
   const displayedState = state === "default"
-    ? !columns.length || form === "chart" && !chartValues?.length || !rows.length && !showEmptyHeaders ? "empty" : form
+    ? !columns.length || !rows.length && !showEmptyHeaders || form === "chart" && !chartValues?.length ? "empty" : form === "chart" ? "chart" : "table"
     : state;
+  const displayedForm: "table" | "chart" | undefined = displayedState === "table" || displayedState === "chart" ? displayedState : undefined;
   const root = useSkeletonCapture(capture, "DataTable", displayedState);
   const previousForm = useRef(displayedForm);
   const emit = useRef(capture.emit);
@@ -34,14 +34,14 @@ export function DataTable({ columns, rows, renderedColumns, renderedRows, showEm
   const switchView = (to: "table" | "chart") => onAction?.("representation", to);
 
   return <section ref={root} className="space-y-space-3">
-    {chartValues?.length || form === "chart" ? <ButtonGroup aria-label="Data representation">
+    {rows.length > 0 && chartValues?.length ? <ButtonGroup aria-label="Data representation">
       <Button variant={form === "table" ? "default" : "outline"} aria-pressed={form === "table"} onClick={() => switchView("table")}>Table</Button>
       <Button variant={form === "chart" ? "default" : "outline"} aria-pressed={form === "chart"} onClick={() => switchView("chart")}>Chart</Button>
     </ButtonGroup> : null}
     {state === "loading" ? <p aria-busy="true">Loading data</p>
       : state === "error" ? <p role="alert">Data could not be loaded</p>
       : displayedState === "empty" || !columns.length ? <p>No data</p>
-          : form === "chart" ? chartValues?.length
+          : displayedForm === "chart" ? chartValues?.length
             ? <DataChart title={columns[1] ?? "Data"} labels={rows.map((row, index) => row[0] ?? `Series ${index + 1}`)} values={chartValues} chartType="bar" state="default" />
             : <p>No chart data</p>
             : <Table>
