@@ -490,13 +490,20 @@ for (const look of ["default", "focused", "notebook"] as const) for (const width
 });
 
 test("SourcesPanel disclosure follows its controlled docked state", async ({ page }) => {
-  await page.goto("/");
-  const sources = page.frameLocator('iframe[title="SourcesPanel · docked"]');
+  const previewPort = Number(process.env.GALLERY_PREVIEW_PORT ?? 4174);
+  const preview = "SourcesPanel · docked";
+  await page.goto(`http://127.0.0.1:${previewPort}/tests/browser/panel-gallery.html?${new URLSearchParams({ preview })}`);
+  const sources = page.frameLocator(`iframe[title="${preview}"]`);
   const trigger = sources.getByRole("button", { name: "Sources (2)" });
   await expect(sources.getByText("Reference one")).toBeVisible({ timeout: 15000 });
-  await trigger.press("Enter");
-  await expect(sources.getByRole("button", { name: "Sources (2)" })).toHaveAttribute("data-state", "closed");
+  // The preview can render its content while the iframe is still one pixel tall.
+  await expect.poll(() => trigger.evaluate((button) => {
+    const { top, bottom } = button.getBoundingClientRect();
+    return top >= 0 && bottom <= window.innerHeight;
+  }), { message: "The Sources trigger fits inside the preview iframe" }).toBe(true);
+  await trigger.click();
+  await expect(trigger).toHaveAttribute("data-state", "closed");
   await expect(sources.getByText("Reference one")).toBeHidden();
-  await trigger.press("Enter");
+  await trigger.click();
   await expect(sources.getByText("Reference one")).toBeVisible();
 });
