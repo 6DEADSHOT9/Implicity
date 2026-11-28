@@ -5,34 +5,15 @@ import focusedLook from "../../../contracts/looks/focused.json" with { type: "js
 import notebookLook from "../../../contracts/looks/notebook.json" with { type: "json" };
 import { tokenNames } from "../../src/registry/token-values.mjs";
 import { measureContrast } from "./contrast";
+import { builtPreviewUrl, selectGallerySettings } from "./gallery-test-helpers";
 import { openPickerPreview } from "./widget-picker-test-helpers";
 
 const lookById = { default: defaultLook, focused: focusedLook, notebook: notebookLook };
-
-function builtPreviewUrl(path: string) {
-  const port = Number((globalThis as typeof globalThis & { process?: { env?: Record<string, string | undefined> } }).process?.env?.GALLERY_PREVIEW_PORT ?? 4174);
-  return `http://127.0.0.1:${port}${path}`;
-}
 
 function contentGalleryUrl(previews: readonly string[] = [], device?: "desktop" | "tablet") {
   const search = new URLSearchParams(previews.map((title) => ["preview", title]));
   if (device) search.set("device", device);
   return builtPreviewUrl(`/tests/browser/content-gallery.html${search.size ? `?${search}` : ""}`);
-}
-
-async function selectGallerySettings(page: Page, settings: Record<string, string>) {
-  await page.locator("[data-gallery-root]").evaluate((gallery, values) => {
-    for (const [label, value] of Object.entries(values)) {
-      const select = gallery.querySelector<HTMLSelectElement>(`select[aria-label="${label}"]`);
-      if (!select || !Array.from(select.options).some((option) => option.value === value)) {
-        throw new Error(`Gallery setting ${label} has no option ${value}`);
-      }
-      if (select.value === value) continue;
-      select.value = value;
-      select.dispatchEvent(new Event("input", { bubbles: true }));
-      select.dispatchEvent(new Event("change", { bubbles: true }));
-    }
-  }, settings);
 }
 
 async function sampleHeightAcrossFrames(frame: Locator, changeHeightOnFirstFrame = false) {

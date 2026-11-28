@@ -22,6 +22,7 @@ try {
     build: { rollupOptions: { input: {
       contentFixture: resolve(web, "tests/browser/content-gallery.html"),
       conversationFixture: resolve(web, "tests/browser/conversation-gallery.html"),
+      focusedFixture: resolve(web, "tests/browser/focused-gallery.html"),
       shellFixture: resolve(web, "tests/browser/shell-gallery.html"),
     } } },
   });
