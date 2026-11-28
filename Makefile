@@ -11,7 +11,7 @@ install:
 lint: contracts-check token-styles-check lint-python lint-typescript
 
 lint-python:
-	uv run ruff check api engine/python contracts/python scripts
+	uv run ruff check api engine/python engine/demo contracts/python scripts
 
 lint-typescript: contracts-check
 	$(PNPM) lint

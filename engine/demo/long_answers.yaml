@@ -1,0 +1,18 @@
+id: long_answers
+version: 1
+area: layout
+values: [folded, open]
+default: folded
+scope: kind
+change_policy: automatic
+occasion: long_answer_seen
+evidence:
+  folded: {for: collapsed, against: expanded}
+  open: {for: expanded, against: collapsed}
+gate:
+  occasions: 20
+  conversations: 6
+  days: 5
+  lead: {for: 0.75, against: 0.2}
+window_days: 60
+half_life_days: 14

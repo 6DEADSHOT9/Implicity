@@ -7,6 +7,7 @@ members = [
     "implicity-api",
     "implicity-contracts",
     "implicity-engine",
+    "implicity-engine-demo",
     "implicity-workspace",
 ]
 
@@ -436,6 +437,23 @@ dependencies = [
 requires-dist = [
     { name = "implicity-contracts", editable = "contracts/python" },
     { name = "pyyaml", specifier = "==6.0.4" },
+]
+
+[[package]]
+name = "implicity-engine-demo"
+version = "0.1.0"
+source = { editable = "engine/demo" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "implicity-engine" },
+    { name = "uvicorn" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = "==0.121.3" },
+    { name = "implicity-engine", editable = "engine/python" },
+    { name = "uvicorn", specifier = "==0.38.0" },
 ]
 
 [[package]]

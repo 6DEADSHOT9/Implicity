@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "lint": "eslint . && tsc --noEmit",
-    "test": "vitest run && node scripts/check-preview-build.mjs && playwright test",
+    "lint": "eslint . && tsc --noEmit && pnpm --filter @implicity/engine-react lint && pnpm --filter @implicity/engine-demo exec tsc --noEmit -p tsconfig.json",
+    "test": "vitest run && pnpm --filter @implicity/engine-react test && pnpm --filter @implicity/engine-demo test && node scripts/check-preview-build.mjs && playwright test",
     "build": "vite build",
     "install:browsers": "playwright install chromium",
     "dev": "vite --host 127.0.0.1"
