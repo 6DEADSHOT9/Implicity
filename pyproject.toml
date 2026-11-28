@@ -13,13 +13,13 @@ dev = [
 ]
 
 [tool.uv.workspace]
-members = ["api", "engine/python", "contracts/python"]
+members = ["api", "engine/python", "engine/demo", "contracts/python"]
 
 [tool.uv]
 package = false
 
 [tool.pytest.ini_options]
-testpaths = ["api/tests", "engine/python/tests"]
+testpaths = ["api/tests", "engine/python/tests", "engine/demo/tests"]
 
 [tool.ruff]
 line-length = 88
