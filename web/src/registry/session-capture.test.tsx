@@ -12,8 +12,10 @@ const registry: CaptureRegistry = { version: 7, entries: new Map() };
 const idle = actions.session_idle_milliseconds;
 type Sent = { name: string; session_id: string; local_hour_bucket?: string };
 
+let emitWithoutInput: () => void = () => {};
 function Probe() {
   const { emit } = useCapture<"search_used">();
+  emitWithoutInput = () => emit("search_used", {});
   return <button onClick={() => emit("search_used", {})}>Emit</button>;
 }
 
@@ -113,6 +115,34 @@ describe("browser capture provider", () => {
     expectNothingAfterEnd(events);
   });
 
+  it("rotates before stamping an event that arrives with no user input after idle", async () => {
+    mount();
+    vi.setSystemTime(Date.now() + idle);
+    act(() => { emitWithoutInput(); });
+    const events = await sent();
+    expect(events.map(({ name }) => name)).toEqual(["session_started", "session_ended", "session_started", "search_used"]);
+    expect(events[3].session_id).toBe(events[2].session_id);
+    expect(events[2].session_id).not.toBe(events[0].session_id);
+    expectNothingAfterEnd(events);
+  });
+
+  it("shares one session between providers in one tab, such as the gallery and its preview frames", async () => {
+    function Second() {
+      const { emit } = useCapture<"search_used">();
+      return <button onClick={() => emit("search_used", {})}>Second</button>;
+    }
+    mount();
+    render(<BrowserCaptureProvider registry={registry}><Second /></BrowserCaptureProvider>);
+    act(() => { vi.advanceTimersByTime(idle); });
+    act(() => { screen.getByRole("button", { name: "Second" }).click(); });
+    click();
+    const events = await sent();
+    expect(events.map(({ name }) => name)).toEqual(["session_started", "session_ended", "session_started", "search_used", "search_used"]);
+    expect(new Set(events.slice(2).map(({ session_id }) => session_id)).size).toBe(1);
+    expect(events[2].session_id).not.toBe(events[0].session_id);
+    expectNothingAfterEnd(events);
+  });
+
   it("hears activity in the capture phase, before a handler that stops propagation", async () => {
     mount();
     vi.advanceTimersByTime(idle / 2);
@@ -141,14 +171,17 @@ describe("browser capture provider", () => {
   });
 
   it("renders and still captures when session storage throws", async () => {
-    const descriptor = Object.getOwnPropertyDescriptor(window, "sessionStorage")!;
-    Object.defineProperty(window, "sessionStorage", { configurable: true, get() { throw new DOMException("denied", "SecurityError"); } });
+    // jsdom's window and Vitest's global scope hold separate bindings, so replace both.
+    const targets = [window, globalThis].map((target) => [target, Object.getOwnPropertyDescriptor(target, "sessionStorage")] as const);
+    const denied = { configurable: true, get(): Storage { throw new DOMException("denied", "SecurityError"); } };
+    for (const [target] of targets) Object.defineProperty(target, "sessionStorage", denied);
     try {
+      expect(() => sessionStorage.getItem(SESSION_STORAGE_KEY)).toThrow("denied");
       mount();
       click();
       expect((await sent()).map(({ name }) => name)).toEqual(["session_started", "search_used"]);
     } finally {
-      Object.defineProperty(window, "sessionStorage", descriptor);
+      for (const [target, descriptor] of targets) if (descriptor) Object.defineProperty(target, "sessionStorage", descriptor);
     }
   });
 });

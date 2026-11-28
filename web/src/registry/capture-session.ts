@@ -46,6 +46,10 @@ export function readDisplay(): SessionDisplay {
  * stored last-activity time compared with the clock, so a clock jump with no
  * timer firing (machine sleep, frozen tab) still ends the session.
  *
+ * Every holder in a tab reads the stored record before it acts, so the gallery
+ * and its preview frames share one session and only the first to act sends a
+ * start or an end.
+ *
  * The record lives in sessionStorage, so a reload keeps the id and sends
  * neither a start nor an end. Closing the tab sends no end: whether a late
  * end may be sent for a closed tab is an open question for the owner (F10).
@@ -70,17 +74,20 @@ export function createSessionHolder({ store, emit, now = () => Date.now(), displ
     return { id: crypto.randomUUID(), localHourBucket: localHourBucket(new Date(at)), ...display(), started: false, ended: false, lastActivity: at };
   }
   function save() { store.setItem(SESSION_STORAGE_KEY, JSON.stringify(record)); }
+  /** Other holders in this tab (preview frames share sessionStorage) may have moved the session on. */
+  function sync() { const saved = load(); if (saved) record = saved; }
   function fields(name: SessionEvent["name"]): SessionEvent {
     return { name, mode: record.mode, text_scale: record.textScale, local_hour_bucket: record.localHourBucket };
   }
   function isIdle() { return now() - record.lastActivity >= idleMilliseconds; }
 
   const holder = {
-    get id() { return record.id; },
+    get id() { sync(); return record.id; },
     /** Milliseconds until the current session would go idle without more input. */
-    remaining() { return Math.max(0, record.lastActivity + idleMilliseconds - now()); },
+    remaining() { sync(); return Math.max(0, record.lastActivity + idleMilliseconds - now()); },
     /** Ends the session once if it has been idle for the threshold. Starts nothing. */
     expireIfIdle() {
+      sync();
       if (record.started && !record.ended && isIdle()) {
         emit(fields("session_ended"));
         record = { ...record, ended: true };
@@ -100,10 +107,8 @@ export function createSessionHolder({ store, emit, now = () => Date.now(), displ
     /** User input: the session is active now. */
     activity() {
       holder.ensureActive();
-      const at = now();
-      const stale = at - record.lastActivity >= 1000;
-      record = { ...record, lastActivity: at };
-      if (stale) save();
+      record = { ...record, lastActivity: now() };
+      save();
     },
   };
   return holder;

@@ -106,12 +106,11 @@ export function CaptureProvider({ sink, children }: { sink: CaptureSink; childre
   return <CaptureContext.Provider value={sink}>{children}</CaptureContext.Provider>;
 }
 
-export function BrowserCaptureProvider({ children, registry, ids = emptyIds, temporary = false, lifecycle = true, enabled = true, layoutVersion = 1, conversationId, kind }: {
+export function BrowserCaptureProvider({ children, registry, ids = emptyIds, temporary = false, enabled = true, layoutVersion = 1, conversationId, kind }: {
   children: ReactNode;
   registry: CaptureRegistry;
   ids?: { has: (type: AppIdType, id: string) => boolean };
   temporary?: boolean;
-  lifecycle?: boolean;
   enabled?: boolean;
   layoutVersion?: number;
   conversationId?: string;
@@ -128,14 +127,14 @@ export function BrowserCaptureProvider({ children, registry, ids = emptyIds, tem
     const capture = createPostHogCapture(() => ({ session_id: holder.id, layout_version: layoutVersion, ...(conversationId ? { conversation_id: conversationId } : {}), ...(kind ? { kind } : {}) }), registry, ids);
     captureRef.current = capture;
     return (event, producer) => {
-      if (lifecycle && event.name !== "session_started" && event.name !== "session_ended") holder.ensureActive();
+      if (event.name !== "session_started" && event.name !== "session_ended") holder.ensureActive();
       capture(event, producer);
     };
-  }, [active, lifecycle, holder, layoutVersion, conversationId, kind, registry, ids]);
+  }, [active, holder, layoutVersion, conversationId, kind, registry, ids]);
   useEffect(() => {
-    if (!active || !lifecycle) return;
+    if (!active) return;
     return watchSession(holder);
-  }, [active, lifecycle, holder]);
+  }, [active, holder]);
   return <CaptureProvider sink={sink}>{children}</CaptureProvider>;
 }
 

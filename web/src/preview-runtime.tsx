@@ -157,7 +157,7 @@ export function mountPreview(loadEntry: (id: string) => Promise<SkeletonEntry | 
     }
     void import("./registry/capture").then(({ BrowserCaptureProvider }) => {
       if (version !== renderVersion) return;
-      root.render(<BrowserCaptureProvider registry={captureRegistry} lifecycle={false} enabled>{preview}</BrowserCaptureProvider>);
+      root.render(<BrowserCaptureProvider registry={captureRegistry} enabled>{preview}</BrowserCaptureProvider>);
     });
   };
   window.addEventListener("message", (event: MessageEvent<unknown>) => {
