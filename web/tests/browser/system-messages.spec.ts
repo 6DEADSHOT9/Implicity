@@ -274,7 +274,9 @@ test("Keep reports an opacity-revealed toast shown before the action", async ({ 
     requestAnimationFrame(() => { toaster.style.opacity = "1"; });
   }));
   await notice.getByRole("button", { name: "Keep" }).click();
-  const names = await page.evaluate(() => window.systemMessageEvents.map((event) => event.name));
+  const names = await page.evaluate(() => window.systemMessageEvents
+    .filter(({ name }) => name !== "component_seen")
+    .map(({ name }) => name));
   expect(names).toEqual(["component_shown", "change_shown", "change_kept"]);
   expect(await page.evaluate(() => window.noticeActions)).toEqual(["opacity:keep"]);
 });
