@@ -247,7 +247,7 @@ test("ChangeNotice shown events follow native disclosure and completed opacity r
 });
 
 test("Keep reports an opacity-revealed toast shown before the action", async ({ page }) => {
-  await page.goto("/");
+  await openSystemMessageFixture(page);
   await page.addStyleTag({ content: "[data-sonner-toaster] { opacity: 0; transition: opacity 180ms linear; }" });
   await page.evaluate(async () => {
     const fixtureUrl = "/tests/browser/system-messages-entry.tsx";
@@ -258,6 +258,15 @@ test("Keep reports an opacity-revealed toast shown before the action", async ({ 
   await expect(host).toHaveCount(1);
   const notice = page.getByRole("status", { name: "Opacity toast" });
   await expect(notice).toBeVisible();
+  // Let the visibility observer sample the toast while its host is still transparent.
+  await notice.evaluate((element) => new Promise<void>((resolve) => {
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.intersectionRatio < 0.5) return;
+      observer.disconnect();
+      requestAnimationFrame(() => resolve());
+    }, { threshold: [0, 0.5] });
+    observer.observe(element);
+  }));
   await expect.poll(() => page.evaluate(() => window.systemMessageEvents.length)).toBe(0);
   await page.evaluate(() => new Promise<void>((resolve) => {
     const toaster = document.querySelector<HTMLElement>("[data-sonner-toaster]")!;
@@ -265,7 +274,9 @@ test("Keep reports an opacity-revealed toast shown before the action", async ({ 
     requestAnimationFrame(() => { toaster.style.opacity = "1"; });
   }));
   await notice.getByRole("button", { name: "Keep" }).click();
-  const names = await page.evaluate(() => window.systemMessageEvents.map((event) => event.name));
+  const names = await page.evaluate(() => window.systemMessageEvents
+    .filter(({ name }) => name !== "component_seen")
+    .map(({ name }) => name));
   expect(names).toEqual(["component_shown", "change_shown", "change_kept"]);
   expect(await page.evaluate(() => window.noticeActions)).toEqual(["opacity:keep"]);
 });
