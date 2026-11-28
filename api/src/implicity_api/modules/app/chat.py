@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 from implicity_api.models.app import Conversation, Message
-from implicity_api.stores.app import store
+from implicity_api.modules.app import store
 
 
 def create_conversation(app_store=store, now=None) -> Conversation:

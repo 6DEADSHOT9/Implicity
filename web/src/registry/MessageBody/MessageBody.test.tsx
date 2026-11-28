@@ -203,6 +203,7 @@ describe("MessageBody", () => {
 | --- | --- |`} />);
     await screen.findByRole("columnheader", { name: "Name" });
     expect(Array.from(container.querySelectorAll("thead th"), (cell) => cell.textContent)).toEqual(["Name", "Value"]);
+    expect(container.querySelectorAll("tbody tr")).toHaveLength(0);
     expect(container.textContent).not.toContain("No data");
   });
 });

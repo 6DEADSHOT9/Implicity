@@ -5,13 +5,14 @@ import anyio
 import httpx
 from fastapi.testclient import TestClient
 from implicity_api.app import create_app
-from implicity_api.models import METADATA
 from implicity_api.models.app import Message, MessageSpec
+from implicity_api.models.metadata import METADATA
 from implicity_api.modules.agent import Quota, QuotaWindow
 from implicity_api.modules.app import attach_message_spec, save_message_spec
 from implicity_api.modules.app.chat import create_conversation, save_message
 from implicity_api.persistence import create_store
 from sqlalchemy import create_engine, event
+from starlette.requests import ClientDisconnect
 
 SESSION_ID = "550e8400-e29b-41d4-a716-446655440099"
 
@@ -115,20 +116,20 @@ def test_chat_streams_and_conversation_reloads(tmp_path):
 def test_assistant_write_failure_is_sanitized_and_reported_to_the_client(
     tmp_path, monkeypatch, caplog
 ):
-    import implicity_api.app as app_module
+    import implicity_api.modules.app.chat as chat_module
 
     bind = create_engine(f"sqlite:///{tmp_path / 'chat-assistant-write-failure.db'}")
     for metadata in METADATA.values():
         metadata.create_all(bind)
     app_store = create_store("app", bind)
-    original_save = app_module.save_message
+    original_save = chat_module.save_message
 
     def fail_assistant_write(store, conversation_id, session_id, role, content):
         if role == "assistant":
             raise RuntimeError(f"database rejected answer: {content}")
         return original_save(store, conversation_id, session_id, role, content)
 
-    monkeypatch.setattr(app_module, "save_message", fail_assistant_write)
+    monkeypatch.setattr(chat_module, "save_message", fail_assistant_write)
     caplog.set_level(logging.ERROR, logger="implicity_api.app")
     with TestClient(
         create_app(chat_agent=FakeAgent(), app_store_override=app_store)
@@ -153,9 +154,12 @@ def test_assistant_write_failure_is_sanitized_and_reported_to_the_client(
         if line.startswith("data: {")
     ]
     terminal_types = [part["type"] for part in terminal_parts]
+    assert terminal_types.count("error") == 1
     assert terminal_types.count("finish") == 1
     assert terminal_types.index("error") < terminal_types.index("finish")
     assert terminal_types[-1] == "finish"
+    assert response.text.count("data: [DONE]") == 1
+    assert response.text.index('"type":"finish"') < response.text.index("data: [DONE]")
     assert [(row["role"], row["content"]) for row in loaded] == [("user", "Hello")]
     assert "Hi" not in caplog.text and "Hello" not in caplog.text
 
@@ -809,6 +813,83 @@ def test_api_disconnect_saves_partial_answer_and_allows_another_turn(tmp_path):
         assert "Complete" in response.text
 
     anyio.run(check)
+
+
+def test_send_disconnect_persists_partial_answer_and_render_spec(tmp_path):
+    bind = create_engine(f"sqlite:///{tmp_path / 'chat-send-disconnect.db'}")
+    for metadata in METADATA.values():
+        metadata.create_all(bind)
+    app_store = create_store("app", bind)
+    spec_id = save_message_spec(
+        {"registry_version": 2, "root": "card", "elements": {}}, app_store
+    )
+
+    class DisconnectAgent(FakeAgent):
+        def __init__(self):
+            self.cancelled = False
+
+        def send(self, _conversation_id, _message):
+            async def parts():
+                yield {
+                    "type": "tool-input-start",
+                    "toolCallId": "render-1",
+                    "toolName": "mcp__implicity__render",
+                }
+                yield {
+                    "type": "tool-output-available",
+                    "toolCallId": "render-1",
+                    "output": {"id": spec_id},
+                }
+                yield {"type": "text-delta", "id": "text", "delta": "Partial"}
+                await anyio.sleep_forever()
+
+            return parts()
+
+        def cancel(self, _conversation_id):
+            self.cancelled = True
+
+    agent = DisconnectAgent()
+    app = create_app(chat_agent=agent, app_store_override=app_store)
+    conversation = create_conversation(app_store)
+    body = json.dumps({
+        "id": conversation.id,
+        "session_id": SESSION_ID,
+        "messages": [{"role": "user", "parts": [{"type": "text", "text": "Hello"}]}],
+    }).encode()
+
+    async def receive():
+        return {"type": "http.request", "body": body, "more_body": False}
+
+    async def send(message):
+        if (
+            message["type"] == "http.response.body"
+            and b'"delta":"Partial"' in message.get("body", b"")
+        ):
+            raise OSError("client disconnected")
+
+    async def check():
+        try:
+            await app(
+                {
+                    "type": "http", "asgi": {"version": "3.0", "spec_version": "2.4"},
+                    "http_version": "1.1", "method": "POST", "scheme": "http",
+                    "path": "/api/chat", "raw_path": b"/api/chat", "query_string": b"",
+                    "headers": [(b"content-type", b"application/json")],
+                    "server": ("test", 80), "client": ("test", 1234),
+                }, receive, send
+            )
+        except ClientDisconnect:
+            pass
+
+    anyio.run(check)
+    messages = app_store.list(Message)
+    assistant = next(
+        message for message in messages if message.data["role"] == "assistant"
+    )
+    assert agent.cancelled
+    assert assistant.data["content"] == "Partial"
+    assert assistant.data["message_spec_id"] == spec_id
+    assert app_store.get(MessageSpec, spec_id).session_id == SESSION_ID
 
 
 def test_api_disconnect_before_first_event_keeps_the_admitted_prompt(tmp_path):

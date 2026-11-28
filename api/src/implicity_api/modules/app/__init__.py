@@ -1,6 +1,7 @@
 from uuid import uuid4
 
-from implicity_api.models.app import Message, MessageSpec
+from implicity_api.models.app import Message as Message
+from implicity_api.models.app import MessageSpec as MessageSpec
 from implicity_api.stores.app import (
     UNATTACHED_MESSAGE_SPEC_RETENTION as UNATTACHED_MESSAGE_SPEC_RETENTION,
 )

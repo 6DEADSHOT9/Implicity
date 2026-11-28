@@ -16,30 +16,11 @@ from starlette.routing import Route
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from implicity_api.backup import daily_backups
-from implicity_api.modules.agent import (
-    AI_SDK_STREAM_HEADERS,
-    HermesAgent,
-    UserMessage,
-    stream_parts_sse,
-)
-from implicity_api.modules.app import (
-    MessageAlreadyHasSpecError,
-    MessageSpecAlreadyAttachedError,
-    MessageSpecNotFoundError,
-    attach_message_spec,
-    discard_unattached_message_specs,
-    store as app_store,
-)
-from implicity_api.modules.app.chat import (
-    conversation_exists,
-    create_conversation,
-    get_conversation,
-    list_conversations,
-    save_message,
-)
+from implicity_api.stores.app import discard_unattached_message_specs
 
 logger = logging.getLogger(__name__)
 MCP_PATH = "/mcp"
+AI_SDK_STREAM_HEADERS = {"x-vercel-ai-ui-message-stream": "v1"}
 
 
 class _AdmittedStreamingResponse(StreamingResponse):
@@ -194,8 +175,24 @@ def create_app(
                 mcp_start = None
 
     app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
-    agent = chat_agent or HermesAgent()
-    conversation_store = app_store_override or app_store
+    agent = chat_agent
+    conversation_store = app_store_override
+
+    def get_agent():
+        nonlocal agent
+        if agent is None:
+            from implicity_api.modules.agent import HermesAgent
+
+            agent = HermesAgent()
+        return agent
+
+    def get_conversation_store():
+        nonlocal conversation_store
+        if conversation_store is None:
+            from implicity_api.modules.app import store
+
+            conversation_store = store
+        return conversation_store
 
     @app.get("/health")
     async def health() -> dict[str, str]:
@@ -203,22 +200,28 @@ def create_app(
 
     @app.get("/api/quota")
     def quota() -> dict:
-        return asdict(agent.quota())
+        return asdict(get_agent().quota())
 
     @app.post("/api/conversations")
     def new_conversation() -> dict:
-        conversation = create_conversation(conversation_store)
-        agent.start_conversation(conversation.id)
+        from implicity_api.modules.app.chat import create_conversation
+
+        conversation = create_conversation(get_conversation_store())
+        get_agent().start_conversation(conversation.id)
         return {"id": conversation.id, **conversation.data}
 
     @app.get("/api/conversations")
     def conversations() -> list[dict]:
-        return list_conversations(conversation_store)
+        from implicity_api.modules.app.chat import list_conversations
+
+        return list_conversations(get_conversation_store())
 
     @app.get("/api/conversations/{conversation_id}")
     def conversation(conversation_id: str) -> dict:
+        from implicity_api.modules.app.chat import get_conversation
+
         try:
-            result = get_conversation(conversation_store, conversation_id)
+            result = get_conversation(get_conversation_store(), conversation_id)
         except ValueError as error:
             raise HTTPException(
                 status_code=422, detail="Invalid conversation id"
@@ -229,6 +232,20 @@ def create_app(
 
     @app.post("/api/chat")
     async def chat(body: dict):
+        from implicity_api.modules.agent import UserMessage, stream_parts_sse
+        from implicity_api.modules.app import (
+            MessageAlreadyHasSpecError,
+            MessageSpecAlreadyAttachedError,
+            MessageSpecNotFoundError,
+            attach_message_spec,
+        )
+        from implicity_api.modules.app.chat import (
+            conversation_exists,
+            save_message,
+        )
+
+        conversation_store = get_conversation_store()
+        agent = get_agent()
         try:
             conversation_id = str(uuid.UUID(body.get("id", "")))
         except (AttributeError, TypeError, ValueError) as error:
@@ -290,7 +307,6 @@ def create_app(
             render_calls = set()
             rendered_spec_ids = []
             completed = False
-            partial_persist_attempted = False
 
             def save_result():
                 assistant_message = save_message(
@@ -314,98 +330,98 @@ def create_app(
                         continue
 
             try:
-                async for event in stream_parts_sse(agent_parts):
-                    terminal = False
-                    for line in event.splitlines():
-                        if not line.startswith("data: "):
-                            continue
-                        if line[6:] == "[DONE]":
-                            terminal = True
-                            continue
-                        try:
-                            part = json.loads(line[6:])
-                        except json.JSONDecodeError:
-                            continue
-                        if part.get("type") == "finish":
-                            terminal = True
-                            break
-                        if part.get("type") == "text-delta":
-                            if text_part_id is not None and text_part_id != part.get(
-                                "id"
-                            ):
-                                answer.append("\n\n")
-                            answer.append(part.get("delta", ""))
-                            text_part_id = part.get("id")
-                        if part.get("type") in {
-                            "tool-input-start",
-                            "tool-input-available",
-                        }:
-                            tool_name = str(part.get("toolName", ""))
-                            if tool_name == "mcp__implicity__render":
-                                render_calls.add(part.get("toolCallId"))
-                        if (
-                            part.get("type") == "tool-output-available"
-                            and part.get("toolCallId") in render_calls
-                        ):
-                            spec_id = _rendered_spec_id(part.get("output"))
-                            if spec_id and spec_id not in rendered_spec_ids:
-                                rendered_spec_ids.append(spec_id)
-                    if terminal:
-                        completed = True
-                        break
-                    yield event
-            except asyncio.CancelledError:
-                disconnect_state["disconnected"] = True
-                raise
-            except Exception as error:
-                if str(error) in {
-                    "Hermes API key is not configured",
-                    "Conversation is already streaming",
-                }:
-                    message = (
-                        "Hermes API key is not configured."
-                        if str(error) == "Hermes API key is not configured"
-                        else "This conversation is already responding."
-                    )
-                else:
-                    _log_chat_failure(
-                        "Chat relay failed", error, conversation_id, session_id
-                    )
-                    message = "The answer could not be loaded. Try again."
-                stream_error = message
-            else:
-                stream_error = None
-
-            persistence_failed = False
-            if answer or rendered_spec_ids:
                 try:
-                    save_result()
+                    async for event in stream_parts_sse(agent_parts):
+                        terminal = False
+                        for line in event.splitlines():
+                            if not line.startswith("data: "):
+                                continue
+                            if line[6:] == "[DONE]":
+                                terminal = True
+                                continue
+                            try:
+                                part = json.loads(line[6:])
+                            except json.JSONDecodeError:
+                                continue
+                            if part.get("type") == "finish":
+                                terminal = True
+                                break
+                            if part.get("type") == "text-delta":
+                                if (
+                                    text_part_id is not None
+                                    and text_part_id != part.get("id")
+                                ):
+                                    answer.append("\n\n")
+                                answer.append(part.get("delta", ""))
+                                text_part_id = part.get("id")
+                            if part.get("type") in {
+                                "tool-input-start",
+                                "tool-input-available",
+                            }:
+                                tool_name = str(part.get("toolName", ""))
+                                if tool_name == "mcp__implicity__render":
+                                    render_calls.add(part.get("toolCallId"))
+                            if (
+                                part.get("type") == "tool-output-available"
+                                and part.get("toolCallId") in render_calls
+                            ):
+                                spec_id = _rendered_spec_id(part.get("output"))
+                                if spec_id and spec_id not in rendered_spec_ids:
+                                    rendered_spec_ids.append(spec_id)
+                        if terminal:
+                            completed = True
+                            break
+                        yield event
+                except asyncio.CancelledError:
+                    disconnect_state["disconnected"] = True
+                    raise
                 except Exception as error:
-                    persistence_failed = True
-                    _log_chat_failure(
-                        "Could not persist assistant result",
-                        error,
-                        conversation_id,
-                        session_id,
-                    )
-            release()
-            if persistence_failed:
-                stream_error = "Could not save the answer. Try again."
-            if stream_error:
-                for part in (
-                    {"type": "error", "errorText": stream_error},
-                    {"type": "finish"},
-                ):
-                    yield f"data: {json.dumps(part, separators=(',', ':'))}\n\n"
-                yield "data: [DONE]\n\n"
-            elif completed:
-                yield 'data: {"type":"finish"}\n\n'
-                yield "data: [DONE]\n\n"
+                    if str(error) in {
+                        "Hermes API key is not configured",
+                        "Conversation is already streaming",
+                    }:
+                        message = (
+                            "Hermes API key is not configured."
+                            if str(error) == "Hermes API key is not configured"
+                            else "This conversation is already responding."
+                        )
+                    else:
+                        _log_chat_failure(
+                            "Chat relay failed", error, conversation_id, session_id
+                        )
+                        message = "The answer could not be loaded. Try again."
+                    stream_error = message
+                else:
+                    stream_error = None
+
+                persistence_failed = False
+                if answer or rendered_spec_ids:
+                    try:
+                        save_result()
+                    except Exception as error:
+                        persistence_failed = True
+                        _log_chat_failure(
+                            "Could not persist assistant result",
+                            error,
+                            conversation_id,
+                            session_id,
+                        )
+                release()
+                if persistence_failed:
+                    stream_error = "Could not save the answer. Try again."
+                if stream_error:
+                    for part in (
+                        {"type": "error", "errorText": stream_error},
+                        {"type": "finish"},
+                    ):
+                        yield f"data: {json.dumps(part, separators=(',', ':'))}\n\n"
+                    yield "data: [DONE]\n\n"
+                elif completed:
+                    yield 'data: {"type":"finish"}\n\n'
+                    yield "data: [DONE]\n\n"
             finally:
                 if disconnect_state["disconnected"] and not completed:
-                    agent.cancel(conversation_id)
-                    if (answer or rendered_spec_ids) and not partial_persist_attempted:
-                        partial_persist_attempted = True
+                    if answer or rendered_spec_ids:
                         try:
                             save_result()
                         except Exception as error:
@@ -415,6 +431,7 @@ def create_app(
                                 conversation_id,
                                 session_id,
                             )
+                    agent.cancel(conversation_id)
 
         return _AdmittedStreamingResponse(
             relay(),

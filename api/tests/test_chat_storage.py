@@ -1,8 +1,8 @@
 from datetime import datetime, timezone
 
 import pytest
-from implicity_api.models import METADATA
 from implicity_api.models.app import Conversation
+from implicity_api.models.metadata import METADATA
 from implicity_api.modules.app.chat import (
     create_conversation,
     get_conversation,

@@ -46,9 +46,12 @@ export function useSeen({ component, defaultState, slot, onVisible }: { componen
     let intersectionVisible = false;
     let needsFreshSample = false;
     let observer: IntersectionObserver;
+    let viewportObserver: IntersectionObserver | undefined;
     let rootObserver: IntersectionObserver | undefined;
     let scrollRoot: Element | null = null;
     let rootVisible = true;
+    let localEntry: IntersectionObserverEntry | undefined;
+    let viewportEntry: IntersectionObserverEntry | undefined;
     let resizeObserver: ResizeObserver;
     const clearTimer = () => {
       clearTimeout(timer);
@@ -86,39 +89,43 @@ export function useSeen({ component, defaultState, slot, onVisible }: { componen
       if (notifiedVisibleRef.current) return;
       reportVisible();
     };
-    const applyEntries = (entries: IntersectionObserverEntry[]) => {
+    const applyEntries = (entries: IntersectionObserverEntry[], fromViewport = false) => {
       const currentEntries = entries.filter(({ target }) => target === observedElement).sort((a, b) => a.time - b.time);
-      let latestVisible = false;
-      for (const entry of currentEntries) {
-        const rootBounds = entry.rootBounds;
-        const tall = rootBounds && entry.boundingClientRect.height > rootBounds.height;
-        const coversHalfRoot = tall && entry.intersectionRect.width * entry.intersectionRect.height >= rootBounds.width * rootBounds.height / 2;
-        intersectionVisible = entry.isIntersecting && rootVisible && (entry.intersectionRatio >= SEEN_VISIBLE_RATIO || !!(tall && coversHalfRoot));
-        intersectionVisibleRef.current = intersectionVisible;
-        if (!intersectionVisible) {
-          resetStretch();
-          continue;
-        }
-
-        latestVisible = observedElement.checkVisibility({ opacityProperty: true, visibilityProperty: true });
-        if (!latestVisible) {
-          clearTimer();
-          visibleSince = undefined;
-          needsFreshSample = false;
-          continue;
-        }
-
-        if (visibleSince === undefined) visibleSince = entry.time;
+      if (!currentEntries.length) return;
+      if (fromViewport) viewportEntry = currentEntries.at(-1);
+      else localEntry = currentEntries.at(-1);
+      const entry = localEntry;
+      const visibleEntry = scrollRoot ? viewportEntry : localEntry;
+      if (!entry || !visibleEntry) return;
+      const rootWidth = scrollRoot?.clientWidth ?? window.innerWidth;
+      const rootHeight = scrollRoot?.clientHeight ?? window.innerHeight;
+      const tall = (entry.boundingClientRect?.height ?? 0) > rootHeight;
+      const coversHalfRoot = tall && (visibleEntry.intersectionRect?.width ?? 0) * (visibleEntry.intersectionRect?.height ?? 0) >= rootWidth * rootHeight / 2;
+      intersectionVisible = entry.isIntersecting && visibleEntry.isIntersecting && rootVisible && (visibleEntry.intersectionRatio >= SEEN_VISIBLE_RATIO || !!(tall && coversHalfRoot));
+      intersectionVisibleRef.current = intersectionVisible;
+      if (!intersectionVisible) {
+        resetStretch();
+        return;
       }
-      if (!currentEntries.length || !intersectionVisible) return;
-      if (latestVisible) notifyVisible();
+
+      const latestVisible = observedElement.checkVisibility({ opacityProperty: true, visibilityProperty: true });
       if (!latestVisible) {
+        clearTimer();
+        visibleSince = undefined;
+        needsFreshSample = false;
         schedule(250);
-      } else if (needsFreshSample) {
+        return;
+      }
+
+      if (visibleSince === undefined) visibleSince = Math.max(entry.time, visibleEntry.time);
+      notifyVisible();
+      if (needsFreshSample) {
         needsFreshSample = false;
         const elapsed = performance.now() - (visibleSince ?? performance.now());
         if (elapsed >= SEEN_VISIBLE_SECONDS * 1000) emitSeen(performance.now());
         else schedule();
+      } else if (performance.now() - visibleSince >= SEEN_VISIBLE_SECONDS * 1000) {
+        requestFreshSample();
       } else {
         schedule();
       }
@@ -126,6 +133,7 @@ export function useSeen({ component, defaultState, slot, onVisible }: { componen
     function onTimer() {
       timer = undefined;
       applyEntries(observer?.takeRecords() ?? []);
+      if (scrollRoot) applyEntries(viewportObserver?.takeRecords() ?? [], true);
       if (emittedRef.current || !intersectionVisible) return;
       if (!observedElement.checkVisibility({ opacityProperty: true, visibilityProperty: true })) {
         visibleSince = undefined;
@@ -157,8 +165,12 @@ export function useSeen({ component, defaultState, slot, onVisible }: { componen
         if (scrollRoot) resizeObserver?.unobserve(scrollRoot);
         scrollRoot = nextScrollRoot;
         rootObserver?.disconnect();
+        viewportObserver?.disconnect();
         rootVisible = !scrollRoot;
         if (scrollRoot) rootVisible = false;
+        localEntry = undefined;
+        viewportEntry = undefined;
+        resetStretch();
         rootVisibleRef.current = rootVisible;
         if (scrollRoot) {
           rootObserver = new IntersectionObserver((entries) => {
@@ -171,6 +183,8 @@ export function useSeen({ component, defaultState, slot, onVisible }: { componen
             } else if (!wasVisible) {
               observer.unobserve(observedElement);
               observer.observe(observedElement);
+              viewportObserver?.unobserve(observedElement);
+              viewportObserver?.observe(observedElement);
             }
           }, { threshold: 0 });
           rootObserver.observe(scrollRoot);
@@ -178,15 +192,21 @@ export function useSeen({ component, defaultState, slot, onVisible }: { componen
         }
       }
       observer?.disconnect();
+      viewportObserver?.disconnect();
       const rect = observedElement.getBoundingClientRect();
       const rootBounds = scrollRoot?.getBoundingClientRect();
-      const rootWidth = rootBounds?.width ?? window.innerWidth;
-      const rootHeight = rootBounds?.height ?? window.innerHeight;
+      const rootWidth = scrollRoot ? scrollRoot.clientWidth : window.innerWidth;
+      const rootHeight = scrollRoot ? scrollRoot.clientHeight : window.innerHeight;
       const threshold = rect.height > rootHeight
         ? Math.min(1, rootWidth * rootHeight / (2 * rect.width * rect.height))
         : SEEN_VISIBLE_RATIO;
       observer = new IntersectionObserver((entries) => applyEntries(entries), { root: scrollRoot, threshold: [...new Set([0, threshold, SEEN_VISIBLE_RATIO])].sort((a, b) => a - b) });
       observer.observe(observedElement);
+      if (scrollRoot) {
+        const coverageThreshold = Math.min(1, rootWidth * rootHeight / (2 * rect.width * rect.height));
+        viewportObserver = new IntersectionObserver((entries) => applyEntries(entries, true), { threshold: [...new Set([0, SEEN_VISIBLE_RATIO, coverageThreshold])].sort((a, b) => a - b) });
+        viewportObserver.observe(observedElement);
+      }
     };
     resizeObserver = new ResizeObserver(observe);
     resizeObserver.observe(observedElement);
@@ -195,6 +215,7 @@ export function useSeen({ component, defaultState, slot, onVisible }: { componen
     return () => {
       clearTimer();
       observer.disconnect();
+      viewportObserver?.disconnect();
       rootObserver?.disconnect();
       resizeObserver.disconnect();
       window.removeEventListener("resize", observe);

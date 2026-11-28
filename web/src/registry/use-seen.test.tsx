@@ -109,7 +109,7 @@ describe("useSeen", () => {
   it("uses the nearest scrollable ancestor as the observer root", () => {
     const view = render(<CaptureProvider sink={() => undefined}><ScrollProbe /></CaptureProvider>);
     const root = view.container.querySelector("[data-scroll-root]")!;
-    expect(TestIntersectionObserver.instances.at(-1)?.root).toBe(root);
+    expect(TestIntersectionObserver.instances.some((observer) => observer.root === root)).toBe(true);
   });
 
   it("signals first displayability through the same visibility observation", async () => {
