@@ -5,6 +5,7 @@ declare global {
     seenEvents: CapturedEvent[];
     seenTest: { replaceTarget(): void; toggleMount(): void };
     restoreSeenClock(): void;
+    seenObserverReady: boolean;
     delaySeenObserver: boolean;
     pendingSeenObserverCallbacks: Array<() => void>;
   }
